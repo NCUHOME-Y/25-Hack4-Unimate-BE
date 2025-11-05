@@ -32,20 +32,22 @@ func DBconnect() {
 	}
 	if err != nil {
 		log.Fatalf("failed to migrate database: %v", err)
+		return
 	}
 	DB = db
 	DB.AutoMigrate(&model.User{}, &model.Flag{})
 }
 
-// flag添加到数据库
+// user添加到数据库
 func AddUserToDB(user model.User) error {
 	result := DB.Create(&user)
 	return result.Error
 }
 
 // flag添加到数据库
-func AddFlagToDB(Id uint, flag []model.Flag) error {
-	result := DB.Model(&model.Flag{}).Where("user_id=?", Id).Update("flag", flag)
+func AddFlagToDB(Id uint, flag model.Flag) error {
+	flag.UserID = Id
+	result := DB.Create(&flag)
 	return result.Error
 }
 

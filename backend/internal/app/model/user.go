@@ -18,5 +18,5 @@ type Flag struct {
 	PlanContent string    `json:"plan_content"`
 	UserID      uint      `json:"user_id"`
 	IsHiden     bool      `json:"is_hiden"`
-	time        time.Time `json:"time"`
+	Time        time.Time `json:"time"`
 }
