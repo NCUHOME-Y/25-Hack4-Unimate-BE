@@ -20,9 +20,9 @@ var (
 
 // 链接数据库
 func DBconnect() {
-	err := godotenv.Load("internal/app/repository/.env")
+	err := godotenv.Load(".env")
 	if err != nil {
-		log.Fatalf("Error loading .env file")
+		log.Fatalf("Error loading_data .env file")
 	}
 	dsn := os.Getenv("DB_DSN")
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
@@ -44,8 +44,8 @@ func AddUserToDB(user model.User) error {
 }
 
 // flag添加到数据库
-func AddFlagToDB(user model.User, flag []model.Flag) error {
-	result := DB.Model(&model.Flag{}).Where("user_id=?", user.ID).Update("flag", flag)
+func AddFlagToDB(Id uint, flag []model.Flag) error {
+	result := DB.Model(&model.Flag{}).Where("user_id=?", Id).Update("flag", flag)
 	return result.Error
 }
 

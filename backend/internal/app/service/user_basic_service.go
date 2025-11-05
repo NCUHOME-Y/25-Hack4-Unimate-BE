@@ -3,16 +3,71 @@ package service
 import (
 	"Heckweek/internal/app/model"
 	"Heckweek/internal/app/repository"
+	utils "Heckweek/util"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-func init() {
-	repository.DBconnect() //连接数据库
-}
+func JWTAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 获取 token
+		authHeader := c.Request.Header.Get("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code": 401,
+				"msg":  "请求头中 Authorization 为空",
+			})
+			c.Abort()
+			return
+		}
 
-var User model.User
+		// 检查 token 格式
+		parts := strings.SplitN(authHeader, " ", 2)
+		if !(len(parts) == 2 && parts[0] == "Bearer") {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code": 401,
+				"msg":  "请求头中 Authorization 格式有误",
+			})
+			c.Abort()
+			return
+		}
+
+		// 解析 token
+		claims, err := utils.ParseToken(parts[1])
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code": 401,
+				"msg":  "无效的 Token",
+			})
+			c.Abort()
+			return
+		}
+
+		// 将用户信息存入上下文
+		c.Set("user_id", claims.UserID)
+		c.Set("username", claims.Username)
+		c.Set("email", claims.Email)
+
+		c.Next()
+	}
+}
+func getCurrentUserID(c *gin.Context) (uint, bool) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		return 0, false
+	}
+
+	// 类型断言
+	id, ok := userID.(uint)
+	if !ok {
+		return 0, false
+	}
+
+	return id, true
+}
 
 // 用户注册
 func RegisterUser() gin.HandlerFunc {
@@ -24,11 +79,13 @@ func RegisterUser() gin.HandlerFunc {
 		}
 		if err := c.ShouldBindJSON(&user_new); err != nil {
 			c.JSON(http.StatusOK, gin.H{"error": "注册失败,请重新再试..."})
+			log.Print("Binding error")
 			return
 		}
 		user_exist, _ := repository.GetUserByEmail(user_new.Email)
 		if user_exist.ID != 0 {
 			c.JSON(http.StatusOK, gin.H{"error": "用户名已存在,请更换用户名..."})
+			log.Print("User already exists")
 			return
 		}
 		user := model.User{
@@ -36,9 +93,9 @@ func RegisterUser() gin.HandlerFunc {
 			Email:    user_new.Email,
 			Password: user_new.Password,
 		}
-		err := repository.AddUserToDB(user) //添加进数据库
-		if err != nil {
+		if err := repository.AddUserToDB(user); err != nil {
 			c.JSON(http.StatusOK, gin.H{"error": "注册失败,请重新再试..."})
+			log.Print("Add user to DB error")
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "注册成功!"})
@@ -48,7 +105,10 @@ func RegisterUser() gin.HandlerFunc {
 // 用户登录
 func LoginUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var user_login model.User
+		var user_login struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
 		if err := c.ShouldBindJSON(&user_login); err != nil {
 			c.JSON(http.StatusOK, gin.H{"error": "登录失败,请重新再试..."})
 			return
@@ -58,7 +118,6 @@ func LoginUser() gin.HandlerFunc {
 			c.JSON(http.StatusOK, gin.H{"error": "用户名或密码错误,请重新再试..."})
 			return
 		}
-		User = user_exist
 		c.JSON(http.StatusOK, gin.H{"message": "登录成功!"})
 	}
 }
@@ -112,8 +171,12 @@ func UpdateUserName() gin.HandlerFunc {
 // 获取用户flag
 func GetUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
-		flags, err := repository.GetFlagsByUserID(User.ID)
+		id, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(http.StatusOK, gin.H{"error": "获取用户信息失败,请重新再试..."})
+			return
+		}
+		flags, err := repository.GetFlagsByUserID(id)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"error": "获取flag失败,请重新再试..."})
 			return
@@ -138,13 +201,18 @@ func PostUserFlags() gin.HandlerFunc {
 			PlanContent: flag.PlanContent,
 			IsHiden:     flag.IsHiden,
 		}
-		flag_current, err := repository.GetFlagsByUserID(User.ID)
+		id, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(http.StatusOK, gin.H{"error": "获取用户信息失败,请重新再试..."})
+			return
+		}
+		flag_current, err := repository.GetFlagsByUserID(id)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"error": "获取flag失败,请重新再试..."})
 			return
 		}
 		flag_current = append(flag_current, flag_model)
-		err = repository.AddFlagToDB(User, flag_current)
+		err = repository.AddFlagToDB(id, flag_current)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"error": "添加flag失败,请重新再试..."})
 			return
