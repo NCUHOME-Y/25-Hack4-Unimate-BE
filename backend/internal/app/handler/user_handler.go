@@ -7,11 +7,11 @@ import (
 )
 
 func BasicFlag(r *gin.Engine) {
-	r.POST("/register", service.RegisterUser())
-	r.POST("/login", service.LoginUser())
+	r.POST("/api/register", service.RegisterUser())
+	r.POST("/api/login", service.LoginUser())
 	e := r.Group("/logined", service.JWTAuth())
 	e.POST("/update-password", service.UpdateUserPassword())
 	e.POST("/update-username", service.UpdateUserName())
-	e.POST("/add-flag", service.PostUserFlags())
-	e.GET("/get-user-flags", service.GetUserFlags())
+	e.POST("/api/add-flag", service.PostUserFlags())
+	e.GET("/api/get-user-flags", service.GetUserFlags())
 }
