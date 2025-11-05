@@ -113,12 +113,21 @@ func LoginUser() gin.HandlerFunc {
 			c.JSON(http.StatusOK, gin.H{"error": "登录失败,请重新再试..."})
 			return
 		}
-		user_exist, _ := repository.GetUserByEmail(user_login.Email)
-		if user_exist.Password != user_login.Password || user_exist.ID == 0 {
+		user, _ := repository.GetUserByEmail(user_login.Email)
+		if user.Password != user_login.Password || user.ID == 0 {
 			c.JSON(http.StatusOK, gin.H{"error": "用户名或密码错误,请重新再试..."})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "登录成功!"})
+		token, err := utils.GenerateToken(user.ID, user.Name, user.Email)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code": 500,
+				"msg":  "生成 Token 失败",
+			})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "登录成功!",
+			"token": token})
 	}
 }
 
@@ -193,7 +202,8 @@ func PostUserFlags() gin.HandlerFunc {
 			IsHiden     bool   `json:"is_hiden"`
 		}
 		if err := c.ShouldBindJSON(&flag); err != nil {
-			c.JSON(http.StatusOK, gin.H{"错误": "添加flag失败,请重新再试..."})
+			c.JSON(http.StatusOK, gin.H{"err": "添加flag失败,请重新再试..."})
+			log.Print("Binding error")
 			return
 		}
 		flag_model := model.Flag{
@@ -214,7 +224,7 @@ func PostUserFlags() gin.HandlerFunc {
 		flag_current = append(flag_current, flag_model)
 		err = repository.AddFlagToDB(id, flag_current)
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"error": "添加flag失败,请重新再试..."})
+			c.JSON(http.StatusOK, gin.H{"error": "添加flag失败s,请重新再试..."})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "添加flag成功!"})
