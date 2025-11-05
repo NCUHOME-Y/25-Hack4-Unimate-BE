@@ -4,8 +4,10 @@ import (
 	"Heckweek/internal/app/model" // 你的自定义包
 	"os"
 
+	"log"
+
 	"github.com/joho/godotenv"
-	"go.uber.org/zap"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -16,19 +18,20 @@ var (
 	Flags []model.Flag
 )
 
-func init() {
-	err := godotenv.Load()
-	if err != nil {
-		zap.L().Error("Error loading .env file", zap.Error(err))
-	}
-}
-
 // 链接数据库
 func DBconnect() {
+	err := godotenv.Load("internal/app/repository/.env")
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
 	dsn := os.Getenv("DB_DSN")
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		zap.L().Error("Failed to connect to database", zap.Error(err))
+		log.Fatalf("failed to connect database: %v", err)
+		return
+	}
+	if err != nil {
+		log.Fatalf("failed to migrate database: %v", err)
 	}
 	DB = db
 	DB.AutoMigrate(&model.User{}, &model.Flag{})
@@ -41,8 +44,8 @@ func AddUserToDB(user model.User) error {
 }
 
 // flag添加到数据库
-func AddFlagToDB(flag model.Flag) error {
-	result := DB.Create(&flag)
+func AddFlagToDB(user model.User, flag []model.Flag) error {
+	result := DB.Model(&model.Flag{}).Where("user_id=?", user.ID).Update("flag", flag)
 	return result.Error
 }
 
@@ -59,10 +62,10 @@ func GetFlagsByUserID(userID uint) ([]model.Flag, error) {
 	return flags, result.Error
 }
 
-// 通过用户名获取用户
-func GetUserByName(name string) (model.User, error) {
+// 通过用户邮箱获取用户
+func GetUserByEmail(Email string) (model.User, error) {
 	var user model.User
-	result := DB.Where("name=?", name).First(&user)
+	result := DB.Where("email=?", Email).First(&user)
 	return user, result.Error
 }
 

@@ -12,27 +12,36 @@ func init() {
 	repository.DBconnect() //连接数据库
 }
 
+var User model.User
+
 // 用户注册
 func RegisterUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var user_new model.User
+		var user_new struct {
+			Name     string `json:"name"`
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
 		if err := c.ShouldBindJSON(&user_new); err != nil {
-			c.JSON(http.StatusOK, gin.H{"错误": "注册失败,请重新再试..."})
+			c.JSON(http.StatusOK, gin.H{"error": "注册失败,请重新再试..."})
 			return
 		}
-		user_exist, _ := repository.GetUserByName(user_new.Name)
+		user_exist, _ := repository.GetUserByEmail(user_new.Email)
 		if user_exist.ID != 0 {
 			c.JSON(http.StatusOK, gin.H{"error": "用户名已存在,请更换用户名..."})
 			return
 		}
-		err := repository.AddUserToDB(user_new) //添加进数据库
+		user := model.User{
+			Name:     user_new.Name,
+			Email:    user_new.Email,
+			Password: user_new.Password,
+		}
+		err := repository.AddUserToDB(user) //添加进数据库
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"error": "注册失败,请重新再试..."})
 			return
-		} else {
-			c.JSON(http.StatusOK, gin.H{"message": "注册成功!"})
-			return
 		}
+		c.JSON(http.StatusOK, gin.H{"message": "注册成功!"})
 	}
 }
 
@@ -44,11 +53,12 @@ func LoginUser() gin.HandlerFunc {
 			c.JSON(http.StatusOK, gin.H{"error": "登录失败,请重新再试..."})
 			return
 		}
-		user_exist, _ := repository.GetUserByName(user_login.Name)
+		user_exist, _ := repository.GetUserByEmail(user_login.Email)
 		if user_exist.Password != user_login.Password || user_exist.ID == 0 {
 			c.JSON(http.StatusOK, gin.H{"error": "用户名或密码错误,请重新再试..."})
 			return
 		}
+		User = user_exist
 		c.JSON(http.StatusOK, gin.H{"message": "登录成功!"})
 	}
 }
@@ -96,5 +106,49 @@ func UpdateUserName() gin.HandlerFunc {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "用户名更新成功!"})
+	}
+}
+
+// 获取用户flag
+func GetUserFlags() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		flags, err := repository.GetFlagsByUserID(User.ID)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"error": "获取flag失败,请重新再试..."})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"flags": flags})
+	}
+}
+
+func PostUserFlags() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var flag struct {
+			Flag        string `json:"flag"`
+			PlanContent string `json:"plan_content"`
+			IsHiden     bool   `json:"is_hiden"`
+		}
+		if err := c.ShouldBindJSON(&flag); err != nil {
+			c.JSON(http.StatusOK, gin.H{"错误": "添加flag失败,请重新再试..."})
+			return
+		}
+		flag_model := model.Flag{
+			Flag:        flag.Flag,
+			PlanContent: flag.PlanContent,
+			IsHiden:     flag.IsHiden,
+		}
+		flag_current, err := repository.GetFlagsByUserID(User.ID)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"error": "获取flag失败,请重新再试..."})
+			return
+		}
+		flag_current = append(flag_current, flag_model)
+		err = repository.AddFlagToDB(User, flag_current)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"error": "添加flag失败,请重新再试..."})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "添加flag成功!"})
 	}
 }
