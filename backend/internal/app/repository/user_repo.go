@@ -105,3 +105,7 @@ func UpdateUserName(id uint, newName string) error {
 	result := DB.Model(&model.User{}).Where("id=?", id).Update("Name", newName)
 	return result.Error
 }
+func UpdateFlagDoneNumber(flagID uint, doneNumber int) error {
+	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("done_number", doneNumber)
+	return result.Error
+}

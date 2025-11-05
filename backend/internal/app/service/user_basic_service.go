@@ -224,3 +224,21 @@ func PostUserFlags() gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"message": "添加flag成功!"})
 	}
 }
+func DoneUserFlags() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			ID         uint `json:"id"`
+			DoneNumber int  `json:"done_number"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(500, gin.H{"err": "更新flag失败,请重新再试..."})
+			log.Print("Binding error")
+			return
+		}
+		err := repository.UpdateFlagDoneNumber(req.ID, req.DoneNumber)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
+			return
+		}
+	}
+}

@@ -14,4 +14,5 @@ func BasicFlag(r *gin.Engine) {
 	e.POST("/update-username", service.UpdateUserName())
 	e.POST("/api/add-flag", service.PostUserFlags())
 	e.GET("/api/get-user-flags", service.GetUserFlags())
+	e.POST("/api/doneFlag", service.DoneUserFlags())
 }
