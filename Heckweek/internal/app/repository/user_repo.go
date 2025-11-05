@@ -96,3 +96,7 @@ func UpdatePassword(id uint, newPassword string) error {
 	result := DB.Model(&model.User{}).Where("id=?", id).Update("Password", newPassword)
 	return result.Error
 }
+func UpdateUserName(id uint, newName string) error {
+	result := DB.Model(&model.User{}).Where("id=?", id).Update("Name", newName)
+	return result.Error
+}

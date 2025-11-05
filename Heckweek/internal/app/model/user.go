@@ -5,17 +5,17 @@ import (
 )
 
 type User struct {
-	ID       uint `gorm:"primaryKey"`
-	Name     string
-	Email    string
-	Password string
+	ID       uint   `gorm:"primaryKey" json:"id"`
+	Name     string `json :name`
+	Email    string `json:email`
+	Password string `json:password`
 }
 
 type Flag struct {
-	ID          uint `gorm:"primaryKey"`
-	Flag        string
-	PlanContent string
-	UserID      uint
-	IsHiden     bool
-	time        time.Time
+	ID          uint      `gorm:"primaryKey"`
+	Flag        string    `json:"flag"`
+	PlanContent string    `json:"plan_content"`
+	UserID      uint      `json:"user_id"`
+	IsHiden     bool      `json:"is_hiden"`
+	time        time.Time `json:"time"`
 }
