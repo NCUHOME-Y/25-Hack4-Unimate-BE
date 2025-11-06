@@ -4,8 +4,10 @@ import (
 	"Heckweek/internal/app/model" // 你的自定义包
 	"os"
 
+	"log"
+
 	"github.com/joho/godotenv"
-	"go.uber.org/zap"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -16,32 +18,35 @@ var (
 	Flags []model.Flag
 )
 
-func init() {
-	err := godotenv.Load()
-	if err != nil {
-		zap.L().Error("Error loading .env file", zap.Error(err))
-	}
-}
-
 // 链接数据库
 func DBconnect() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Error loading_data .env file")
+	}
 	dsn := os.Getenv("DB_DSN")
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		zap.L().Error("Failed to connect to database", zap.Error(err))
+		log.Fatalf("failed to connect database: %v", err)
+		return
+	}
+	if err != nil {
+		log.Fatalf("failed to migrate database: %v", err)
+		return
 	}
 	DB = db
 	DB.AutoMigrate(&model.User{}, &model.Flag{})
 }
 
-// flag添加到数据库
+// user添加到数据库
 func AddUserToDB(user model.User) error {
 	result := DB.Create(&user)
 	return result.Error
 }
 
 // flag添加到数据库
-func AddFlagToDB(flag model.Flag) error {
+func AddFlagToDB(Id uint, flag model.Flag) error {
+	flag.UserID = Id
 	result := DB.Create(&flag)
 	return result.Error
 }
@@ -59,10 +64,10 @@ func GetFlagsByUserID(userID uint) ([]model.Flag, error) {
 	return flags, result.Error
 }
 
-// 通过用户名获取用户
-func GetUserByName(name string) (model.User, error) {
+// 通过用户邮箱获取用户
+func GetUserByEmail(Email string) (model.User, error) {
 	var user model.User
-	result := DB.Where("name=?", name).First(&user)
+	result := DB.Where("email=?", Email).First(&user)
 	return user, result.Error
 }
 
@@ -96,7 +101,15 @@ func UpdatePassword(id uint, newPassword string) error {
 	result := DB.Model(&model.User{}).Where("id=?", id).Update("Password", newPassword)
 	return result.Error
 }
+
+// 更新用户名
 func UpdateUserName(id uint, newName string) error {
 	result := DB.Model(&model.User{}).Where("id=?", id).Update("Name", newName)
+	return result.Error
+}
+
+// 更新flag的完成数量
+func UpdateFlagDoneNumber(flagID uint, doneNumber int) error {
+	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("done_number", doneNumber)
 	return result.Error
 }
