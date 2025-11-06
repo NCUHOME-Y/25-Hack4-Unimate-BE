@@ -34,7 +34,7 @@ func GenerateToken(userID uint, username, email string) (string, error) {
 			ExpiresAt: jwt.NewNumericDate(expireTime),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
-			Issuer:    "your-app-name",
+			Issuer:    "Unimate_app",
 		},
 	}
 

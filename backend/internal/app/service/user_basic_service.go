@@ -51,6 +51,7 @@ func JWTAuth() gin.HandlerFunc {
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("email", claims.Email)
+		c.Set("token", parts[1])
 
 		c.Next()
 	}
@@ -145,6 +146,7 @@ func UpdateUserPassword() gin.HandlerFunc {
 			Password    string `json:"password"`
 			NewPassword string `json:"new_password"`
 		}
+		new_token,_:= utils.RefreshToken("token")
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(401, gin.H{"error": "请求失败,请重新再试..."})
 			return
@@ -160,7 +162,11 @@ func UpdateUserPassword() gin.HandlerFunc {
 			log.Printf(" Password update error: %v", err)
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "密码更新成功!"})
+		c.JSON(http.StatusOK, gin.H{
+			"message": "密码更新成功!",
+			"new_token":new_token,
+		}
+		)
 	}
 }
 
