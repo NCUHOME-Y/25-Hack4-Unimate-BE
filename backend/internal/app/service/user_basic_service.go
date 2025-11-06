@@ -136,20 +136,20 @@ func LoginUser() gin.HandlerFunc {
 func UpdateUserPassword() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID          uint   `json:"id"`
+			Email       uint   `json:"id"`
 			Password    string `json:"password"`
 			NewPassword string `json:"new_password"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusOK, gin.H{"error": "请求失败,请重新再试..."})
+			c.JSON(401, gin.H{"error": "请求失败,请重新再试..."})
 			return
 		}
-		user, _ := repository.GetUserByID(req.ID)
+		user, _ := repository.GetUserByID(req.Email)
 		if req.Password != user.Password {
-			c.JSON(http.StatusOK, gin.H{"error": "原密码错误,请重新再试..."})
+			c.JSON(400, gin.H{"error": "原密码错误,请重新再试..."})
 			return
 		}
-		repository.UpdatePassword(req.ID, req.NewPassword)
+		repository.UpdatePassword(user.ID, req.NewPassword)
 		c.JSON(http.StatusOK, gin.H{"message": "密码更新成功!"})
 	}
 }
@@ -160,18 +160,22 @@ func UpdateUserName() gin.HandlerFunc {
 			ID      uint   `json:"id"`
 			NewName string `json:"new_name"`
 		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(501, gin.H{"error": "请求失败,请重新再试..."})
+			return
+		}
 		user, _ := repository.GetUserByID(req.ID)
-		if user.Name == req.NewName {
-			c.JSON(http.StatusOK, gin.H{"error": "新用户名与原用户名相同,请重新再试..."})
+		if req.NewName == user.Name {
+			c.JSON(400, gin.H{"error": "新用户名与原用户名相同,请重新再试..."})
 			return
 		}
 		if req.NewName == "" {
-			c.JSON(http.StatusOK, gin.H{"error": "用户名不能为空,请重新再试..."})
+			c.JSON(500, gin.H{"error": "用户名不能为空,请重新再试..."})
 			return
 		}
 		err := repository.UpdateUserName(req.ID, req.NewName)
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"message": "用户名更新失败，请重新再试!"})
+			c.JSON(401, gin.H{"message": "用户名更新失败，请重新再试!"})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "用户名更新成功!"})
@@ -249,5 +253,6 @@ func DoneUserFlags() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
 			return
 		}
+		c.JSON(200, gin.H{"message": "打卡成功"})
 	}
 }
