@@ -125,6 +125,7 @@ func LoginUser() gin.HandlerFunc {
 				"code": 500,
 				"msg":  "生成 Token 失败",
 			})
+			log.Print("Generate token error")
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "登录成功!",
@@ -149,7 +150,12 @@ func UpdateUserPassword() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "原密码错误,请重新再试..."})
 			return
 		}
-		repository.UpdatePassword(user.ID, req.NewPassword)
+		err := repository.UpdatePassword(user.ID, req.NewPassword)
+		if err != nil {
+			c.JSON(500, gin.H{"message": "密码更新失败，请重新再试!"})
+			log.Printf(" Password update error: %v", err)
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{"message": "密码更新成功!"})
 	}
 }
@@ -176,6 +182,7 @@ func UpdateUserName() gin.HandlerFunc {
 		err := repository.UpdateUserName(req.ID, req.NewName)
 		if err != nil {
 			c.JSON(401, gin.H{"message": "用户名更新失败，请重新再试!"})
+			log.Printf(" Username update error: %v", err)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "用户名更新成功!"})
@@ -193,6 +200,7 @@ func GetUserFlags() gin.HandlerFunc {
 		flags, err := repository.GetFlagsByUserID(id)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"error": "获取flag失败,请重新再试..."})
+			log.Print("Get flags error")
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"flags": flags})
@@ -230,6 +238,7 @@ func PostUserFlags() gin.HandlerFunc {
 		err := repository.AddFlagToDB(id, flag_model)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "添加flag失败,请重新再试..."})
+			log.Print("Add flag to DB error")
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "添加flag成功!"})
