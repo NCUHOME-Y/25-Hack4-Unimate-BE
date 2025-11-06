@@ -269,3 +269,21 @@ func DoneUserFlags() gin.HandlerFunc {
 		c.JSON(200, gin.H{"message": "打卡成功"})
 	}
 }
+
+func DeleteUserFlags() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			ID uint `json:"id"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(500, gin.H{"err": "删除flag失败,请重新再试..."})
+			log.Print("Binding error")
+			return
+		}
+		err := repository.DeleteFlagFromDB(req.ID)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "删除flag失败,请重新再试..."})
+			return
+		}
+	}
+}
