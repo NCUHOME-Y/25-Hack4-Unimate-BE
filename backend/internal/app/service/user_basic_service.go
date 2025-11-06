@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -194,6 +195,7 @@ func GetUserFlags() gin.HandlerFunc {
 	}
 }
 
+// 添加用户flag
 func PostUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var flag struct {
@@ -201,17 +203,20 @@ func PostUserFlags() gin.HandlerFunc {
 			PlanContent    string `json:"plan_content"`
 			IsHiden        bool   `json:"is_hiden"`
 			PlanDoneNumber int    `json:"plan_done_number"`
+			DeadTime       string `json:"deadtime"`
 		}
 		if err := c.ShouldBindJSON(&flag); err != nil {
 			c.JSON(500, gin.H{"err": "添加flag失败,请重新再试..."})
 			log.Print("Binding error")
 			return
 		}
+		t, _ := time.Parse(flag.DeadTime, "2006-01-02 15:04:05")
 		flag_model := model.Flag{
 			Flag:           flag.Flag,
 			PlanContent:    flag.PlanContent,
 			IsHiden:        flag.IsHiden,
 			PlanDoneNumber: flag.PlanDoneNumber,
+			DeadTime:       t,
 		}
 		id, ok := getCurrentUserID(c)
 		if !ok {
@@ -226,6 +231,8 @@ func PostUserFlags() gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"message": "添加flag成功!"})
 	}
 }
+
+// 完成用户flag
 func DoneUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {

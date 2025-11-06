@@ -21,5 +21,5 @@ type Flag struct {
 	HadDone        bool      `json:"had_done"`
 	DoneNumber     int       `json:"done_number"`
 	PlanDoneNumber int       `json:"plan_done_number"`
-	Time           time.Time `json:"time"`
+	DeadTime       time.Time `json:"time"`
 }
