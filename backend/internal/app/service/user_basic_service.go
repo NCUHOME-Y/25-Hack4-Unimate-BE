@@ -150,7 +150,7 @@ func UpdateUserPassword() gin.HandlerFunc {
 			return
 		}
 		user, _ := repository.GetUserByID(req.Email)
-		if req.Password != user.Password {
+		if utils.CheckPasswordHash(user.Password, req.Password) {
 			c.JSON(400, gin.H{"error": "原密码错误,请重新再试..."})
 			return
 		}
