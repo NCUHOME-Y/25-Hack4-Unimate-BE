@@ -169,6 +169,7 @@ func UpdateUserPassword() gin.HandlerFunc {
 	}
 }
 
+// 更新用户名
 func UpdateUserName() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
@@ -275,6 +276,7 @@ func DoneUserFlags() gin.HandlerFunc {
 	}
 }
 
+// 删除flag
 func DeleteUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
@@ -290,5 +292,47 @@ func DeleteUserFlags() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "删除flag失败,请重新再试..."})
 			return
 		}
+	}
+}
+
+// 更新用户状态
+func UpdateStatus() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			ID     uint   `json:"id"`
+			Status string `json:"status"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(500, gin.H{"err": "更新状态失败,请重新再试..."})
+			log.Print("Binding error")
+			return
+		}
+		err := repository.UpdateUserStatus(req.ID, req.Status)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "更新状态失败,请重新再试..."})
+			return
+		}
+		c.JSON(200, gin.H{"message": "状态更新成功"})
+	}
+}
+
+// 完成flag
+func FinshDoneFlag() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			ID      uint `json:"id"`
+			HadDone bool `json:"had_done"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(500, gin.H{"err": "更新flag失败,请重新再试..."})
+			log.Print("Binding error")
+			return
+		}
+		err := repository.UpdateFlagHadDone(req.ID, req.HadDone)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
+			return
+		}
+		c.JSON(200, gin.H{"message": "flag完成状态更新成功"})
 	}
 }
