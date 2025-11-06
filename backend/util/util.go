@@ -2,10 +2,12 @@ package utils
 
 import (
 	"errors"
+	"log"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // JWT 密钥（生产环境应从环境变量或配置文件中读取）
@@ -65,4 +67,19 @@ func RefreshToken(tokenString string) (string, error) {
 	}
 
 	return GenerateToken(claims.UserID, claims.Username, claims.Email)
+}
+
+func HashPassword(password string) (string, error) {
+	passwordBytes := []byte(password)
+	HashPassword, err := bcrypt.GenerateFromPassword(passwordBytes, 12)
+	if err != nil {
+		log.Printf("Hash password defeat")
+		return "", err
+	}
+	return string(HashPassword), nil
+}
+
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }

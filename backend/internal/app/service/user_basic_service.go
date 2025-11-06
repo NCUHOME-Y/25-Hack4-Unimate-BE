@@ -89,10 +89,14 @@ func RegisterUser() gin.HandlerFunc {
 			log.Print("User already exists")
 			return
 		}
+		new_password, err := utils.HashPassword(user_new.Password)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"error": "注册失败,请重新再试..."})
+		}
 		user := model.User{
 			Name:     user_new.Name,
 			Email:    user_new.Email,
-			Password: user_new.Password,
+			Password: new_password,
 		}
 		if err := repository.AddUserToDB(user); err != nil {
 			c.JSON(http.StatusOK, gin.H{"error": "注册失败,请重新再试..."})
@@ -115,7 +119,7 @@ func LoginUser() gin.HandlerFunc {
 			return
 		}
 		user, _ := repository.GetUserByEmail(user_login.Email)
-		if user.Password != user_login.Password || user.ID == 0 {
+		if utils.CheckPasswordHash(user.Password, user_login.Password) || user.ID == 0 {
 			c.JSON(http.StatusOK, gin.H{"error": "用户名或密码错误,请重新再试..."})
 			return
 		}
