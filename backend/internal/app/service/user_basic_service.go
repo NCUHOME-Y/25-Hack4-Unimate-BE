@@ -120,7 +120,7 @@ func LoginUser() gin.HandlerFunc {
 			return
 		}
 		user, _ := repository.GetUserByEmail(user_login.Email)
-		if utils.CheckPasswordHash(user.Password, user_login.Password) || user.ID == 0 {
+		if !utils.CheckPasswordHash(user.Password, user_login.Password) || user.ID == 0 {
 			c.JSON(http.StatusOK, gin.H{"error": "用户名或密码错误,请重新再试..."})
 			return
 		}
@@ -142,17 +142,17 @@ func LoginUser() gin.HandlerFunc {
 func UpdateUserPassword() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			Email       uint   `json:"id"`
+			ID          uint   `json:"id"`
 			Password    string `json:"password"`
 			NewPassword string `json:"new_password"`
 		}
-		new_token,_:= utils.RefreshToken("token")
+		new_token, _ := utils.RefreshToken("token")
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(401, gin.H{"error": "请求失败,请重新再试..."})
 			return
 		}
-		user, _ := repository.GetUserByID(req.Email)
-		if utils.CheckPasswordHash(user.Password, req.Password) {
+		user, _ := repository.GetUserByID(req.ID)
+		if !utils.CheckPasswordHash(user.Password, req.Password) {
 			c.JSON(400, gin.H{"error": "原密码错误,请重新再试..."})
 			return
 		}
@@ -163,10 +163,9 @@ func UpdateUserPassword() gin.HandlerFunc {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
-			"message": "密码更新成功!",
-			"new_token":new_token,
-		}
-		)
+			"message":   "密码更新成功!",
+			"new_token": new_token,
+		})
 	}
 }
 
