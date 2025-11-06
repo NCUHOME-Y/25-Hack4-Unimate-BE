@@ -13,12 +13,13 @@ type User struct {
 }
 
 type Flag struct {
-	ID          uint      `gorm:"primaryKey"`
-	Flag        string    `json:"flag"`
-	PlanContent string    `json:"plan_content"`
-	UserID      uint      `json:"user_id"`
-	IsHiden     bool      `json:"is_hiden"`
-	HadDone     bool      `json:"had_done"`
-	DoneNumber  int       `json:"done_number"`
-	Time        time.Time `json:"time"`
+	ID             uint      `gorm:"primaryKey"`
+	Flag           string    `json:"flag"`
+	PlanContent    string    `json:"plan_content"`
+	UserID         uint      `json:"user_id"`
+	IsHiden        bool      `json:"is_hiden"`
+	HadDone        bool      `json:"had_done"`
+	DoneNumber     int       `json:"done_number"`
+	PlanDoneNumber int       `json:"plan_done_number"`
+	Time           time.Time `json:"time"`
 }

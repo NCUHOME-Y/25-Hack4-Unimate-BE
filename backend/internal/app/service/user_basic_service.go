@@ -197,9 +197,10 @@ func GetUserFlags() gin.HandlerFunc {
 func PostUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var flag struct {
-			Flag        string `json:"flag"`
-			PlanContent string `json:"plan_content"`
-			IsHiden     bool   `json:"is_hiden"`
+			Flag           string `json:"flag"`
+			PlanContent    string `json:"plan_content"`
+			IsHiden        bool   `json:"is_hiden"`
+			PlanDoneNumber int    `json:"plan_done_number"`
 		}
 		if err := c.ShouldBindJSON(&flag); err != nil {
 			c.JSON(500, gin.H{"err": "添加flag失败,请重新再试..."})
@@ -207,9 +208,10 @@ func PostUserFlags() gin.HandlerFunc {
 			return
 		}
 		flag_model := model.Flag{
-			Flag:        flag.Flag,
-			PlanContent: flag.PlanContent,
-			IsHiden:     flag.IsHiden,
+			Flag:           flag.Flag,
+			PlanContent:    flag.PlanContent,
+			IsHiden:        flag.IsHiden,
+			PlanDoneNumber: flag.PlanDoneNumber,
 		}
 		id, ok := getCurrentUserID(c)
 		if !ok {

@@ -101,10 +101,14 @@ func UpdatePassword(id uint, newPassword string) error {
 	result := DB.Model(&model.User{}).Where("id=?", id).Update("Password", newPassword)
 	return result.Error
 }
+
+// 更新用户名
 func UpdateUserName(id uint, newName string) error {
 	result := DB.Model(&model.User{}).Where("id=?", id).Update("Name", newName)
 	return result.Error
 }
+
+// 更新flag的完成数量
 func UpdateFlagDoneNumber(flagID uint, doneNumber int) error {
 	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("done_number", doneNumber)
 	return result.Error
