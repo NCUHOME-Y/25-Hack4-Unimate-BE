@@ -12,5 +12,5 @@ func main() {
 
 	r := gin.Default()
 	handler.BasicFlag(r)
-	r.Run(":8080") // 默认监听并在 0.0.0.0:8083 上启动服务
+	r.Run(":8080")
 }
