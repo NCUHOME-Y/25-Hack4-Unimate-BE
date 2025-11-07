@@ -14,13 +14,15 @@ import (
 func GetUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, ok := getCurrentUserID(c)
+		log.Printf("[debug] user_id = %d", id)
 		if !ok {
-			c.JSON(http.StatusOK, gin.H{"error": "获取用户信息失败,请重新再试..."})
+			c.JSON(400, gin.H{"error": "获取用户信息失败,请重新再试..."})
 			return
 		}
 		flags, err := repository.GetFlagsByUserID(id)
+		log.Printf("[debug] sql err=%v  len=%d", err, len(flags))
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"error": "获取flag失败,请重新再试..."})
+			c.JSON(401, gin.H{"error": "获取flag失败,请重新再试..."})
 			log.Print("Get flags error")
 			return
 		}
@@ -103,6 +105,7 @@ func DeleteUserFlags() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "删除flag失败,请重新再试..."})
 			return
 		}
+		c.JSON(200, gin.H{"message": "删除flag成功"})
 	}
 }
 

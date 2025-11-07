@@ -218,3 +218,20 @@ func UpdateStatus() gin.HandlerFunc {
 		c.JSON(200, gin.H{"message": "状态更新成功"})
 	}
 }
+
+func GetUserStatus() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(400, gin.H{"error": "获取用户信息失败,请重新再试..."})
+			return
+		}
+		user, err := repository.GetUserByID(id)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取用户状态失败,请重新再试..."})
+			log.Print("Get user status error")
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": user.Status})
+	}
+}

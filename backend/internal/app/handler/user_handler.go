@@ -12,7 +12,8 @@ func BasicUser(r *gin.Engine) {
 	e := r.Use(service.JWTAuth())
 	e.POST("/updatePassword", service.UpdateUserPassword())
 	e.POST("/updateUsername", service.UpdateUserName())
-	e.POST("/api/UpdateStaus", service.UpdateStatus())
+	e.POST("/api/UpdateStatus", service.UpdateStatus())
+	e.GET("/api/getUserStatus", service.GetUserStatus())
 }
 
 func Flag(r *gin.Engine) {
