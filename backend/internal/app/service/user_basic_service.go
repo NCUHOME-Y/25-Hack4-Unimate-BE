@@ -219,7 +219,7 @@ func UpdateStatus() gin.HandlerFunc {
 	}
 }
 
-func GetUserStatus() gin.HandlerFunc {
+func GetUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, ok := getCurrentUserID(c)
 		if !ok {
@@ -232,6 +232,6 @@ func GetUserStatus() gin.HandlerFunc {
 			log.Print("Get user status error")
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"status": user.Status})
+		c.JSON(http.StatusOK, gin.H{"status": user})
 	}
 }

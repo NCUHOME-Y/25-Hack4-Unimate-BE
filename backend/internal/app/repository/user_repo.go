@@ -13,9 +13,7 @@ import (
 )
 
 var (
-	DB    *gorm.DB
-	Users []model.User
-	Flags []model.Flag
+	DB *gorm.DB
 )
 
 // 链接数据库
@@ -67,6 +65,8 @@ func GetFlagsByUserID(userID uint) ([]model.Flag, error) {
 // 通过用户邮箱获取用户
 func GetUserByEmail(Email string) (model.User, error) {
 	var user model.User
+	DB.Preload("Flags").First(&user, Email)
+	DB.Preload("Posts").First(&user, Email)
 	result := DB.Where("email=?", Email).First(&user)
 	return user, result.Error
 }
@@ -74,6 +74,8 @@ func GetUserByEmail(Email string) (model.User, error) {
 // 通过用户ID获取用户
 func GetUserByID(userID uint) (model.User, error) {
 	var user model.User
+	DB.Preload("Flags").First(&user, userID)
+	DB.Preload("Posts").First(&user, userID) // 把 Flags 一起查出来
 	result := DB.Where("id=?", userID).First(&user)
 	return user, result.Error
 }

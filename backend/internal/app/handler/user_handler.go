@@ -13,7 +13,7 @@ func BasicUser(r *gin.Engine) {
 	e.POST("/updatePassword", service.UpdateUserPassword())
 	e.POST("/updateUsername", service.UpdateUserName())
 	e.POST("/api/UpdateStatus", service.UpdateStatus())
-	e.GET("/api/getUserStatus", service.GetUserStatus())
+	e.GET("/api/getUser", service.GetUser())
 }
 
 func Flag(r *gin.Engine) {
