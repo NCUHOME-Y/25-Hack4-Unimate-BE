@@ -10,8 +10,8 @@ type User struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Status   string `json:"status"`
-	Flags    []Flag `gorm:"foreignKey:UserID"`   //外键绑定flag表
-	Posts    []Post `gorm:"foreignKey:AuthorID"` //外键绑定post表
+	Flags    []Flag `gorm:"foreignKey:UserID"` //外键绑定flag表
+	Posts    []Post `gorm:"foreignKey:UserID"` //外键绑定post表
 }
 
 type Flag struct {

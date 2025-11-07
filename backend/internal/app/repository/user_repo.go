@@ -33,7 +33,7 @@ func DBconnect() {
 		return
 	}
 	DB = db
-	DB.AutoMigrate(&model.User{}, &model.Flag{})
+	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{})
 }
 
 // user添加到数据库
@@ -147,13 +147,6 @@ func DeletePostFromDB(postID uint) error {
 	return result.Error
 }
 
-// 通过用户name获取帖子列表
-func GetPostsByUserName(name string) ([]model.Post, error) {
-	var user model.User
-	result := DB.Where("name = ?", name).First(&user)
-	posts := user.Posts
-	return posts, result.Error
-}
 func AddPostCommentToDB(postId uint, comment model.PostComment) error {
 	comment.PostID = postId
 	result := DB.Create(&comment)

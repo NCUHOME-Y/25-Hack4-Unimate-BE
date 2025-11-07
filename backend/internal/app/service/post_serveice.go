@@ -44,19 +44,6 @@ func DeleteUserPost() gin.HandlerFunc {
 	}
 }
 
-// 通过用户name获取他人帖子列表
-func GetPostsByUserName() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		name := c.Query("name")
-		posts, err := repository.GetPostsByUserName(name)
-		if err != nil {
-			c.JSON(500, gin.H{"error": "Failed to retrieve posts"})
-			return
-		}
-		c.JSON(200, gin.H{"posts": posts})
-	}
-}
-
 // 发表评论
 func CommentOnPost() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -70,6 +57,7 @@ func CommentOnPost() gin.HandlerFunc {
 			c.JSON(500, gin.H{"error": "Failed to add comment"})
 			return
 		}
+		c.JSON(200, gin.H{"message": "Comment added successfully"})
 	}
 }
 

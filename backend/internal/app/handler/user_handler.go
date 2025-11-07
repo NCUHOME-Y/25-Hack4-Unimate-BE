@@ -29,7 +29,6 @@ func BasicPost(r *gin.Engine) {
 	e := r.Use(service.JWTAuth())
 	e.POST("/api/postUserPost", service.PostUserPost())
 	e.DELETE("/api/deleteUserPost", service.DeleteUserPost())
-	r.POST("/api/getPostsByUserName", service.GetPostsByUserName())
 	e.POST("/api/commentOnPost", service.CommentOnPost())
 	e.DELETE("/api/deleteComment", service.DeleteUserPostComment())
 }
