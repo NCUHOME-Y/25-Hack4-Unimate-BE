@@ -11,6 +11,7 @@ func main() {
 	repository.DBconnect()
 
 	r := gin.Default()
-	handler.BasicFlag(r)
+	handler.BasicUser(r)
+	handler.Flag(r)
 	r.Run(":8080")
 }

@@ -9,7 +9,8 @@ type User struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
-	Flags    []Flag `gorm:"foreignKey:UserID"`
+	Status   string `json:"status"`
+	Flags    []Flag `gorm:"foreignKey:UserID"` //外键绑定flag表
 }
 
 type Flag struct {
@@ -18,8 +19,8 @@ type Flag struct {
 	PlanContent    string    `json:"plan_content"`
 	UserID         uint      `json:"user_id"`
 	IsHiden        bool      `json:"is_hiden"`
-	HadDone        bool      `json:"had_done"`
-	DoneNumber     int       `json:"done_number"`
-	PlanDoneNumber int       `json:"plan_done_number"`
-	DeadTime       time.Time `json:"time"`
+	HadDone        bool      `json:"had_done"`         //是否完成
+	DoneNumber     int       `json:"done_number"`      //已完成程度
+	PlanDoneNumber int       `json:"plan_done_number"` //目标程度
+	DeadTime       time.Time `json:"time"`             //结束时间
 }

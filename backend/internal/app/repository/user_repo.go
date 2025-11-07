@@ -113,3 +113,21 @@ func UpdateFlagDoneNumber(flagID uint, doneNumber int) error {
 	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("done_number", doneNumber)
 	return result.Error
 }
+
+// 更新flag的完成状态
+func UpdateFlagHadDone(flagID uint, hadDone bool) error {
+	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("had_done", hadDone)
+	return result.Error
+}
+
+// 更新flag的完成期限
+func UpdateFlagDeadTime(flagID uint, deadTime string) error {
+	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("time", deadTime)
+	return result.Error
+}
+
+// 更新用户状态
+func UpdateUserStatus(id uint, status string) error {
+	result := DB.Model(&model.User{}).Where("id=?", id).Update("status", status)
+	return result.Error
+}

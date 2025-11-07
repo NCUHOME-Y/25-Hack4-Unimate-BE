@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -51,6 +50,7 @@ func JWTAuth() gin.HandlerFunc {
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("email", claims.Email)
+		c.Set("token", parts[1])
 
 		c.Next()
 	}
@@ -89,10 +89,14 @@ func RegisterUser() gin.HandlerFunc {
 			log.Print("User already exists")
 			return
 		}
+		new_password, err := utils.HashPassword(user_new.Password)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"error": "注册失败,请重新再试..."})
+		}
 		user := model.User{
 			Name:     user_new.Name,
 			Email:    user_new.Email,
-			Password: user_new.Password,
+			Password: new_password,
 		}
 		if err := repository.AddUserToDB(user); err != nil {
 			c.JSON(http.StatusOK, gin.H{"error": "注册失败,请重新再试..."})
@@ -111,12 +115,12 @@ func LoginUser() gin.HandlerFunc {
 			Password string `json:"password"`
 		}
 		if err := c.ShouldBindJSON(&user_login); err != nil {
-			c.JSON(http.StatusOK, gin.H{"error": "登录失败,请重新再试..."})
+			c.JSON(400, gin.H{"error": "登录失败,请重新再试..."})
 			return
 		}
 		user, _ := repository.GetUserByEmail(user_login.Email)
-		if user.Password != user_login.Password || user.ID == 0 {
-			c.JSON(http.StatusOK, gin.H{"error": "用户名或密码错误,请重新再试..."})
+		if !utils.CheckPasswordHash(user_login.Password, user.Password) || user.ID == 0 {
+			c.JSON(401, gin.H{"error": "用户名或密码错误,请重新再试..."})
 			return
 		}
 		token, err := utils.GenerateToken(user.ID, user.Name, user.Email)
@@ -137,16 +141,17 @@ func LoginUser() gin.HandlerFunc {
 func UpdateUserPassword() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			Email       uint   `json:"id"`
+			ID          uint   `json:"id"`
 			Password    string `json:"password"`
 			NewPassword string `json:"new_password"`
 		}
+		new_token, _ := utils.RefreshToken("token")
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(401, gin.H{"error": "请求失败,请重新再试..."})
 			return
 		}
-		user, _ := repository.GetUserByID(req.Email)
-		if req.Password != user.Password {
+		user, _ := repository.GetUserByID(req.ID)
+		if !utils.CheckPasswordHash(req.Password, user.Password) {
 			c.JSON(400, gin.H{"error": "原密码错误,请重新再试..."})
 			return
 		}
@@ -156,10 +161,14 @@ func UpdateUserPassword() gin.HandlerFunc {
 			log.Printf(" Password update error: %v", err)
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "密码更新成功!"})
+		c.JSON(http.StatusOK, gin.H{
+			"message":   "密码更新成功!",
+			"new_token": new_token,
+		})
 	}
 }
 
+// 更新用户名
 func UpdateUserName() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
@@ -189,79 +198,40 @@ func UpdateUserName() gin.HandlerFunc {
 	}
 }
 
-// 获取用户flag
-func GetUserFlags() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id, ok := getCurrentUserID(c)
-		if !ok {
-			c.JSON(http.StatusOK, gin.H{"error": "获取用户信息失败,请重新再试..."})
-			return
-		}
-		flags, err := repository.GetFlagsByUserID(id)
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"error": "获取flag失败,请重新再试..."})
-			log.Print("Get flags error")
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"flags": flags})
-	}
-}
-
-// 添加用户flag
-func PostUserFlags() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var flag struct {
-			Flag           string `json:"flag"`
-			PlanContent    string `json:"plan_content"`
-			IsHiden        bool   `json:"is_hiden"`
-			PlanDoneNumber int    `json:"plan_done_number"`
-			DeadTime       string `json:"deadtime"`
-		}
-		if err := c.ShouldBindJSON(&flag); err != nil {
-			c.JSON(500, gin.H{"err": "添加flag失败,请重新再试..."})
-			log.Print("Binding error")
-			return
-		}
-		t, _ := time.Parse(flag.DeadTime, "2006-01-02 15:04:05")
-		flag_model := model.Flag{
-			Flag:           flag.Flag,
-			PlanContent:    flag.PlanContent,
-			IsHiden:        flag.IsHiden,
-			PlanDoneNumber: flag.PlanDoneNumber,
-			DeadTime:       t,
-		}
-		id, ok := getCurrentUserID(c)
-		if !ok {
-			c.JSON(402, gin.H{"error": "获取用户信息失败,请重新再试..."})
-			return
-		}
-		err := repository.AddFlagToDB(id, flag_model)
-		if err != nil {
-			c.JSON(400, gin.H{"error": "添加flag失败,请重新再试..."})
-			log.Print("Add flag to DB error")
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"message": "添加flag成功!"})
-	}
-}
-
-// 完成用户flag
-func DoneUserFlags() gin.HandlerFunc {
+// 更新用户状态
+func UpdateStatus() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID         uint `json:"id"`
-			DoneNumber int  `json:"done_number"`
+			ID     uint   `json:"id"`
+			Status string `json:"status"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(500, gin.H{"err": "更新flag失败,请重新再试..."})
+			c.JSON(500, gin.H{"err": "更新状态失败,请重新再试..."})
 			log.Print("Binding error")
 			return
 		}
-		err := repository.UpdateFlagDoneNumber(req.ID, req.DoneNumber)
+		err := repository.UpdateUserStatus(req.ID, req.Status)
 		if err != nil {
-			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
+			c.JSON(400, gin.H{"error": "更新状态失败,请重新再试..."})
 			return
 		}
-		c.JSON(200, gin.H{"message": "打卡成功"})
+		c.JSON(200, gin.H{"message": "状态更新成功"})
+	}
+}
+
+func GetUserStatus() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(400, gin.H{"error": "获取用户信息失败,请重新再试..."})
+			return
+		}
+		user, err := repository.GetUserByID(id)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取用户状态失败,请重新再试..."})
+			log.Print("Get user status error")
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": user.Status})
 	}
 }
