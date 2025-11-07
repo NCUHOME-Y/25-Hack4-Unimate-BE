@@ -115,12 +115,12 @@ func LoginUser() gin.HandlerFunc {
 			Password string `json:"password"`
 		}
 		if err := c.ShouldBindJSON(&user_login); err != nil {
-			c.JSON(http.StatusOK, gin.H{"error": "登录失败,请重新再试..."})
+			c.JSON(400, gin.H{"error": "登录失败,请重新再试..."})
 			return
 		}
 		user, _ := repository.GetUserByEmail(user_login.Email)
-		if !utils.CheckPasswordHash(user.Password, user_login.Password) || user.ID == 0 {
-			c.JSON(http.StatusOK, gin.H{"error": "用户名或密码错误,请重新再试..."})
+		if !utils.CheckPasswordHash(user_login.Password, user.Password) || user.ID == 0 {
+			c.JSON(401, gin.H{"error": "用户名或密码错误,请重新再试..."})
 			return
 		}
 		token, err := utils.GenerateToken(user.ID, user.Name, user.Email)
@@ -151,7 +151,7 @@ func UpdateUserPassword() gin.HandlerFunc {
 			return
 		}
 		user, _ := repository.GetUserByID(req.ID)
-		if !utils.CheckPasswordHash(user.Password, req.Password) {
+		if !utils.CheckPasswordHash(req.Password, user.Password) {
 			c.JSON(400, gin.H{"error": "原密码错误,请重新再试..."})
 			return
 		}
