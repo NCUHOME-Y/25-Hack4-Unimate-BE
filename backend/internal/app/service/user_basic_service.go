@@ -79,19 +79,19 @@ func RegisterUser() gin.HandlerFunc {
 			Password string `json:"password"`
 		}
 		if err := c.ShouldBindJSON(&user_new); err != nil {
-			c.JSON(http.StatusOK, gin.H{"error": "注册失败,请重新再试..."})
+			c.JSON(400, gin.H{"error": "注册失败,请重新再试..."})
 			log.Print("Binding error")
 			return
 		}
 		user_exist, _ := repository.GetUserByEmail(user_new.Email)
 		if user_exist.ID != 0 {
-			c.JSON(http.StatusOK, gin.H{"error": "用户名已存在,请更换用户名..."})
+			c.JSON(401, gin.H{"error": "用户名已存在,请更换用户名..."})
 			log.Print("User already exists")
 			return
 		}
 		new_password, err := utils.HashPassword(user_new.Password)
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"error": "注册失败,请重新再试..."})
+			c.JSON(402, gin.H{"error": "注册失败,请重新再试..."})
 		}
 		user := model.User{
 			Name:     user_new.Name,
@@ -99,7 +99,7 @@ func RegisterUser() gin.HandlerFunc {
 			Password: new_password,
 		}
 		if err := repository.AddUserToDB(user); err != nil {
-			c.JSON(http.StatusOK, gin.H{"error": "注册失败,请重新再试..."})
+			c.JSON(403, gin.H{"error": "注册失败,请重新再试..."})
 			log.Print("Add user to DB error")
 			return
 		}

@@ -13,5 +13,6 @@ func main() {
 	r := gin.Default()
 	handler.BasicUser(r)
 	handler.Flag(r)
+	handler.BasicPost(r)
 	r.Run(":8080")
 }

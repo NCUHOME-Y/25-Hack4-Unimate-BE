@@ -30,7 +30,7 @@ type Post struct {
 	ID        uint          `gorm:"primaryKey" json:"id"`
 	Title     string        `json:"title"`
 	Content   string        `json:"content"`
-	AuthorID  uint          `gorm:"fori" json:"author_id"`
+	UserID    uint          `gorm:"fori" json:"user_id"`
 	CreatedAt time.Time     `json:"created_at"`
 	UpdatedAt time.Time     `json:"updated_at"`
 	Comments  []PostComment `gorm:"foreignKey:PostID"` //外键绑定post_comment表
@@ -40,7 +40,6 @@ type PostComment struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	PostID    uint      `json:"post_id"`
 	Content   string    `json:"content"`
-	AuthorID  uint      `json:"author_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

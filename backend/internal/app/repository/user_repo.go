@@ -133,3 +133,35 @@ func UpdateUserStatus(id uint, status string) error {
 	result := DB.Model(&model.User{}).Where("id=?", id).Update("status", status)
 	return result.Error
 }
+
+// 发布帖子
+func AddPostToDB(Id uint, post model.Post) error {
+	post.UserID = Id
+	result := DB.Create(&post)
+	return result.Error
+}
+
+// 删除帖子
+func DeletePostFromDB(postID uint) error {
+	result := DB.Delete(&model.Post{}, postID)
+	return result.Error
+}
+
+// 通过用户name获取帖子列表
+func GetPostsByUserName(name string) ([]model.Post, error) {
+	var user model.User
+	result := DB.Where("name = ?", name).First(&user)
+	posts := user.Posts
+	return posts, result.Error
+}
+func AddPostCommentToDB(postId uint, comment model.PostComment) error {
+	comment.PostID = postId
+	result := DB.Create(&comment)
+	return result.Error
+}
+
+// 删除评论
+func DeletePostCommentFromDB(commentID uint) error {
+	result := DB.Delete(&model.PostComment{}, commentID)
+	return result.Error
+}
