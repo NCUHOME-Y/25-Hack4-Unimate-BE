@@ -6,12 +6,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func BasicFlag(r *gin.Engine) {
+func BasicUser(r *gin.Engine) {
 	r.POST("/api/register", service.RegisterUser())
 	r.POST("/api/login", service.LoginUser())
 	e := r.Use(service.JWTAuth())
 	e.POST("/updatePassword", service.UpdateUserPassword())
 	e.POST("/updateUsername", service.UpdateUserName())
+	e.POST("/api/UpdateStaus", service.UpdateStatus())
+}
+
+func Flag(r *gin.Engine) {
+	e := r.Use(service.JWTAuth())
 	e.POST("/api/addFlag", service.PostUserFlags())
 	e.GET("/api/getUserFlags", service.GetUserFlags())
 	e.POST("/api/doneFlag", service.DoneUserFlags())
