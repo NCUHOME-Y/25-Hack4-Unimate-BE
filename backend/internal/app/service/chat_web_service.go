@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,8 +16,7 @@ var upgrader = websocket.Upgrader{
 }
 
 type Client struct {
-	ID        int  ` json:"id"`
-	UserID    uint `json:"user_id"`
+	ID        uint ` json:"id"`
 	Conn      *websocket.Conn
 	Manager   *Manager    `json:"-"`
 	Send      chan []byte `json:"-"`
@@ -32,6 +31,7 @@ type Message struct {
 }
 
 type Manager struct {
+	mu         sync.Mutex
 	ID         uint `gorm:"primaryKey" json:"id"`
 	Unregister chan *Client
 	Register   chan *Client
@@ -41,31 +41,38 @@ type Manager struct {
 
 var manager = NewManager()
 
+func init() {
+	go manager.Start()
+}
+
 // WebSocket处理函数
 func WsHandler() gin.HandlerFunc {
-	{
-		return func(c *gin.Context) {
-			// 1. 取参数
-			id := c.Query("id")
-			if id == "" {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "missing id"})
-				return
-			}
-			// 2. 升级
-			conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-			if err != nil {
-				log.Println("upgrade err:", err)
-				return
-			}
-			new_id, _ := strconv.Atoi(id)
-			client := &Client{ID: new_id, Conn: conn, Send: make(chan []byte, 256)}
-			manager.Register <- client
+	return func(c *gin.Context) {
+		log.Printf("[WebSocket] 收到连接请求 - RemoteAddr: %s", c.Request.RemoteAddr)
 
-			// 3. 启动读写协程
-			go ReadPump(client)
-			go WritePump(client)
-
+		// 从 JWT 中间件获取用户 ID
+		id, ok := getCurrentUserID(c)
+		if !ok || id == 0 {
+			log.Printf("[WebSocket] 获取用户ID失败 - ok: %v, id: %d", ok, id)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权或 token 无效"})
+			return
 		}
+
+		log.Printf("[WebSocket] 用户ID验证成功: %d, 准备升级连接", id)
+
+		// 升级为 WebSocket 连接
+		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			log.Printf("[WebSocket] 升级失败 user=%d remote=%s err=%v", id, c.Request.RemoteAddr, err)
+			return
+		}
+
+		client := &Client{ID: id, Conn: conn, Send: make(chan []byte, 256), Manager: manager}
+		manager.Register <- client
+		log.Printf("[WebSocket] ✅ 连接成功 user=%d remote=%s", id, c.Request.RemoteAddr)
+
+		go ReadPump(client)
+		go WritePump(client)
 	}
 }
 
@@ -84,44 +91,53 @@ func (manager *Manager) Start() {
 	for {
 		select {
 		case client := <-manager.Register:
-			manager.Clients[client.UserID] = client
-			log.Printf("User %d connected", client.UserID)
+			manager.mu.Lock()
+			manager.Clients[client.ID] = client
+			manager.mu.Unlock()
+			log.Printf("User %d connected", client.ID)
 		case client := <-manager.Unregister:
-			if _, ok := manager.Clients[client.UserID]; ok {
-				delete(manager.Clients, client.UserID)
+			manager.mu.Lock()
+			if _, ok := manager.Clients[client.ID]; ok {
+				delete(manager.Clients, client.ID)
 				close(client.Send)
-				log.Printf("User %d disconnected", client.UserID)
+				log.Printf("User %d disconnected", client.ID)
 			}
+			manager.mu.Unlock()
 		case message := <-manager.Broadcast:
+			manager.mu.Lock()
 			for _, client := range manager.Clients {
 				select {
 				case client.Send <- message:
 				default:
 					close(client.Send)
-					delete(manager.Clients, client.UserID)
+					delete(manager.Clients, client.ID)
 				}
 			}
+			manager.mu.Unlock()
 		}
 	}
 }
-func (manager *Manager) Rontune(m Message) {
+func (manager *Manager) Route(m Message) {
 	data, _ := json.Marshal(m)
-	if m.ToID == 0 {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+	if m.ToID == 0 { // 广播
 		for _, client := range manager.Clients {
 			select {
 			case client.Send <- data:
 			default:
 				close(client.Send)
-				delete(manager.Clients, client.UserID)
+				delete(manager.Clients, client.ID)
 			}
 		}
+		return
 	}
 	if client, ok := manager.Clients[m.ToID]; ok {
 		select {
 		case client.Send <- data:
 		default:
 			close(client.Send)
-			delete(manager.Clients, client.UserID)
+			delete(manager.Clients, client.ID)
 		}
 	}
 }
@@ -135,32 +151,27 @@ func ReadPump(client *Client) {
 	for {
 		_, data, err := client.Conn.ReadMessage()
 		if err != nil {
-			log.Printf("User %d read error: %v", client.UserID, err)
+			log.Printf("User %d read error: %v", client.ID, err)
 			break
 		}
 		message := Message{}
 		err = json.Unmarshal(data, &message)
 		if err != nil {
-			log.Printf("User %d unmarshal error: %v", client.UserID, err)
+			log.Printf("User %d unmarshal error: %v", client.ID, err)
 			continue
 		}
-		message.FromID = client.UserID
+		message.FromID = client.ID
 		message.CreatedAt = time.Now()
-		client.Manager.Rontune(message)
+		client.Manager.Route(message)
 	}
 }
 
 // 向前端写信息
 func WritePump(client *Client) {
-	defer func() {
-		client.Conn.Close()
-	}()
-	for {
-		for message := range client.Send {
-			if err := client.Conn.WriteMessage(websocket.CloseMessage, message); err != nil {
-				log.Printf("User %d write error: %v", client.UserID, err)
-				return
-			}
+	defer client.Conn.Close()
+	for message := range client.Send {
+		if err := client.Conn.WriteMessage(websocket.TextMessage, message); err != nil {
+			break
 		}
 	}
 }

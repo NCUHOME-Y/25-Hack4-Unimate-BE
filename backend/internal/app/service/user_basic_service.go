@@ -13,31 +13,44 @@ import (
 
 func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 获取 token
+		// 获取 token - 支持 Authorization 头和 URL 参数（用于 WebSocket）
+		var token string
 		authHeader := c.Request.Header.Get("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"code": 401,
-				"msg":  "请求头中 Authorization 为空",
-			})
-			c.Abort()
-			return
-		}
 
-		// 检查 token 格式
-		parts := strings.SplitN(authHeader, " ", 2)
-		if !(len(parts) == 2 && parts[0] == "Bearer") {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"code": 401,
-				"msg":  "请求头中 Authorization 格式有误",
-			})
-			c.Abort()
-			return
+		if authHeader != "" {
+			// 从 Authorization 头获取
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				token = parts[1]
+				log.Printf("[JWT] 从 Authorization 头获取 token")
+			} else {
+				log.Printf("[JWT] Authorization 格式错误: %s", authHeader)
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"code": 401,
+					"msg":  "请求头中 Authorization 格式有误",
+				})
+				c.Abort()
+				return
+			}
+		} else {
+			// 从 URL 参数获取（用于 WebSocket 连接）
+			token = c.Query("token")
+			if token == "" {
+				log.Printf("[JWT] 未找到 token - Authorization 头为空，URL 参数也为空")
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"code": 401,
+					"msg":  "请求头中 Authorization 为空且 URL 中无 token 参数",
+				})
+				c.Abort()
+				return
+			}
+			log.Printf("[JWT] 从 URL 参数获取 token: %s...", token[:min(10, len(token))])
 		}
 
 		// 解析 token
-		claims, err := utils.ParseToken(parts[1])
+		claims, err := utils.ParseToken(token)
 		if err != nil {
+			log.Printf("[JWT] Token 解析失败: %v", err)
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"code": 401,
 				"msg":  "无效的 Token",
@@ -46,14 +59,23 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
+		log.Printf("[JWT] Token 验证成功 - 用户ID: %d, 用户名: %s", claims.UserID, claims.Username)
+
 		// 将用户信息存入上下文
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("email", claims.Email)
-		c.Set("token", parts[1])
+		c.Set("token", token)
 
 		c.Next()
 	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 func getCurrentUserID(c *gin.Context) (uint, bool) {
 	userID, exists := c.Get("user_id")
