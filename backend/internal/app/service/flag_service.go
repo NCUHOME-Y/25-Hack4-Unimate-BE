@@ -68,7 +68,7 @@ func PostUserFlags() gin.HandlerFunc {
 	}
 }
 
-// 完成用户flag
+// 打卡用户flag
 func DoneUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {

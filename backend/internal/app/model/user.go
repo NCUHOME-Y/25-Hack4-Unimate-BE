@@ -14,6 +14,7 @@ type User struct {
 	Posts    []Post `gorm:"foreignKey:UserID"` //外键绑定post表
 }
 
+// Flag
 type Flag struct {
 	ID             uint      `gorm:"primaryKey" json:"id"`
 	Flag           string    `json:"flag"`
@@ -26,6 +27,7 @@ type Flag struct {
 	DeadTime       time.Time `json:"time"`             //结束时间
 }
 
+// 帖子
 type Post struct {
 	ID        uint          `gorm:"primaryKey" json:"id"`
 	Title     string        `json:"title"`
@@ -36,6 +38,7 @@ type Post struct {
 	Comments  []PostComment `gorm:"foreignKey:PostID"` //外键绑定post_comment表
 }
 
+// 帖子评论
 type PostComment struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	PostID    uint      `json:"post_id"`

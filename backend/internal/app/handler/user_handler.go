@@ -32,3 +32,8 @@ func BasicPost(r *gin.Engine) {
 	e.POST("/api/commentOnPost", service.CommentOnPost())
 	e.DELETE("/api/deleteComment", service.DeleteUserPostComment())
 }
+
+func ChatWebSocket(r *gin.Engine) {
+	e := r.Use(service.JWTAuth())
+	e.GET("/ws/chat", service.WsHandler())
+}
