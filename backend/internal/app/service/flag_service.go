@@ -135,3 +135,16 @@ func FinshDoneFlag() gin.HandlerFunc {
 		c.JSON(200, gin.H{"message": "flag完成状态更新成功"})
 	}
 }
+
+// 获取最新打卡的十个人
+func GetRecentDoFlagUsers() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		users, err := repository.GetRecentDoneFlags()
+		if err != nil {
+			c.JSON(400, gin.H{"error": "获取最近打卡用户失败,请重新再试..."})
+			log.Print("Get recent do flag users error")
+			return
+		}
+		c.JSON(200, gin.H{"users": users})
+	}
+}
