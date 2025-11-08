@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"log"
+	"time"
 
 	"github.com/joho/godotenv"
 
@@ -122,6 +123,12 @@ func UpdateFlagHadDone(flagID uint, hadDone bool) error {
 	return result.Error
 }
 
+// 打卡时间更新
+func UpdateUserDoFlag(id uint, doFlag time.Time) error {
+	result := DB.Model(&model.User{}).Where("id=?", id).Update("do_flag", doFlag)
+	return result.Error
+}
+
 // 更新flag的完成期限
 func UpdateFlagDeadTime(flagID uint, deadTime string) error {
 	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("time", deadTime)
@@ -157,4 +164,11 @@ func AddPostCommentToDB(postId uint, comment model.PostComment) error {
 func DeletePostCommentFromDB(commentID uint) error {
 	result := DB.Delete(&model.PostComment{}, commentID)
 	return result.Error
+}
+
+// 获取最近打卡的十个人
+func GetRecentDoneFlags() ([]model.User, error) {
+	var users []model.User
+	result := DB.Where("had_done = ?", true).Order("do_flag desc").Limit(10).Find(&users)
+	return users, result.Error
 }

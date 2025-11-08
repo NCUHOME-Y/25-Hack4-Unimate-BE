@@ -80,6 +80,12 @@ func DoneUserFlags() gin.HandlerFunc {
 			log.Print("Binding error")
 			return
 		}
+		durtion := time.Now()
+		id, _ := getCurrentUserID(c)
+		if err := repository.UpdateUserDoFlag(id, durtion); err != nil {
+			c.JSON(400, gin.H{"error": "打卡失败,请重新再试..."})
+			return
+		}
 		err := repository.UpdateFlagDoneNumber(req.ID, req.DoneNumber)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})

@@ -5,13 +5,14 @@ import (
 )
 
 type User struct {
-	ID       uint   `gorm:"primaryKey" json:"id"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Status   string `json:"status"`
-	Flags    []Flag `gorm:"foreignKey:UserID"` //外键绑定flag表
-	Posts    []Post `gorm:"foreignKey:UserID"` //外键绑定post表
+	ID       uint      `gorm:"primaryKey" json:"id"`
+	Name     string    `json:"name"`
+	Email    string    `json:"email"`
+	Password string    `json:"password"`
+	Status   string    `json:"status"`
+	DoFlag   time.Time `json:"do_flag"`
+	Flags    []Flag    `gorm:"foreignKey:UserID"` //外键绑定flag表
+	Posts    []Post    `gorm:"foreignKey:UserID"` //外键绑定post表
 }
 
 // Flag
