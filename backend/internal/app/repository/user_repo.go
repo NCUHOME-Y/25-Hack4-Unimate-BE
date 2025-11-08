@@ -172,3 +172,17 @@ func GetRecentDoneFlags() ([]model.User, error) {
 	result := DB.Where("had_done = ?", true).Order("do_flag desc").Limit(10).Find(&users)
 	return users, result.Error
 }
+
+// 已完成的flag列表
+func GetDoneFlagsByUserID(userID uint) ([]model.Flag, error) {
+	var flags []model.Flag
+	result := DB.Where("user_id = ? AND had_done = ?", userID, true).Find(&flags)
+	return flags, result.Error
+}
+
+// 未完成的flag列表
+func GetUndoneFlagsByUserID(userID uint) ([]model.Flag, error) {
+	var flags []model.Flag
+	result := DB.Where("user_id = ? AND had_done = ?", userID, false).Find(&flags)
+	return flags, result.Error
+}

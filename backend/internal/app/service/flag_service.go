@@ -148,3 +148,39 @@ func GetRecentDoFlagUsers() gin.HandlerFunc {
 		c.JSON(200, gin.H{"users": users})
 	}
 }
+
+// 获取已完成flag
+func GetDoneFlags() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(400, gin.H{"error": "获取用户信息失败,请重新再试..."})
+			return
+		}
+		flags, err := repository.GetDoneFlagsByUserID(id)
+		if err != nil {
+			c.JSON(401, gin.H{"error": "获取已完成flag失败,请重新再试..."})
+			log.Print("Get finished flags error")
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"flags": flags})
+	}
+}
+
+// 获取未完成的完成flag
+func GetNotDoneFlags() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(400, gin.H{"error": "获取用户信息失败,请重新再试..."})
+			return
+		}
+		flags, err := repository.GetUndoneFlagsByUserID(id)
+		if err != nil {
+			c.JSON(401, gin.H{"error": "获取未完成flag失败,请重新再试..."})
+			log.Print("Get not finished flags error")
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"flags": flags})
+	}
+}

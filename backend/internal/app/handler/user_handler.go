@@ -23,6 +23,9 @@ func Flag(r *gin.Engine) {
 	e.POST("/api/doneFlag", service.DoneUserFlags())
 	e.POST("/api/finshDoneFlag", service.FinshDoneFlag())
 	e.DELETE("/api/deleteFlag", service.DeleteUserFlags())
+	e.GET("/api/getDoneFlags", service.GetDoneFlags())
+	e.GET("/api/getUnDoneFlags", service.GetNotDoneFlags())
+	r.GET("/api/getRecentDoFlagUsers", service.GetRecentDoFlagUsers())
 }
 
 func BasicPost(r *gin.Engine) {
