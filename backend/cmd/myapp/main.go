@@ -15,5 +15,5 @@ func main() {
 	handler.Flag(r)
 	handler.BasicPost(r)
 	handler.ChatWebSocket(r)
-	r.Run(":8080")
+	r.Run("0.0.0.0:8080")
 }

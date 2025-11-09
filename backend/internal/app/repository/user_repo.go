@@ -34,7 +34,7 @@ func DBconnect() {
 		return
 	}
 	DB = db
-	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{})
+	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{}, &model.Achievement{})
 }
 
 // user添加到数据库
@@ -118,8 +118,8 @@ func UpdateFlagDoneNumber(flagID uint, doneNumber int) error {
 }
 
 // 更新flag的完成状态
-func UpdateFlagHadDone(flagID uint, hadDone bool) error {
-	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("had_done", hadDone)
+func UpdateFlagHadDone(flagID uint) error {
+	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("had_done", true)
 	return result.Error
 }
 
@@ -185,4 +185,23 @@ func GetUndoneFlagsByUserID(userID uint) ([]model.Flag, error) {
 	var flags []model.Flag
 	result := DB.Where("user_id = ? AND had_done = ?", userID, false).Find(&flags)
 	return flags, result.Error
+}
+
+// 工具函数，便于创造成就
+func AddAchievementToDB(achievement model.Achievement) error {
+	result := DB.Create(&achievement)
+	return result.Error
+}
+
+// 用户积分增加
+func CountAddDB(userID uint, count int) error {
+	result := DB.Model(&model.User{}).Where("id = ?", userID).Update("count", count)
+	return result.Error
+}
+
+// 获取所有用户，按积分排序
+func GetUserByCount() ([]model.User, error) {
+	var users []model.User
+	result := DB.Order("count desc").Limit(20).Find(&users)
+	return users, result.Error
 }

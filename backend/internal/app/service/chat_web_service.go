@@ -18,7 +18,6 @@ var upgrader = websocket.Upgrader{
 type Client struct {
 	ID        uint ` json:"id"`
 	Conn      *websocket.Conn
-	Manager   *Manager    `json:"-"`
 	Send      chan []byte `json:"-"`
 	CreatedAt time.Time   `json:"created_at"`
 }
@@ -67,7 +66,7 @@ func WsHandler() gin.HandlerFunc {
 			return
 		}
 
-		client := &Client{ID: id, Conn: conn, Send: make(chan []byte, 256), Manager: manager}
+		client := &Client{ID: id, Conn: conn, Send: make(chan []byte, 256)}
 		manager.Register <- client
 		log.Printf("[WebSocket] ✅ 连接成功 user=%d remote=%s", id, c.Request.RemoteAddr)
 
@@ -135,6 +134,7 @@ func (manager *Manager) Route(m Message) {
 	if client, ok := manager.Clients[m.ToID]; ok {
 		select {
 		case client.Send <- data:
+
 		default:
 			close(client.Send)
 			delete(manager.Clients, client.ID)
@@ -145,7 +145,7 @@ func (manager *Manager) Route(m Message) {
 // 从前端读取信息
 func ReadPump(client *Client) {
 	defer func() {
-		client.Manager.Unregister <- client
+		manager.Unregister <- client
 		client.Conn.Close()
 	}()
 	for {
@@ -162,7 +162,7 @@ func ReadPump(client *Client) {
 		}
 		message.FromID = client.ID
 		message.CreatedAt = time.Now()
-		client.Manager.Route(message)
+		manager.Route(message)
 	}
 }
 

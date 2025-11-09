@@ -5,14 +5,16 @@ import (
 )
 
 type User struct {
-	ID       uint      `gorm:"primaryKey" json:"id"`
-	Name     string    `json:"name"`
-	Email    string    `json:"email"`
-	Password string    `json:"password"`
-	Status   string    `json:"status"`
-	DoFlag   time.Time `json:"do_flag"`
-	Flags    []Flag    `gorm:"foreignKey:UserID"` //外键绑定flag表
-	Posts    []Post    `gorm:"foreignKey:UserID"` //外键绑定post表
+	ID           uint          `gorm:"primaryKey" json:"id"`
+	Name         string        `json:"name"`
+	Email        string        `json:"email"`
+	Password     string        `json:"password"`
+	Status       string        `json:"status"`
+	DoFlag       time.Time     `json:"do_flag"`
+	Count        int           `json:"count"`
+	Flags        []Flag        `gorm:"foreignKey:UserID"`  //外键绑定flag表
+	Posts        []Post        `gorm:"foreignKey:UserID"`  //外键绑定post表
+	Achievements []Achievement `gorm:"foreignKey:UserID;"` //多对多绑定achievement表
 }
 
 // Flag
@@ -25,6 +27,8 @@ type Flag struct {
 	HadDone        bool      `json:"had_done"`         //是否完成
 	DoneNumber     int       `json:"done_number"`      //已完成程度
 	PlanDoneNumber int       `json:"plan_done_number"` //目标程度
+	CreatedAt      time.Time `json:"created_at"`       //创建时间
+	StartTime      time.Time `json:"start_time"`       //开始时间
 	DeadTime       time.Time `json:"time"`             //结束时间
 }
 
@@ -46,4 +50,13 @@ type PostComment struct {
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type Achievement struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	Name        string    `json:"name"`
+	UserID      uint      `json:"user_id"`
+	Description string    `json:"description"`
+	HadDone     bool      `json:"had_done"`
+	GotTime     time.Time `json:"got_time"`
 }

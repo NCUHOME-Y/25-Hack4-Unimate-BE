@@ -5,6 +5,7 @@ import (
 	"Heckweek/internal/app/repository"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -34,24 +35,26 @@ func GetUserFlags() gin.HandlerFunc {
 func PostUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var flag struct {
-			Flag           string `json:"flag"`
-			PlanContent    string `json:"plan_content"`
-			IsHiden        bool   `json:"is_hiden"`
-			PlanDoneNumber int    `json:"plan_done_number"`
-			DeadTime       string `json:"deadtime"`
+			Flag           string    `json:"flag"`
+			PlanContent    string    `json:"plan_content"`
+			IsHiden        bool      `json:"is_hiden"`
+			PlanDoneNumber int       `json:"plan_done_number"`
+			DeadTime       time.Time `json:"deadtime"`
+			StartTime      time.Time `json:"starttime"`
 		}
 		if err := c.ShouldBindJSON(&flag); err != nil {
 			c.JSON(500, gin.H{"err": "添加flag失败,请重新再试..."})
 			log.Print("Binding error")
 			return
 		}
-		t, _ := time.Parse(flag.DeadTime, "2006-01-02 15:04:05")
 		flag_model := model.Flag{
 			Flag:           flag.Flag,
 			PlanContent:    flag.PlanContent,
 			IsHiden:        flag.IsHiden,
 			PlanDoneNumber: flag.PlanDoneNumber,
-			DeadTime:       t,
+			CreatedAt:      time.Now(),
+			StartTime:      flag.StartTime,
+			DeadTime:       flag.DeadTime,
 		}
 		id, ok := getCurrentUserID(c)
 		if !ok {
@@ -119,15 +122,24 @@ func DeleteUserFlags() gin.HandlerFunc {
 func FinshDoneFlag() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID      uint `json:"id"`
-			HadDone bool `json:"had_done"`
+			ID uint `json:"id"`
 		}
+		level := c.Query("level")
+		id, _ := getCurrentUserID(c)
+		log.Printf("[debug] user_id = %d", id)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "更新flag失败,请重新再试..."})
 			log.Print("Binding error")
 			return
 		}
-		err := repository.UpdateFlagHadDone(req.ID, req.HadDone)
+		user, _ := repository.GetUserByID(id)
+		count, _ := strconv.Atoi(level)
+		newcount := user.Count + count
+		err := repository.CountAddDB(id, newcount)
+		if err != nil {
+			log.Printf("[error] 积分更新失败: %v", err)
+		}
+		err = repository.UpdateFlagHadDone(req.ID)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
 			return

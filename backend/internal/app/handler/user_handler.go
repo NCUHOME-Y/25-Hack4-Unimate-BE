@@ -40,3 +40,8 @@ func ChatWebSocket(r *gin.Engine) {
 	e := r.Use(service.JWTAuth())
 	e.GET("/ws/chat", service.WsHandler())
 }
+
+func Ranking(r *gin.Engine) {
+	e := r.Use(service.JWTAuth())
+	e.GET("/api/ranking", service.GetUserCount())
+}
