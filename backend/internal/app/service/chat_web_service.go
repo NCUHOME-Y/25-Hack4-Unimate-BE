@@ -1,12 +1,13 @@
 package service
 
 import (
-	utils "Heckweek/util"
 	"encoding/json"
 	"log"
 	"net/http"
 	"sync"
 	"time"
+
+	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
