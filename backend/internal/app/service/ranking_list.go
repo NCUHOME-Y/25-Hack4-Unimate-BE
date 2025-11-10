@@ -1,8 +1,9 @@
 package service
 
 import (
-	"Heckweek/internal/app/repository"
 	"log"
+
+	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
 
 	"strconv"
 

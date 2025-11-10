@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"Heckweek/internal/app/service"
+	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/service"
 
 	"github.com/gin-gonic/gin"
 )

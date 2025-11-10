@@ -1,4 +1,4 @@
-module Heckweek
+module github.com/NCUHOME-Y/25-Hack4-Unimate-BE
 
 go 1.25.1
 

@@ -1,8 +1,9 @@
 package repository
 
 import (
-	"Heckweek/internal/app/model" // 你的自定义包
 	"os"
+
+	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model" // 你的自定义包
 
 	"log"
 	"time"
