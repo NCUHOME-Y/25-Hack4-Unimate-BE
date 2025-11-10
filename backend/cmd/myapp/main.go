@@ -1,8 +1,8 @@
 package main
 
 import (
-	"Heckweek/internal/app/handler"
-	"Heckweek/internal/app/repository"
+	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/handler"
+	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
 
 	"github.com/gin-gonic/gin"
 )
