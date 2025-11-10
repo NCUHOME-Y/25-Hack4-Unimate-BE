@@ -205,3 +205,10 @@ func GetUserByCount() ([]model.User, error) {
 	result := DB.Order("count desc").Limit(20).Find(&users)
 	return users, result.Error
 }
+
+// 通过flag id找到对应的flag
+func GetFlagByID(flagID uint) (model.Flag, error) {
+	var flag model.Flag
+	result := DB.Where("id = ?", flagID).First(&flag)
+	return flag, result.Error
+}

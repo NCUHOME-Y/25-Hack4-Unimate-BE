@@ -15,5 +15,6 @@ func main() {
 	handler.Flag(r)
 	handler.BasicPost(r)
 	handler.ChatWebSocket(r)
+	handler.Ranking(r)
 	r.Run("0.0.0.0:8080")
 }

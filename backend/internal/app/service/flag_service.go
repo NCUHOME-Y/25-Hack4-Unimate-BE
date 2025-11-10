@@ -3,12 +3,14 @@ package service
 import (
 	"Heckweek/internal/app/model"
 	"Heckweek/internal/app/repository"
+	utils "Heckweek/util"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // 获取用户flag
@@ -27,6 +29,7 @@ func GetUserFlags() gin.HandlerFunc {
 			log.Print("Get flags error")
 			return
 		}
+		utils.LogInfo("获取用户flag成功", logrus.Fields{"user_id": id, "flag_count": len(flags)})
 		c.JSON(http.StatusOK, gin.H{"flags": flags})
 	}
 }
@@ -64,9 +67,10 @@ func PostUserFlags() gin.HandlerFunc {
 		err := repository.AddFlagToDB(id, flag_model)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "添加flag失败,请重新再试..."})
-			log.Print("Add flag to DB error")
+			utils.LogError("数据库添加flag失败", logrus.Fields{})
 			return
 		}
+		utils.LogInfo("添加用户flag成功", logrus.Fields{"user_id": id, "flag": flag.Flag})
 		c.JSON(http.StatusOK, gin.H{"message": "添加flag成功!"})
 	}
 }
@@ -75,8 +79,7 @@ func PostUserFlags() gin.HandlerFunc {
 func DoneUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID         uint `json:"id"`
-			DoneNumber int  `json:"done_number"`
+			ID uint `json:"id"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "更新flag失败,请重新再试..."})
@@ -89,11 +92,19 @@ func DoneUserFlags() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "打卡失败,请重新再试..."})
 			return
 		}
-		err := repository.UpdateFlagDoneNumber(req.ID, req.DoneNumber)
+		flag, err := repository.GetFlagByID(req.ID)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
 			return
 		}
+		flag.DoneNumber += 1
+		err = repository.UpdateFlagDoneNumber(req.ID, flag.DoneNumber)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
+			utils.LogError("数据库更新flag失败", logrus.Fields{})
+			return
+		}
+		utils.LogInfo("用户打卡成功", logrus.Fields{"user_id": id, "flag_id": req.ID})
 		c.JSON(200, gin.H{"message": "打卡成功"})
 	}
 }
@@ -112,8 +123,10 @@ func DeleteUserFlags() gin.HandlerFunc {
 		err := repository.DeleteFlagFromDB(req.ID)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "删除flag失败,请重新再试..."})
+			utils.LogError("数据库删除flag失败", logrus.Fields{})
 			return
 		}
+		utils.LogInfo("删除用户flag成功", logrus.Fields{"flag_id": req.ID})
 		c.JSON(200, gin.H{"message": "删除flag成功"})
 	}
 }
@@ -142,8 +155,10 @@ func FinshDoneFlag() gin.HandlerFunc {
 		err = repository.UpdateFlagHadDone(req.ID)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
+			utils.LogError("数据库更新flag完成状态失败", logrus.Fields{})
 			return
 		}
+		utils.LogInfo("flag完成状态更新成功", logrus.Fields{"user_id": id, "flag_id": req.ID})
 		c.JSON(200, gin.H{"message": "flag完成状态更新成功"})
 	}
 }
@@ -154,9 +169,10 @@ func GetRecentDoFlagUsers() gin.HandlerFunc {
 		users, err := repository.GetRecentDoneFlags()
 		if err != nil {
 			c.JSON(400, gin.H{"error": "获取最近打卡用户失败,请重新再试..."})
-			log.Print("Get recent do flag users error")
+			utils.LogError("数据库获取最近打卡用户失败", logrus.Fields{})
 			return
 		}
+		utils.LogInfo("获取最近打卡用户成功", logrus.Fields{"user_count": len(users)})
 		c.JSON(200, gin.H{"users": users})
 	}
 }
@@ -172,9 +188,10 @@ func GetDoneFlags() gin.HandlerFunc {
 		flags, err := repository.GetDoneFlagsByUserID(id)
 		if err != nil {
 			c.JSON(401, gin.H{"error": "获取已完成flag失败,请重新再试..."})
-			log.Print("Get finished flags error")
+			utils.LogError("获取已完成flag失败", logrus.Fields{})
 			return
 		}
+		utils.LogInfo("获取已完成flag成功", logrus.Fields{"user_id": id, "flag_count": len(flags)})
 		c.JSON(http.StatusOK, gin.H{"flags": flags})
 	}
 }
@@ -190,9 +207,10 @@ func GetNotDoneFlags() gin.HandlerFunc {
 		flags, err := repository.GetUndoneFlagsByUserID(id)
 		if err != nil {
 			c.JSON(401, gin.H{"error": "获取未完成flag失败,请重新再试..."})
-			log.Print("Get not finished flags error")
+			utils.LogError("获取未完成flag失败", logrus.Fields{})
 			return
 		}
+		utils.LogInfo("获取未完成flag成功", logrus.Fields{"user_id": id, "flag_count": len(flags)})
 		c.JSON(http.StatusOK, gin.H{"flags": flags})
 	}
 }

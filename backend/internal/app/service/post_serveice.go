@@ -3,6 +3,7 @@ package service
 import (
 	"Heckweek/internal/app/model"
 	"Heckweek/internal/app/repository"
+	utils "Heckweek/util"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,8 +20,10 @@ func PostUserPost() gin.HandlerFunc {
 		err := repository.AddPostToDB(id, post)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to add post"})
+			utils.LogError("数据库添加帖子失败", nil)
 			return
 		}
+		utils.LogInfo("用户发布帖子成功", nil)
 		c.JSON(200, gin.H{"message": "Post added successfully"})
 	}
 }
@@ -38,8 +41,10 @@ func DeleteUserPost() gin.HandlerFunc {
 		err := repository.DeletePostFromDB(req.PostID)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to delete post"})
+			utils.LogError("数据库删除帖子失败", nil)
 			return
 		}
+		utils.LogInfo("用户删除帖子成功", nil)
 		c.JSON(200, gin.H{"message": "Post deleted successfully"})
 	}
 }
@@ -55,8 +60,10 @@ func CommentOnPost() gin.HandlerFunc {
 		err := repository.AddPostCommentToDB(comment.PostID, comment)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to add comment"})
+			utils.LogError("数据库添加评论失败", nil)
 			return
 		}
+		utils.LogInfo("用户发表评论成功", nil)
 		c.JSON(200, gin.H{"message": "Comment added successfully"})
 	}
 }
@@ -74,8 +81,11 @@ func DeleteUserPostComment() gin.HandlerFunc {
 		err := repository.DeletePostCommentFromDB(req.CommentID)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to delete comment"})
+			utils.LogError("数据库删除评论失败", nil)
+
 			return
 		}
+		utils.LogInfo("用户删除评论成功", nil)
 		c.JSON(200, gin.H{"message": "Comment deleted successfully"})
 	}
 }

@@ -1,6 +1,7 @@
 package service
 
 import (
+	utils "Heckweek/util"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -47,28 +48,27 @@ func init() {
 // WebSocket处理函数
 func WsHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		log.Printf("[WebSocket] 收到连接请求 - RemoteAddr: %s", c.Request.RemoteAddr)
-
+		utils.LogInfo("WebSocket连接请求到达", nil)
 		// 从 JWT 中间件获取用户 ID
 		id, ok := getCurrentUserID(c)
 		if !ok || id == 0 {
-			log.Printf("[WebSocket] 获取用户ID失败 - ok: %v, id: %d", ok, id)
+			utils.LogError("WebSocket用户ID验证失败", nil)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权或 token 无效"})
 			return
 		}
 
-		log.Printf("[WebSocket] 用户ID验证成功: %d, 准备升级连接", id)
+		utils.LogInfo("WebSocket用户ID验证成功", map[string]interface{}{"user_id": id})
 
 		// 升级为 WebSocket 连接
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
-			log.Printf("[WebSocket] 升级失败 user=%d remote=%s err=%v", id, c.Request.RemoteAddr, err)
+			utils.LogError("WebSocket连接升级失败", map[string]interface{}{"error": err.Error()})
 			return
 		}
 
 		client := &Client{ID: id, Conn: conn, Send: make(chan []byte, 256)}
 		manager.Register <- client
-		log.Printf("[WebSocket] ✅ 连接成功 user=%d remote=%s", id, c.Request.RemoteAddr)
+		utils.LogInfo("✅ WebSocket连接成功", map[string]interface{}{"user_id": id, "remote_addr": c.Request.RemoteAddr})
 
 		go ReadPump(client)
 		go WritePump(client)
@@ -151,13 +151,13 @@ func ReadPump(client *Client) {
 	for {
 		_, data, err := client.Conn.ReadMessage()
 		if err != nil {
-			log.Printf("User %d read error: %v", client.ID, err)
+			utils.LogError("WebSocket读取消息失败", map[string]interface{}{"user_id": client.ID, "error": err.Error()})
 			break
 		}
 		message := Message{}
 		err = json.Unmarshal(data, &message)
 		if err != nil {
-			log.Printf("User %d unmarshal error: %v", client.ID, err)
+			utils.LogError("WebSocket消息解析失败", map[string]interface{}{"user_id": client.ID, "error": err.Error()})
 			continue
 		}
 		message.FromID = client.ID
