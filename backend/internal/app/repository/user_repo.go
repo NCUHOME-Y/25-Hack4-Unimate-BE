@@ -3,13 +3,14 @@ package repository
 import (
 	"os"
 
-	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model" // 你的自定义包
-
-	"log"
 	"time"
+
+	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model" // 你的自定义包
+	"github.com/sirupsen/logrus"
 
 	"github.com/joho/godotenv"
 
+	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -22,16 +23,13 @@ var (
 func DBconnect() {
 	err := godotenv.Load(".env")
 	if err != nil {
-		log.Fatalf("Error loading_data .env file")
+		utils.LogError("加载 .env 文件失败", logrus.Fields{"error": err})
+		return
 	}
 	dsn := os.Getenv("DB_DSN")
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("failed to connect database: %v", err)
-		return
-	}
-	if err != nil {
-		log.Fatalf("failed to migrate database: %v", err)
+		utils.LogError("数据库连接失败", logrus.Fields{"error": err})
 		return
 	}
 	DB = db
