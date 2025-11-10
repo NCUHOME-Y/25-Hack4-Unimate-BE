@@ -1,13 +1,14 @@
 package service
 
 import (
-	"Heckweek/internal/app/model"
-	"Heckweek/internal/app/repository"
-	utils "Heckweek/util"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
+	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
+	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"

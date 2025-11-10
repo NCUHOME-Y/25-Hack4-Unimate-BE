@@ -1,0 +1,9 @@
+*.log
+.git
+.gitignore
+Dockerfile
+README.md
+backend/README.md
+*.test
+*.bak
+.dockerignore

@@ -244,6 +244,7 @@ func UpdateStatus() gin.HandlerFunc {
 	}
 }
 
+// 获取用户信息
 func GetUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, ok := getCurrentUserID(c)
