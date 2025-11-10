@@ -167,6 +167,7 @@ func UpdateUserPassword() gin.HandlerFunc {
 		new_token, _ := utils.RefreshToken("token")
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(401, gin.H{"error": "请求失败,请重新再试..."})
+			utils.LogError("请求绑定失败", logrus.Fields{})
 			return
 		}
 		user, _ := repository.GetUserByID(req.ID)
