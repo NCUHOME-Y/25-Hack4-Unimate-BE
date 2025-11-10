@@ -9,35 +9,49 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 获取 token
+		// 获取 token - 支持 Authorization 头和 URL 参数（用于 WebSocket）
+		var token string
 		authHeader := c.Request.Header.Get("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"code": 401,
-				"msg":  "请求头中 Authorization 为空",
-			})
-			c.Abort()
-			return
-		}
 
-		// 检查 token 格式
-		parts := strings.SplitN(authHeader, " ", 2)
-		if !(len(parts) == 2 && parts[0] == "Bearer") {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"code": 401,
-				"msg":  "请求头中 Authorization 格式有误",
-			})
-			c.Abort()
-			return
+		if authHeader != "" {
+			// 从 Authorization 头获取
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				token = parts[1]
+				log.Printf("[JWT] 从 Authorization 头获取 token")
+			} else {
+				log.Printf("[JWT] Authorization 格式错误: %s", authHeader)
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"code": 401,
+					"msg":  "请求头中 Authorization 格式有误",
+				})
+				c.Abort()
+				return
+			}
+		} else {
+			// 从 URL 参数获取（用于 WebSocket 连接）
+			token = c.Query("token")
+			if token == "" {
+				log.Printf("[JWT] 未找到 token - Authorization 头为空，URL 参数也为空")
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"code": 401,
+					"msg":  "请求头中 Authorization 为空且 URL 中无 token 参数",
+				})
+				c.Abort()
+				return
+			}
+			log.Printf("[JWT] 从 URL 参数获取 token: %s...", token[:min(10, len(token))])
 		}
 
 		// 解析 token
-		claims, err := utils.ParseToken(parts[1])
+		claims, err := utils.ParseToken(token)
 		if err != nil {
+			log.Printf("[JWT] Token 解析失败: %v", err)
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"code": 401,
 				"msg":  "无效的 Token",
@@ -46,15 +60,18 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
+		log.Printf("[JWT] Token 验证成功 - 用户ID: %d, 用户名: %s", claims.UserID, claims.Username)
+
 		// 将用户信息存入上下文
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("email", claims.Email)
-		c.Set("token", parts[1])
+		c.Set("token", token)
 
 		c.Next()
 	}
 }
+
 func getCurrentUserID(c *gin.Context) (uint, bool) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -79,19 +96,19 @@ func RegisterUser() gin.HandlerFunc {
 			Password string `json:"password"`
 		}
 		if err := c.ShouldBindJSON(&user_new); err != nil {
-			c.JSON(http.StatusOK, gin.H{"error": "注册失败,请重新再试..."})
+			c.JSON(400, gin.H{"error": "注册失败,请重新再试..."})
 			log.Print("Binding error")
 			return
 		}
 		user_exist, _ := repository.GetUserByEmail(user_new.Email)
 		if user_exist.ID != 0 {
-			c.JSON(http.StatusOK, gin.H{"error": "用户名已存在,请更换用户名..."})
+			c.JSON(401, gin.H{"error": "用户名已存在,请更换用户名..."})
 			log.Print("User already exists")
 			return
 		}
 		new_password, err := utils.HashPassword(user_new.Password)
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"error": "注册失败,请重新再试..."})
+			c.JSON(402, gin.H{"error": "注册失败,请重新再试..."})
 		}
 		user := model.User{
 			Name:     user_new.Name,
@@ -99,10 +116,11 @@ func RegisterUser() gin.HandlerFunc {
 			Password: new_password,
 		}
 		if err := repository.AddUserToDB(user); err != nil {
-			c.JSON(http.StatusOK, gin.H{"error": "注册失败,请重新再试..."})
-			log.Print("Add user to DB error")
+			c.JSON(403, gin.H{"error": "注册失败,请重新再试..."})
+			utils.LogError("数据库添加用户失败", logrus.Fields{})
 			return
 		}
+		utils.LogInfo("用户注册成功", logrus.Fields{"user_email": user_new.Email})
 		c.JSON(http.StatusOK, gin.H{"message": "注册成功!"})
 	}
 }
@@ -129,9 +147,10 @@ func LoginUser() gin.HandlerFunc {
 				"code": 500,
 				"msg":  "生成 Token 失败",
 			})
-			log.Print("Generate token error")
+			utils.LogError("生成token失败", logrus.Fields{})
 			return
 		}
+		utils.LogInfo("用户登录成功", logrus.Fields{"user_id": user.ID, "user_email": user.Email})
 		c.JSON(http.StatusOK, gin.H{"message": "登录成功!",
 			"token": token})
 	}
@@ -158,9 +177,10 @@ func UpdateUserPassword() gin.HandlerFunc {
 		err := repository.UpdatePassword(user.ID, req.NewPassword)
 		if err != nil {
 			c.JSON(500, gin.H{"message": "密码更新失败，请重新再试!"})
-			log.Printf(" Password update error: %v", err)
+			utils.LogError("数据库更新用户数据失败", logrus.Fields{})
 			return
 		}
+		utils.LogInfo("用户密码更新成功", logrus.Fields{"user_id": req.ID})
 		c.JSON(http.StatusOK, gin.H{
 			"message":   "密码更新成功!",
 			"new_token": new_token,
@@ -172,14 +192,14 @@ func UpdateUserPassword() gin.HandlerFunc {
 func UpdateUserName() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID      uint   `json:"id"`
 			NewName string `json:"new_name"`
 		}
+		id, _ := getCurrentUserID(c)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(501, gin.H{"error": "请求失败,请重新再试..."})
 			return
 		}
-		user, _ := repository.GetUserByID(req.ID)
+		user, _ := repository.GetUserByID(id)
 		if req.NewName == user.Name {
 			c.JSON(400, gin.H{"error": "新用户名与原用户名相同,请重新再试..."})
 			return
@@ -188,12 +208,13 @@ func UpdateUserName() gin.HandlerFunc {
 			c.JSON(500, gin.H{"error": "用户名不能为空,请重新再试..."})
 			return
 		}
-		err := repository.UpdateUserName(req.ID, req.NewName)
+		err := repository.UpdateUserName(id, req.NewName)
 		if err != nil {
 			c.JSON(401, gin.H{"message": "用户名更新失败，请重新再试!"})
-			log.Printf(" Username update error: %v", err)
+			utils.LogError("数据库更新用户数据失败", logrus.Fields{})
 			return
 		}
+		utils.LogInfo("用户用户名更新成功", logrus.Fields{"user_id": id, "new_name": req.NewName})
 		c.JSON(http.StatusOK, gin.H{"message": "用户名更新成功!"})
 	}
 }
@@ -202,24 +223,26 @@ func UpdateUserName() gin.HandlerFunc {
 func UpdateStatus() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID     uint   `json:"id"`
 			Status string `json:"status"`
 		}
+		id, _ := getCurrentUserID(c)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "更新状态失败,请重新再试..."})
 			log.Print("Binding error")
 			return
 		}
-		err := repository.UpdateUserStatus(req.ID, req.Status)
+		err := repository.UpdateUserStatus(id, req.Status)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "更新状态失败,请重新再试..."})
+			utils.LogError("数据库更新用户数据失败", logrus.Fields{})
 			return
 		}
+		utils.LogInfo("用户状态更新成功", logrus.Fields{"user_id": id, "new_status": req.Status})
 		c.JSON(200, gin.H{"message": "状态更新成功"})
 	}
 }
 
-func GetUserStatus() gin.HandlerFunc {
+func GetUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, ok := getCurrentUserID(c)
 		if !ok {
@@ -229,9 +252,10 @@ func GetUserStatus() gin.HandlerFunc {
 		user, err := repository.GetUserByID(id)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "获取用户状态失败,请重新再试..."})
-			log.Print("Get user status error")
+			utils.LogError("数据库获取用户数据失败", logrus.Fields{})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"status": user.Status})
+		utils.LogInfo("获取用户信息成功", logrus.Fields{"user_id": id})
+		c.JSON(http.StatusOK, gin.H{"status": user})
 	}
 }

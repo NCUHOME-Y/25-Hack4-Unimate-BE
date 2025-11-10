@@ -2,9 +2,12 @@ package utils
 
 import (
 	"errors"
+	"io"
 	"log"
 	"os"
 	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
@@ -12,6 +15,22 @@ import (
 
 // JWT 密钥（生产环境应从环境变量或配置文件中读取）
 var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
+
+var logger = logrus.New()
+
+func init() {
+	file, err := os.OpenFile("Unimate.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		logger.Fatal("无法打开日志文件: ", err)
+	}
+
+	// 设置同时输出到控制台和文件
+	multiWriter := io.MultiWriter(os.Stdout, file)
+	logger.SetOutput(multiWriter)
+
+	// 设置日志格式为JSON，便于后续分析
+	logger.SetFormatter(&logrus.JSONFormatter{})
+}
 
 // Claims 结构体
 type Claims struct {
@@ -82,4 +101,14 @@ func HashPassword(password string) (string, error) {
 func CheckPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
+}
+
+func LogInfo(message string, fields logrus.Fields) {
+	logger.WithFields(fields).Info(message)
+}
+func LogError(message string, fields logrus.Fields) {
+	logger.WithFields(fields).Error(message)
+}
+func LogDebug(message string, fields logrus.Fields) {
+	logger.WithFields(fields).Debug(message)
 }

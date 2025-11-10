@@ -13,5 +13,8 @@ func main() {
 	r := gin.Default()
 	handler.BasicUser(r)
 	handler.Flag(r)
-	r.Run(":8080")
+	handler.BasicPost(r)
+	handler.ChatWebSocket(r)
+	handler.Ranking(r)
+	r.Run("0.0.0.0:8080")
 }

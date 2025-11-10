@@ -3,11 +3,14 @@ package service
 import (
 	"Heckweek/internal/app/model"
 	"Heckweek/internal/app/repository"
+	utils "Heckweek/util"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // 获取用户flag
@@ -26,6 +29,7 @@ func GetUserFlags() gin.HandlerFunc {
 			log.Print("Get flags error")
 			return
 		}
+		utils.LogInfo("获取用户flag成功", logrus.Fields{"user_id": id, "flag_count": len(flags)})
 		c.JSON(http.StatusOK, gin.H{"flags": flags})
 	}
 }
@@ -34,24 +38,26 @@ func GetUserFlags() gin.HandlerFunc {
 func PostUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var flag struct {
-			Flag           string `json:"flag"`
-			PlanContent    string `json:"plan_content"`
-			IsHiden        bool   `json:"is_hiden"`
-			PlanDoneNumber int    `json:"plan_done_number"`
-			DeadTime       string `json:"deadtime"`
+			Flag           string    `json:"flag"`
+			PlanContent    string    `json:"plan_content"`
+			IsHiden        bool      `json:"is_hiden"`
+			PlanDoneNumber int       `json:"plan_done_number"`
+			DeadTime       time.Time `json:"deadtime"`
+			StartTime      time.Time `json:"starttime"`
 		}
 		if err := c.ShouldBindJSON(&flag); err != nil {
 			c.JSON(500, gin.H{"err": "添加flag失败,请重新再试..."})
 			log.Print("Binding error")
 			return
 		}
-		t, _ := time.Parse(flag.DeadTime, "2006-01-02 15:04:05")
 		flag_model := model.Flag{
 			Flag:           flag.Flag,
 			PlanContent:    flag.PlanContent,
 			IsHiden:        flag.IsHiden,
 			PlanDoneNumber: flag.PlanDoneNumber,
-			DeadTime:       t,
+			CreatedAt:      time.Now(),
+			StartTime:      flag.StartTime,
+			DeadTime:       flag.DeadTime,
 		}
 		id, ok := getCurrentUserID(c)
 		if !ok {
@@ -61,30 +67,44 @@ func PostUserFlags() gin.HandlerFunc {
 		err := repository.AddFlagToDB(id, flag_model)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "添加flag失败,请重新再试..."})
-			log.Print("Add flag to DB error")
+			utils.LogError("数据库添加flag失败", logrus.Fields{})
 			return
 		}
+		utils.LogInfo("添加用户flag成功", logrus.Fields{"user_id": id, "flag": flag.Flag})
 		c.JSON(http.StatusOK, gin.H{"message": "添加flag成功!"})
 	}
 }
 
-// 完成用户flag
+// 打卡用户flag
 func DoneUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID         uint `json:"id"`
-			DoneNumber int  `json:"done_number"`
+			ID uint `json:"id"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "更新flag失败,请重新再试..."})
 			log.Print("Binding error")
 			return
 		}
-		err := repository.UpdateFlagDoneNumber(req.ID, req.DoneNumber)
+		durtion := time.Now()
+		id, _ := getCurrentUserID(c)
+		if err := repository.UpdateUserDoFlag(id, durtion); err != nil {
+			c.JSON(400, gin.H{"error": "打卡失败,请重新再试..."})
+			return
+		}
+		flag, err := repository.GetFlagByID(req.ID)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
 			return
 		}
+		flag.DoneNumber += 1
+		err = repository.UpdateFlagDoneNumber(req.ID, flag.DoneNumber)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
+			utils.LogError("数据库更新flag失败", logrus.Fields{})
+			return
+		}
+		utils.LogInfo("用户打卡成功", logrus.Fields{"user_id": id, "flag_id": req.ID})
 		c.JSON(200, gin.H{"message": "打卡成功"})
 	}
 }
@@ -103,8 +123,10 @@ func DeleteUserFlags() gin.HandlerFunc {
 		err := repository.DeleteFlagFromDB(req.ID)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "删除flag失败,请重新再试..."})
+			utils.LogError("数据库删除flag失败", logrus.Fields{})
 			return
 		}
+		utils.LogInfo("删除用户flag成功", logrus.Fields{"flag_id": req.ID})
 		c.JSON(200, gin.H{"message": "删除flag成功"})
 	}
 }
@@ -113,19 +135,82 @@ func DeleteUserFlags() gin.HandlerFunc {
 func FinshDoneFlag() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID      uint `json:"id"`
-			HadDone bool `json:"had_done"`
+			ID uint `json:"id"`
 		}
+		level := c.Query("level")
+		id, _ := getCurrentUserID(c)
+		log.Printf("[debug] user_id = %d", id)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "更新flag失败,请重新再试..."})
 			log.Print("Binding error")
 			return
 		}
-		err := repository.UpdateFlagHadDone(req.ID, req.HadDone)
+		user, _ := repository.GetUserByID(id)
+		count, _ := strconv.Atoi(level)
+		newcount := user.Count + count
+		err := repository.CountAddDB(id, newcount)
+		if err != nil {
+			log.Printf("[error] 积分更新失败: %v", err)
+		}
+		err = repository.UpdateFlagHadDone(req.ID)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
+			utils.LogError("数据库更新flag完成状态失败", logrus.Fields{})
 			return
 		}
+		utils.LogInfo("flag完成状态更新成功", logrus.Fields{"user_id": id, "flag_id": req.ID})
 		c.JSON(200, gin.H{"message": "flag完成状态更新成功"})
+	}
+}
+
+// 获取最新打卡的十个人
+func GetRecentDoFlagUsers() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		users, err := repository.GetRecentDoneFlags()
+		if err != nil {
+			c.JSON(400, gin.H{"error": "获取最近打卡用户失败,请重新再试..."})
+			utils.LogError("数据库获取最近打卡用户失败", logrus.Fields{})
+			return
+		}
+		utils.LogInfo("获取最近打卡用户成功", logrus.Fields{"user_count": len(users)})
+		c.JSON(200, gin.H{"users": users})
+	}
+}
+
+// 获取已完成flag
+func GetDoneFlags() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(400, gin.H{"error": "获取用户信息失败,请重新再试..."})
+			return
+		}
+		flags, err := repository.GetDoneFlagsByUserID(id)
+		if err != nil {
+			c.JSON(401, gin.H{"error": "获取已完成flag失败,请重新再试..."})
+			utils.LogError("获取已完成flag失败", logrus.Fields{})
+			return
+		}
+		utils.LogInfo("获取已完成flag成功", logrus.Fields{"user_id": id, "flag_count": len(flags)})
+		c.JSON(http.StatusOK, gin.H{"flags": flags})
+	}
+}
+
+// 获取未完成的完成flag
+func GetNotDoneFlags() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(400, gin.H{"error": "获取用户信息失败,请重新再试..."})
+			return
+		}
+		flags, err := repository.GetUndoneFlagsByUserID(id)
+		if err != nil {
+			c.JSON(401, gin.H{"error": "获取未完成flag失败,请重新再试..."})
+			utils.LogError("获取未完成flag失败", logrus.Fields{})
+			return
+		}
+		utils.LogInfo("获取未完成flag成功", logrus.Fields{"user_id": id, "flag_count": len(flags)})
+		c.JSON(http.StatusOK, gin.H{"flags": flags})
 	}
 }

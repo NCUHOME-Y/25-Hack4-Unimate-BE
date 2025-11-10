@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"log"
+	"time"
 
 	"github.com/joho/godotenv"
 
@@ -13,9 +14,7 @@ import (
 )
 
 var (
-	DB    *gorm.DB
-	Users []model.User
-	Flags []model.Flag
+	DB *gorm.DB
 )
 
 // 链接数据库
@@ -35,7 +34,7 @@ func DBconnect() {
 		return
 	}
 	DB = db
-	DB.AutoMigrate(&model.User{}, &model.Flag{})
+	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{}, &model.Achievement{})
 }
 
 // user添加到数据库
@@ -67,6 +66,8 @@ func GetFlagsByUserID(userID uint) ([]model.Flag, error) {
 // 通过用户邮箱获取用户
 func GetUserByEmail(Email string) (model.User, error) {
 	var user model.User
+	DB.Preload("Flags").First(&user, Email)
+	DB.Preload("Posts").First(&user, Email)
 	result := DB.Where("email=?", Email).First(&user)
 	return user, result.Error
 }
@@ -74,6 +75,8 @@ func GetUserByEmail(Email string) (model.User, error) {
 // 通过用户ID获取用户
 func GetUserByID(userID uint) (model.User, error) {
 	var user model.User
+	DB.Preload("Flags").First(&user, userID)
+	DB.Preload("Posts").First(&user, userID) // 把 Flags 一起查出来
 	result := DB.Where("id=?", userID).First(&user)
 	return user, result.Error
 }
@@ -115,8 +118,14 @@ func UpdateFlagDoneNumber(flagID uint, doneNumber int) error {
 }
 
 // 更新flag的完成状态
-func UpdateFlagHadDone(flagID uint, hadDone bool) error {
-	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("had_done", hadDone)
+func UpdateFlagHadDone(flagID uint) error {
+	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("had_done", true)
+	return result.Error
+}
+
+// 打卡时间更新
+func UpdateUserDoFlag(id uint, doFlag time.Time) error {
+	result := DB.Model(&model.User{}).Where("id=?", id).Update("do_flag", doFlag)
 	return result.Error
 }
 
@@ -130,4 +139,76 @@ func UpdateFlagDeadTime(flagID uint, deadTime string) error {
 func UpdateUserStatus(id uint, status string) error {
 	result := DB.Model(&model.User{}).Where("id=?", id).Update("status", status)
 	return result.Error
+}
+
+// 发布帖子
+func AddPostToDB(Id uint, post model.Post) error {
+	post.UserID = Id
+	result := DB.Create(&post)
+	return result.Error
+}
+
+// 删除帖子
+func DeletePostFromDB(postID uint) error {
+	result := DB.Delete(&model.Post{}, postID)
+	return result.Error
+}
+
+func AddPostCommentToDB(postId uint, comment model.PostComment) error {
+	comment.PostID = postId
+	result := DB.Create(&comment)
+	return result.Error
+}
+
+// 删除评论
+func DeletePostCommentFromDB(commentID uint) error {
+	result := DB.Delete(&model.PostComment{}, commentID)
+	return result.Error
+}
+
+// 获取最近打卡的十个人
+func GetRecentDoneFlags() ([]model.User, error) {
+	var users []model.User
+	result := DB.Where("had_done = ?", true).Order("do_flag desc").Limit(10).Find(&users)
+	return users, result.Error
+}
+
+// 已完成的flag列表
+func GetDoneFlagsByUserID(userID uint) ([]model.Flag, error) {
+	var flags []model.Flag
+	result := DB.Where("user_id = ? AND had_done = ?", userID, true).Find(&flags)
+	return flags, result.Error
+}
+
+// 未完成的flag列表
+func GetUndoneFlagsByUserID(userID uint) ([]model.Flag, error) {
+	var flags []model.Flag
+	result := DB.Where("user_id = ? AND had_done = ?", userID, false).Find(&flags)
+	return flags, result.Error
+}
+
+// 工具函数，便于创造成就
+func AddAchievementToDB(achievement model.Achievement) error {
+	result := DB.Create(&achievement)
+	return result.Error
+}
+
+// 用户积分增加
+func CountAddDB(userID uint, count int) error {
+	result := DB.Model(&model.User{}).Where("id = ?", userID).Update("count", count)
+	return result.Error
+}
+
+// 获取所有用户，按积分排序
+func GetUserByCount() ([]model.User, error) {
+	var users []model.User
+	result := DB.Order("count desc").Limit(20).Find(&users)
+	return users, result.Error
+}
+
+// 通过flag id找到对应的flag
+func GetFlagByID(flagID uint) (model.Flag, error) {
+	var flag model.Flag
+	result := DB.Where("id = ?", flagID).First(&flag)
+	return flag, result.Error
 }

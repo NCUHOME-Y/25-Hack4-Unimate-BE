@@ -13,7 +13,7 @@ func BasicUser(r *gin.Engine) {
 	e.POST("/updatePassword", service.UpdateUserPassword())
 	e.POST("/updateUsername", service.UpdateUserName())
 	e.POST("/api/UpdateStatus", service.UpdateStatus())
-	e.GET("/api/getUserStatus", service.GetUserStatus())
+	e.GET("/api/getUser", service.GetUser())
 }
 
 func Flag(r *gin.Engine) {
@@ -23,4 +23,25 @@ func Flag(r *gin.Engine) {
 	e.POST("/api/doneFlag", service.DoneUserFlags())
 	e.POST("/api/finshDoneFlag", service.FinshDoneFlag())
 	e.DELETE("/api/deleteFlag", service.DeleteUserFlags())
+	e.GET("/api/getDoneFlags", service.GetDoneFlags())
+	e.GET("/api/getUnDoneFlags", service.GetNotDoneFlags())
+	r.GET("/api/getRecentDoFlagUsers", service.GetRecentDoFlagUsers())
+}
+
+func BasicPost(r *gin.Engine) {
+	e := r.Use(service.JWTAuth())
+	e.POST("/api/postUserPost", service.PostUserPost())
+	e.DELETE("/api/deleteUserPost", service.DeleteUserPost())
+	e.POST("/api/commentOnPost", service.CommentOnPost())
+	e.DELETE("/api/deleteComment", service.DeleteUserPostComment())
+}
+
+func ChatWebSocket(r *gin.Engine) {
+	e := r.Use(service.JWTAuth())
+	e.GET("/ws/chat", service.WsHandler())
+}
+
+func Ranking(r *gin.Engine) {
+	e := r.Use(service.JWTAuth())
+	e.GET("/api/ranking", service.GetUserCount())
 }
