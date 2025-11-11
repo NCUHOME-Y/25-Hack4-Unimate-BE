@@ -17,6 +17,9 @@ func Init() {
 			InitDaliyLearnTimeRecord(user.ID)
 			InitDaliyFlag(user.Flags)
 		})
+		cron.AddFunc("@monthly", func() {
+
+		})
 		cron.Start()
 	}
 }
@@ -50,5 +53,14 @@ func InitDakaNumberRecord(daka []model.Daka_number, id uint) {
 			utils.LogError("初始化每日打卡状态失败", logrus.Fields{"daka_id": daka_record.ID})
 			return
 		}
+	}
+}
+
+// 每月建立打卡记录
+func InitMonthlyDakaRecord(id uint) {
+	err := repository.AddNewDakaNumberToDB(id)
+	if err != nil {
+		utils.LogError("添加新的打卡记录失败", logrus.Fields{"user_id": id})
+		return
 	}
 }

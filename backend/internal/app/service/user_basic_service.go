@@ -289,7 +289,7 @@ func DoDaKa() gin.HandlerFunc {
 	}
 }
 
-// 获取打卡近30天的打卡记录
+// 获取打卡此月天的打卡记录
 func GetDaKaRecords() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _ := getCurrentUserID(c)
@@ -301,7 +301,8 @@ func GetDaKaRecords() gin.HandlerFunc {
 		}
 		utils.LogInfo("获取打卡记录成功", logrus.Fields{"user_id": id})
 		c.JSON(200, gin.H{
-			"daka_numbers": dakaNumbers,
+			"daka_date": dakaNumbers.MonthDaka,
+			"time":      dakaNumbers.DaKaDate,
 		})
 	}
 }
