@@ -12,7 +12,9 @@ type User struct {
 	Password     string        `json:"password"`
 	Status       string        `json:"status"`
 	DoFlag       time.Time     `json:"do_flag"`
+	FlagNumber   int           `json:"flag_number"`
 	Count        int           `json:"count"`
+	LearnTimes   []LearnTime   `gorm:"foreignKey:UserID"`  //外键绑定learn_time表
 	Flags        []Flag        `gorm:"foreignKey:UserID"`  //外键绑定flag表
 	Posts        []Post        `gorm:"foreignKey:UserID"`  //外键绑定post表
 	Achievements []Achievement `gorm:"foreignKey:UserID;"` //多对多绑定achievement表
@@ -62,4 +64,11 @@ type Achievement struct {
 	Description string    `json:"description"`
 	HadDone     bool      `json:"had_done"`
 	GotTime     time.Time `json:"got_time"`
+}
+
+type LearnTime struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UserID    uint      `json:"user_id"`
+	Duration  int       `json:"duration"` // 学习时长，单位为分钟
 }

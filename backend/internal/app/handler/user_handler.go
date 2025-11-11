@@ -36,6 +36,7 @@ func BasicPost(r *gin.Engine) {
 	e.POST("/api/commentOnPost", service.CommentOnPost())
 	e.DELETE("/api/deleteComment", service.DeleteUserPostComment())
 	e.GET("/api/getAllPosts", service.GetAllPosts())
+	e.GET("/api/getflag", service.GetVisibleFlags())
 }
 
 func ChatWebSocket(r *gin.Engine) {
@@ -46,4 +47,15 @@ func ChatWebSocket(r *gin.Engine) {
 func Ranking(r *gin.Engine) {
 	e := r.Use(service.JWTAuth())
 	e.GET("/api/ranking", service.GetUserCount())
+}
+
+func LearnTime(r *gin.Engine) {
+	e := r.Use(service.JWTAuth())
+	e.POST("/api/addLearnTime", service.RecordLearnTime())
+	e.GET("/api/getLearnTime", service.GetLearnTimeRecords())
+}
+
+func Achievement(r *gin.Engine) {
+	e := r.Use(service.JWTAuth())
+	e.GET("/api/getUserAchievement", service.GetUserAchievement())
 }

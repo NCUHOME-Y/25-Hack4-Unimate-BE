@@ -118,6 +118,7 @@ func RegisterUser() gin.HandlerFunc {
 			Email:    user_new.Email,
 			Password: new_password,
 		}
+		user = InitAchievementTable(user)
 		if err := repository.AddUserToDB(user); err != nil {
 			c.JSON(403, gin.H{"error": "注册失败,请重新再试..."})
 			utils.LogError("数据库添加用户失败", logrus.Fields{})

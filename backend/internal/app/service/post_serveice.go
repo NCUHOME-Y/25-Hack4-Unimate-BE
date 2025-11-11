@@ -103,3 +103,17 @@ func GetAllPosts() gin.HandlerFunc {
 		c.JSON(200, gin.H{"posts": posts})
 	}
 }
+
+// 获取所有可见的flag
+func GetVisibleFlags() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		flags, err := repository.GetVisibleFlags()
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取可见flag失败,请重新再试..."})
+			utils.LogError("数据库获取可见flag失败", nil)
+			return
+		}
+		utils.LogInfo("获取所有可见flag成功", nil)
+		c.JSON(200, gin.H{"flags": flags})
+	}
+}

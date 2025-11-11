@@ -33,7 +33,7 @@ func DBconnect() {
 		return
 	}
 	DB = db
-	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.Comment{}, &model.Achievement{})
+	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.Comment{}, &model.Achievement{}, &model.LearnTime{})
 }
 
 // user添加到数据库
@@ -65,6 +65,7 @@ func GetFlagsByUserID(userID uint) ([]model.Flag, error) {
 // 通过用户邮箱获取用户
 func GetUserByEmail(Email string) (model.User, error) {
 	var user model.User
+	DB.Preload("Achievement").First(&user, Email)
 	DB.Preload("Flags").First(&user, Email)
 	DB.Preload("Posts").First(&user, Email)
 	result := DB.Where("email=?", Email).First(&user)
@@ -74,6 +75,7 @@ func GetUserByEmail(Email string) (model.User, error) {
 // 通过用户ID获取用户
 func GetUserByID(userID uint) (model.User, error) {
 	var user model.User
+	DB.Preload("Achievement").First(&user, userID)
 	DB.Preload("Flags").First(&user, userID)
 	DB.Preload("Posts").First(&user, userID) // 把 Flags 一起查出来
 	result := DB.Where("id=?", userID).First(&user)
@@ -117,8 +119,8 @@ func UpdateFlagDoneNumber(flagID uint, doneNumber int) error {
 }
 
 // 更新flag的完成状态
-func UpdateFlagHadDone(flagID uint) error {
-	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("had_done", true)
+func UpdateFlagHadDone(flagID uint, isdo bool) error {
+	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("had_done", isdo)
 	return result.Error
 }
 
@@ -198,6 +200,12 @@ func CountAddDB(userID uint, count int) error {
 	return result.Error
 }
 
+// 用户flaga完成数量增加
+func FlagNumberAddDB(userID uint, flagnumber int) error {
+	result := DB.Model(&model.User{}).Where("id = ?", userID).Update("flag_number", flagnumber)
+	return result.Error
+}
+
 // 获取所有用户，按积分排序
 func GetUserByCount() ([]model.User, error) {
 	var users []model.User
@@ -217,4 +225,66 @@ func GetAllPosts() ([]model.Post, error) {
 	var posts []model.Post
 	result := DB.Preload("Comments").Order("created_at desc").Find(&posts)
 	return posts, result.Error
+}
+
+// 获取所有可见的flag
+func GetVisibleFlags() ([]model.Flag, error) {
+	var flags []model.Flag
+	result := DB.Where("is_hiden = ?", false).Find(&flags)
+	return flags, result.Error
+}
+
+// 每天自动生成新的时间记录表
+func AddNewLearnTimeToDB(user_id uint) error {
+	err := DB.Create(&model.LearnTime{
+		UserID:   user_id,
+		Duration: 0,
+	}).Error
+	return err
+}
+
+// 更新学习时长
+func UpdateLearnTimeDuration(user_id uint, duration int) error {
+	var learnTime model.LearnTime
+	err := DB.Where("user_id = ?", user_id).Order("created_at desc").First(&learnTime).Error
+	if err != nil {
+		return err
+	}
+	learnTime.Duration += duration
+	err = DB.Save(&learnTime).Error
+	return err
+}
+
+// 获取用户最近的学习时长记录
+func GetRecentLearnTime(user_id uint) ([]model.LearnTime, error) {
+	var learnTime []model.LearnTime
+	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Limit(30).Find(&learnTime).Error
+	return learnTime, err
+}
+
+// 获取所有用户
+func GetAllUser() ([]model.User, error) {
+	var users []model.User
+	result := DB.Find(&users)
+	return users, result.Error
+}
+
+// 完成成就
+func UpdateAchievementHadDone(usrID uint, name string) error {
+	result := DB.Model(&model.Achievement{}).Where("name=?", name).Where("user_id=?", usrID).Update("had_done", true)
+	return result.Error
+}
+
+// 获取用户成就列表
+func GetAchievementsByUserID(userID uint) ([]model.Achievement, error) {
+	var achievements []model.Achievement
+	result := DB.Where("user_id = ?", userID).Find(&achievements)
+	return achievements, result.Error
+}
+
+// 根据成就名使它完成
+func GetAchievementByName(usrID uint, name string) (model.Achievement, error) {
+	var achievement model.Achievement
+	result := DB.Where("name=? AND user_id=?", name, usrID).First(&achievement)
+	return achievement, result.Error
 }

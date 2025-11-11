@@ -151,11 +151,12 @@ func FinshDoneFlag() gin.HandlerFunc {
 		user, _ := repository.GetUserByID(id)
 		count, _ := strconv.Atoi(level)
 		newcount := user.Count + count
+		repository.FlagNumberAddDB(id, user.FlagNumber+1)
 		err := repository.CountAddDB(id, newcount)
 		if err != nil {
 			log.Printf("[error] 积分更新失败: %v", err)
 		}
-		err = repository.UpdateFlagHadDone(req.ID)
+		err = repository.UpdateFlagHadDone(req.ID, true)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
 			utils.LogError("数据库更新flag完成状态失败", logrus.Fields{})
