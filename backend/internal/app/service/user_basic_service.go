@@ -192,7 +192,7 @@ func UpdateUserPassword() gin.HandlerFunc {
 
 		utils.LogInfo("用户密码更新成功", logrus.Fields{"user_id": id})
 		c.JSON(http.StatusOK, gin.H{
-			"sucsess":   true,
+			"success":   true,
 			"new_token": new_token,
 		})
 	}
