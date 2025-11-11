@@ -38,7 +38,7 @@ func JWTAuth() gin.HandlerFunc {
 			// 从 URL 参数获取（用于 WebSocket 连接）
 			token = c.Query("token")
 			if token == "" {
-				log.Printf("[JWT] 未找到 token - Authorization 头为空，URL 参数也为空")
+				log.Printf("[JWT] 未找到 token - Authorization 头为空,URL 参数也为空")
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"code": 401,
 					"msg":  "请求头中 Authorization 为空且 URL 中无 token 参数",
@@ -171,23 +171,25 @@ func UpdateUserPassword() gin.HandlerFunc {
 			NewPassword string `json:"new_password"`
 		}
 		id, _ := getCurrentUserID(c)
-		new_token, _ := utils.RefreshToken("token")
+		user, _ := repository.GetUserByID(id)
+		new_token, _ := utils.GenerateToken(user.ID, user.Name, user.Email)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(401, gin.H{"error": "请求失败,请重新再试..."})
 			utils.LogError("请求绑定失败", logrus.Fields{})
 			return
 		}
-		user, _ := repository.GetUserByID(id)
 		if !utils.CheckPasswordHash(req.Password, user.Password) {
 			c.JSON(400, gin.H{"error": "原密码错误,请重新再试..."})
 			return
 		}
+		req.NewPassword, _ = utils.HashPassword(req.NewPassword)
 		err := repository.UpdatePassword(user.ID, req.NewPassword)
 		if err != nil {
 			c.JSON(500, gin.H{"message": "密码更新失败，请重新再试!"})
 			utils.LogError("数据库更新用户数据失败", logrus.Fields{})
 			return
 		}
+
 		utils.LogInfo("用户密码更新成功", logrus.Fields{"user_id": id})
 		c.JSON(http.StatusOK, gin.H{
 			"sucsess":   true,
