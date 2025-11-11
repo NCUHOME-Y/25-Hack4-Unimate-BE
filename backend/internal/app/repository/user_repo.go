@@ -58,7 +58,7 @@ func DeleteFlagFromDB(flagID uint) error {
 // 通过用户ID获取flag列表
 func GetFlagsByUserID(userID uint) ([]model.Flag, error) {
 	var flags []model.Flag
-	result := DB.Where("user_id = ?", userID).Find(&flags)
+	result := DB.Where("user_id = ?", userID).Order("priority").Find(&flags)
 	return flags, result.Error
 }
 

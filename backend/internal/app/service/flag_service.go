@@ -42,6 +42,8 @@ func PostUserFlags() gin.HandlerFunc {
 			Flag           string    `json:"flag"`
 			PlanContent    string    `json:"plan_content"`
 			IsHiden        bool      `json:"is_hiden"`
+			Label          string    `json:"label"`
+			Priority       int       `json:"priority"`
 			PlanDoneNumber int       `json:"plan_done_number"`
 			DeadTime       time.Time `json:"deadtime"`
 			StartTime      time.Time `json:"starttime"`
@@ -55,6 +57,8 @@ func PostUserFlags() gin.HandlerFunc {
 			Flag:           flag.Flag,
 			PlanContent:    flag.PlanContent,
 			IsHiden:        flag.IsHiden,
+			Label:          flag.Label,
+			Priority:       flag.Priority,
 			PlanDoneNumber: flag.PlanDoneNumber,
 			CreatedAt:      time.Now(),
 			StartTime:      flag.StartTime,

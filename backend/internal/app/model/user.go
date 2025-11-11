@@ -25,6 +25,8 @@ type Flag struct {
 	ID             uint      `gorm:"primaryKey" json:"id"`
 	Flag           string    `json:"flag"`
 	PlanContent    string    `json:"plan_content"`
+	Label          string    `json:"label"`
+	Priority       int       `json:"priority"`
 	UserID         uint      `json:"user_id"`
 	IsHiden        bool      `json:"is_hiden"`
 	HadDone        bool      `json:"had_done"`             //是否完成
