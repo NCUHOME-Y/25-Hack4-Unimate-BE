@@ -288,3 +288,20 @@ func DoDaKa() gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"message": "打卡成功!"})
 	}
 }
+
+// 获取打卡近30天的打卡记录
+func GetDaKaRecords() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := getCurrentUserID(c)
+		dakaNumbers, err := repository.GetRecentDakaNumber(id)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取打卡记录失败,请重新再试..."})
+			utils.LogError("获取打卡记录失败", logrus.Fields{"user_id": id})
+			return
+		}
+		utils.LogInfo("获取打卡记录成功", logrus.Fields{"user_id": id})
+		c.JSON(200, gin.H{
+			"daka_numbers": dakaNumbers,
+		})
+	}
+}
