@@ -14,6 +14,7 @@ type User struct {
 	DoFlag       time.Time     `json:"do_flag"`
 	FlagNumber   int           `json:"flag_number"`
 	Count        int           `json:"count"`
+	DaKaNumber   []Daka_number `grom:"foreignKey" `
 	LearnTimes   []LearnTime   `gorm:"foreignKey:UserID"`  //外键绑定learn_time表
 	Flags        []Flag        `gorm:"foreignKey:UserID"`  //外键绑定flag表
 	Posts        []Post        `gorm:"foreignKey:UserID"`  //外键绑定post表
@@ -73,4 +74,11 @@ type LearnTime struct {
 	CreatedAt time.Time `json:"created_at"`
 	UserID    uint      `json:"user_id"`
 	Duration  int       `json:"duration"` // 学习时长，单位为分钟
+}
+
+type Daka_number struct {
+	ID       uint      `gorm:"primaryKey" json:"id"`
+	UserID   uint      `json:"user_id"`
+	HadDone  bool      `json:"had_done"`
+	DaKaDate time.Time `json:"daka_date"`
 }

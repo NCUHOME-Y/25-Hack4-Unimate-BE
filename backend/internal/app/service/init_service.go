@@ -13,6 +13,7 @@ func Init() {
 	users, _ := repository.GetAllUser()
 	for _, user := range users {
 		cron.AddFunc("@daily", func() {
+			InitDakaNumberRecord(user.ID)
 			InitDaliyLearnTimeRecord(user.ID)
 			InitDaliyFlag(user.Flags)
 		})
@@ -38,5 +39,14 @@ func InitDaliyFlag(flags []model.Flag) {
 			utils.LogError("初始化每日签到状态失败", logrus.Fields{"flag_id": flag.ID})
 			return
 		}
+	}
+}
+
+// 初始化打卡记录
+func InitDakaNumberRecord(id uint) {
+	err := repository.AddDakaNumberToDB(id)
+	if err != nil {
+		utils.LogError("添加新的打卡记录失败", logrus.Fields{"user_id": id})
+		return
 	}
 }

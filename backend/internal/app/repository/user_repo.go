@@ -33,7 +33,7 @@ func DBconnect() {
 		return
 	}
 	DB = db
-	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.Comment{}, &model.Achievement{}, &model.LearnTime{})
+	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.Comment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{})
 }
 
 // user添加到数据库
@@ -287,4 +287,21 @@ func GetAchievementByName(usrID uint, name string) (model.Achievement, error) {
 	var achievement model.Achievement
 	result := DB.Where("name=? AND user_id=?", name, usrID).First(&achievement)
 	return achievement, result.Error
+}
+
+// 添加打卡记录
+func DakaNumberToDB(user_id uint) error {
+	result := DB.Model(&model.Daka_number{}).Where("user_id = ?", user_id).Order("daka_date desc").Limit(1).Update("had_done", true)
+	return result.Error
+}
+
+// 添加打卡记录
+func AddDakaNumberToDB(user_id uint) error {
+	daka := model.Daka_number{
+		UserID:   user_id,
+		HadDone:  false,
+		DaKaDate: time.Now(),
+	}
+	result := DB.Create(&daka)
+	return result.Error
 }

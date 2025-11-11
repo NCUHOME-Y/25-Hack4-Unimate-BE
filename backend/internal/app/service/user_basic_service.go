@@ -273,3 +273,18 @@ func GetUser() gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"user": user})
 	}
 }
+
+// 打卡
+func DoDaKa() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := getCurrentUserID(c)
+		err := repository.DakaNumberToDB(id)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "打卡失败,请重新再试..."})
+			utils.LogError("数据库更新用户打卡数据失败", logrus.Fields{})
+			return
+		}
+		utils.LogInfo("用户打卡成功", logrus.Fields{"user_id": id})
+		c.JSON(http.StatusOK, gin.H{"message": "打卡成功!"})
+	}
+}
