@@ -24,7 +24,7 @@ func PostUserPost() gin.HandlerFunc {
 			return
 		}
 		utils.LogInfo("用户发布帖子成功", nil)
-		c.JSON(200, gin.H{"message": "Post added successfully"})
+		c.JSON(200, gin.H{"success": true})
 	}
 }
 
@@ -45,26 +45,26 @@ func DeleteUserPost() gin.HandlerFunc {
 			return
 		}
 		utils.LogInfo("用户删除帖子成功", nil)
-		c.JSON(200, gin.H{"message": "Post deleted successfully"})
+		c.JSON(200, gin.H{"success": true})
 	}
 }
 
 // 发表评论
 func CommentOnPost() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var comment model.PostComment
+		var comment model.Comment
 		if err := c.ShouldBindJSON(&comment); err != nil {
 			c.JSON(400, gin.H{"error": "Invalid input"})
 			return
 		}
-		err := repository.AddPostCommentToDB(comment.PostID, comment)
+		err := repository.AddPostCommentToDB(comment.CommentID, comment)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to add comment"})
 			utils.LogError("数据库添加评论失败", nil)
 			return
 		}
 		utils.LogInfo("用户发表评论成功", nil)
-		c.JSON(200, gin.H{"message": "Comment added successfully"})
+		c.JSON(200, gin.H{"success": true})
 	}
 }
 
@@ -87,5 +87,19 @@ func DeleteUserPostComment() gin.HandlerFunc {
 		}
 		utils.LogInfo("用户删除评论成功", nil)
 		c.JSON(200, gin.H{"message": "Comment deleted successfully"})
+	}
+}
+
+// 获取所有帖子
+func GetAllPosts() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		posts, err := repository.GetAllPosts()
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to retrieve posts"})
+			utils.LogError("数据库获取帖子失败", nil)
+			return
+		}
+		utils.LogInfo("获取所有帖子成功", nil)
+		c.JSON(200, gin.H{"posts": posts})
 	}
 }

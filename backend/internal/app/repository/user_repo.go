@@ -33,7 +33,7 @@ func DBconnect() {
 		return
 	}
 	DB = db
-	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{}, &model.Achievement{})
+	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.Comment{}, &model.Achievement{})
 }
 
 // user添加到数据库
@@ -153,15 +153,15 @@ func DeletePostFromDB(postID uint) error {
 	return result.Error
 }
 
-func AddPostCommentToDB(postId uint, comment model.PostComment) error {
-	comment.PostID = postId
+func AddPostCommentToDB(postId uint, comment model.Comment) error {
+	comment.CommentID = postId
 	result := DB.Create(&comment)
 	return result.Error
 }
 
 // 删除评论
 func DeletePostCommentFromDB(commentID uint) error {
-	result := DB.Delete(&model.PostComment{}, commentID)
+	result := DB.Delete(&model.Comment{}, commentID)
 	return result.Error
 }
 
@@ -210,4 +210,11 @@ func GetFlagByID(flagID uint) (model.Flag, error) {
 	var flag model.Flag
 	result := DB.Where("id = ?", flagID).First(&flag)
 	return flag, result.Error
+}
+
+// 获取所有的帖子
+func GetAllPosts() ([]model.Post, error) {
+	var posts []model.Post
+	result := DB.Preload("Comments").Order("created_at desc").Find(&posts)
+	return posts, result.Error
 }

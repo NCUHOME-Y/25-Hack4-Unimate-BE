@@ -94,6 +94,7 @@ func RegisterUser() gin.HandlerFunc {
 		var user_new struct {
 			Name     string `json:"name"`
 			Email    string `json:"email"`
+			Phone    string `json:"phone"`
 			Password string `json:"password"`
 		}
 		if err := c.ShouldBindJSON(&user_new); err != nil {
@@ -112,6 +113,7 @@ func RegisterUser() gin.HandlerFunc {
 			c.JSON(402, gin.H{"error": "注册失败,请重新再试..."})
 		}
 		user := model.User{
+			Phone:    user_new.Phone,
 			Name:     user_new.Name,
 			Email:    user_new.Email,
 			Password: new_password,
@@ -153,7 +155,10 @@ func LoginUser() gin.HandlerFunc {
 		}
 		utils.LogInfo("用户登录成功", logrus.Fields{"user_id": user.ID, "user_email": user.Email})
 		c.JSON(http.StatusOK, gin.H{"message": "登录成功!",
-			"token": token})
+			"user_id": user.ID,
+			"name":    user.Name,
+			"email":   user.Email,
+			"token":   token})
 	}
 }
 
@@ -161,17 +166,17 @@ func LoginUser() gin.HandlerFunc {
 func UpdateUserPassword() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID          uint   `json:"id"`
-			Password    string `json:"password"`
+			Password    string `json:"old_password"`
 			NewPassword string `json:"new_password"`
 		}
+		id, _ := getCurrentUserID(c)
 		new_token, _ := utils.RefreshToken("token")
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(401, gin.H{"error": "请求失败,请重新再试..."})
 			utils.LogError("请求绑定失败", logrus.Fields{})
 			return
 		}
-		user, _ := repository.GetUserByID(req.ID)
+		user, _ := repository.GetUserByID(id)
 		if !utils.CheckPasswordHash(req.Password, user.Password) {
 			c.JSON(400, gin.H{"error": "原密码错误,请重新再试..."})
 			return
@@ -182,9 +187,9 @@ func UpdateUserPassword() gin.HandlerFunc {
 			utils.LogError("数据库更新用户数据失败", logrus.Fields{})
 			return
 		}
-		utils.LogInfo("用户密码更新成功", logrus.Fields{"user_id": req.ID})
+		utils.LogInfo("用户密码更新成功", logrus.Fields{"user_id": id})
 		c.JSON(http.StatusOK, gin.H{
-			"message":   "密码更新成功!",
+			"sucsess":   true,
 			"new_token": new_token,
 		})
 	}
@@ -217,7 +222,8 @@ func UpdateUserName() gin.HandlerFunc {
 			return
 		}
 		utils.LogInfo("用户用户名更新成功", logrus.Fields{"user_id": id, "new_name": req.NewName})
-		c.JSON(http.StatusOK, gin.H{"message": "用户名更新成功!"})
+		c.JSON(http.StatusOK, gin.H{
+			"success": true})
 	}
 }
 
@@ -240,7 +246,9 @@ func UpdateStatus() gin.HandlerFunc {
 			return
 		}
 		utils.LogInfo("用户状态更新成功", logrus.Fields{"user_id": id, "new_status": req.Status})
-		c.JSON(200, gin.H{"message": "状态更新成功"})
+		c.JSON(200, gin.H{
+			"message": "状态更新成功",
+			"状态":      req.Status})
 	}
 }
 
@@ -259,6 +267,6 @@ func GetUser() gin.HandlerFunc {
 			return
 		}
 		utils.LogInfo("获取用户信息成功", logrus.Fields{"user_id": id})
-		c.JSON(http.StatusOK, gin.H{"status": user})
+		c.JSON(http.StatusOK, gin.H{"user": user})
 	}
 }
