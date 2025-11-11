@@ -77,8 +77,9 @@ type LearnTime struct {
 }
 
 type Daka_number struct {
-	ID       uint      `gorm:"primaryKey" json:"id"`
-	UserID   uint      `json:"user_id"`
-	HadDone  bool      `json:"had_done"`
-	DaKaDate time.Time `json:"daka_date"`
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `json:"user_id"`
+	HadDone   bool      `json:"had_done"`
+	MonthDaka int       `json:"month_daka"`
+	DaKaDate  time.Time `json:"daka_date"`
 }

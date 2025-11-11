@@ -15,6 +15,7 @@ func BasicUser(r *gin.Engine) {
 	e.PUT("/api/UpdateStatus", service.UpdateStatus())
 	e.GET("/api/getUser", service.GetUser())
 	e.PUT("/api/updateDaka", service.DoDaKa())
+	e.GET("/api/getDakaRecords", service.GetDaKaRecords())
 }
 
 func Flag(r *gin.Engine) {

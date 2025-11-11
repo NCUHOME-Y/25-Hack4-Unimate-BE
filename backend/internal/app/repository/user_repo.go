@@ -297,13 +297,8 @@ func DakaNumberToDB(user_id uint) error {
 
 // 添加打卡记录
 func AddDakaNumberToDB(user_id uint) error {
-	daka := model.Daka_number{
-		UserID:   user_id,
-		HadDone:  false,
-		DaKaDate: time.Now(),
-	}
-	result := DB.Create(&daka)
-	return result.Error
+	err := DB.Model(&model.Daka_number{}).Where("user_id=?", user_id).Order("id desc").Limit(1).Update("monthDaka", gorm.Expr("monthDaka + ?", 1)).Error
+	return err
 }
 
 // 获取用户最近的打卡记录
@@ -311,4 +306,10 @@ func GetRecentDakaNumber(user_id uint) ([]model.Daka_number, error) {
 	var daka_numbers []model.Daka_number
 	err := DB.Where("user_id = ?", user_id).Order("daka_date desc").Limit(30).Find(&daka_numbers).Error
 	return daka_numbers, err
+}
+
+// 每日更新打卡状态
+func UpdateDakaHadDone(userid uint) error {
+	result := DB.Model(&model.Daka_number{}).Where("user_id = ?", userid).Update("had_done", false)
+	return result.Error
 }
