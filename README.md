@@ -149,11 +149,10 @@ ghcr.io/ncuhome-y/unimate-backend:latest
 
 ---
 
-## 🤝 贡献
-1.BangBang同学负责代码的编写和整理项目结构，编写ReadMe
-2.An051同学负责高新技术的研发
-3.林方魁同学对后端接口的指导
-4.所有编写包的研发者们
+## 鸣谢
+1.感谢Hackweek第四组的所有成员
+
+2.感谢Github开源包的作者们
 ---
 
 ## 📄 许可证
