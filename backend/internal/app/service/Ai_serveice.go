@@ -75,7 +75,12 @@ func GenerateLearningPlan(c *gin.Context) {
 		})
 		return
 	}
-	repository.AddFlagToDB(id, model.Flag{})
+	repository.AddFlagToDB(id, model.Flag{
+		Flag:        req.Flag,
+		PlanContent: plan,
+		CreatedAt:   time.Now(),
+		IsHiden:     false,
+	})
 	fmt.Printf("✅ 成功生成学习计划，难度: %d\n", difficulty)
 	c.JSON(http.StatusOK, LearningPlanResponse{
 		Success: true,
