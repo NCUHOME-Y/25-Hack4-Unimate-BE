@@ -28,6 +28,7 @@ type Flag struct {
 	PlanContent    string    `json:"plan_content"`
 	Label          string    `json:"label"`
 	Priority       int       `json:"priority"`
+	Level          int       `json:"level"`
 	UserID         uint      `json:"user_id"`
 	IsHiden        bool      `json:"is_hiden"`
 	HadDone        bool      `json:"had_done"`             //是否完成

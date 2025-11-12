@@ -3,7 +3,6 @@ package service
 import (
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
@@ -144,7 +143,6 @@ func FinshDoneFlag() gin.HandlerFunc {
 		var req struct {
 			ID uint `json:"flag_id"`
 		}
-		level := c.Query("level")
 		id, _ := getCurrentUserID(c)
 		log.Printf("[debug] user_id = %d", id)
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -152,9 +150,9 @@ func FinshDoneFlag() gin.HandlerFunc {
 			log.Print("Binding error")
 			return
 		}
+		flag, _ := repository.GetFlagByID(req.ID)
 		user, _ := repository.GetUserByID(id)
-		count, _ := strconv.Atoi(level)
-		newcount := user.Count + count
+		newcount := user.Count + flag.Level
 		repository.FlagNumberAddDB(id, user.FlagNumber+1)
 		err := repository.CountAddDB(id, newcount)
 		if err != nil {

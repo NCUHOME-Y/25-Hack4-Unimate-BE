@@ -61,3 +61,8 @@ func Achievement(r *gin.Engine) {
 	e := r.Use(service.JWTAuth())
 	e.GET("/api/getUserAchievement", service.GetUserAchievement())
 }
+
+func AiService(r *gin.Engine) {
+	e := r.Use(service.JWTAuth(), service.CORSMiddleware())
+	e.POST("/api/generateLearningPlan", service.GenerateLearningPlan)
+}
