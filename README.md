@@ -18,22 +18,38 @@
 
 ## 🗂️ 项目结构
 .
-├── main.go                     // 入口：注册路由、初始化定时任务
+├── main.go  // 入口：注册路由、初始化定时任务
+
 ├── internal
+
 │   ├── app
+
 │   │   ├── handler/           // 路由组（用户/Flag/帖子/聊天/排行榜/学习/成就）
+
 │   │   ├── service/           // 业务逻辑（含 WebSocket Hub、AI 计划生成）
+
 │   │   ├── repository/        // DAO 层（GORM 封装）
+
 │   │   └── model/             // 实体 & 表定义
+
 ├── util/
+
 │   ├── logger.go              // Logrus 封装
+
 │   └── jwt.go                 // JWT 生成/解析/刷新
+
 ├── .env                       // 数据库、JWT_SECRET、APIKEY
+
 ├── scripts/
+
 │   └── unimate.sql            // 初始化 SQL（含索引、外键）
+
 ├── go.mod
+
 ├── Dockerfile                 // 多阶段构建
+
 └── README.md
+
 
 
 ---
