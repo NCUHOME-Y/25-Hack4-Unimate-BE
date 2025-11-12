@@ -26,6 +26,8 @@ func main() {
 	utils.LogInfo("学习时长模块加载成功", nil)
 	handler.Achievement(r) //成就相关
 	utils.LogInfo("成就模块加载成功", nil)
+	handler.AiService(r)
+	utils.LogInfo("AI服务模块加载成功", nil)
 	r.Run("0.0.0.0:8080")
 	utils.LogInfo("服务器运行中，监听端口8080", nil)
 }

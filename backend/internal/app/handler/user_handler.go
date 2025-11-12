@@ -63,6 +63,7 @@ func Achievement(r *gin.Engine) {
 }
 
 func AiService(r *gin.Engine) {
-	e := r.Use(service.JWTAuth(), service.CORSMiddleware())
+	// AI 服务需要 JWT 认证
+	e := r.Use(service.JWTAuth())
 	e.POST("/api/generateLearningPlan", service.GenerateLearningPlan)
 }
