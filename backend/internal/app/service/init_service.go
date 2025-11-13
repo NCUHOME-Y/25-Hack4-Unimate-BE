@@ -12,11 +12,10 @@ import (
 )
 
 var cronScheduler *cron.Cron
-var userReminderJobs = make(map[uint]cron.EntryID) // 存储每个用户的提醒任务ID
-var reminderMutex sync.Mutex                       // 保护并发访问
+var userReminderJobs = make(map[uint]cron.EntryID)
+var reminderMutex sync.Mutex
 
 func Init() {
-	// 使用支持秒级的 cron
 	cronScheduler = cron.New(cron.WithSeconds())
 
 	utils.LogInfo(" 开始初始化定时任务", nil)
@@ -61,7 +60,7 @@ func Init() {
 					"time":    fmt.Sprintf("%02d:%02d", user.RemindHour, user.RemindMin),
 				})
 
-				err := utils.SentEmail(user.Email, "知序：提醒您要好好自律哦", "灵魂的欲望是你命运的先知")
+				err := utils.SentEmail(user.Email, "知序：提醒您要好好自律哦", "温馨提示:灵魂的欲望是你命运的先知")
 				if err != nil {
 					utils.LogError("发送提醒邮件失败", logrus.Fields{
 						"user_id": user.ID,

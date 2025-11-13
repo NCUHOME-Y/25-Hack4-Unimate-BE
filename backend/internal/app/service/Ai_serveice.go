@@ -45,7 +45,7 @@ func initPlanner() {
 			APIKey:  os.Getenv("APIKEY"),
 			BaseURL: "https://api.siliconflow.cn/v1/chat/completions",
 		}
-		fmt.Printf("🔧 Planner 初始化完成，API密钥: %s\n", planner.APIKey)
+		fmt.Printf("planner配置完成")
 	}
 }
 
