@@ -54,3 +54,25 @@ func GetLearnTimeRecords() gin.HandlerFunc {
 		})
 	}
 }
+
+// 获取打卡总数
+func GetUserDakaTotal() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := getCurrentUserID(c)
+		user, _ := repository.GetUserByID(id)
+		c.JSON(200, gin.H{
+			"daka_total": user.Daka,
+		})
+	}
+}
+
+// 获取月打卡数
+func GetUserMonthDaka() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := getCurrentUserID(c)
+		dakaNumber, _ := repository.GetRecentDakaNumber(id)
+		c.JSON(200, gin.H{
+			"month_daka": dakaNumber.MonthDaka,
+		})
+	}
+}

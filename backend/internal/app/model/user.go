@@ -15,6 +15,7 @@ type User struct {
 	DoFlag       time.Time     `json:"do_flag"`
 	RemindHour   int           `json:"time_remind" default:"17"`
 	RemindMin    int           `json:"min_remind" default:"8"`
+	Daka         int           `json:"daka"`
 	FlagNumber   int           `json:"flag_number"`
 	Count        int           `json:"count"`
 	DaKaNumber   []Daka_number `grom:"foreignKey" `

@@ -223,6 +223,12 @@ func InitDakaNumberRecord(daka []model.Daka_number, id uint) {
 			return
 		}
 	}
+	user, _ := repository.GetUserByID(id)
+	daka1, _ := repository.GetRecentDakaNumber(id)
+	if daka1.HadDone {
+		daka1.MonthDaka = daka1.MonthDaka + 1
+		user.Daka = user.Daka + 1
+	}
 }
 
 // 每月建立打卡记录

@@ -68,6 +68,8 @@ func LearnTime(r *gin.Engine) {
 	e := r.Use(service.JWTAuth())
 	e.POST("/api/addLearnTime", service.RecordLearnTime())
 	e.GET("/api/getLearnTime", service.GetLearnTimeRecords())
+	e.GET("/api/getdakatotal", service.GetUserDakaTotal())
+	e.GET("/api/getmonthdaka", service.GetUserMonthDaka())
 }
 
 func Achievement(r *gin.Engine) {
