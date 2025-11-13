@@ -363,7 +363,7 @@ func UpdateUserExistStatus(email string) error {
 
 // 存储用户提醒时间
 func UpdateUserRemindTime(id uint, hour int, min int) error {
-	result := DB.Model(&model.User{}).Where("id=?", id).Updates(map[string]interface{}{"remind_hour": hour, "remin_min": min})
+	result := DB.Model(&model.User{}).Where("id=?", id).Updates(map[string]interface{}{"remind_hour": hour, "remind_min": min})
 	return result.Error
 }
 

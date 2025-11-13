@@ -120,6 +120,7 @@ func RegisterUser() gin.HandlerFunc {
 		user.Exist = false
 		// 初始化用户成就表
 		user = InitAchievementTable(user)
+		AddUserCronJob(user)
 		if err := repository.AddUserToDB(user); err != nil {
 			c.JSON(405, gin.H{"error": "注册失败,请重新再试..."})
 			utils.LogError("数据库添加用户失败", logrus.Fields{})
@@ -317,24 +318,37 @@ func GetDaKaRecords() gin.HandlerFunc {
 }
 
 // 用户选择的时间定时提醒
-func GetUserRemindTime() gin.HandlerFunc {
+func UpdateUserRemindTime() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var Remind struct {
 			RemindHour int `json:"time_remind"`
 			ReminMin   int `json:"min_remind"`
 		}
 		if err := c.ShouldBindJSON(&Remind); err != nil {
-			c.JSON(500, gin.H{"error": "获取用户提醒时间失败,请重新再试..."})
+			c.JSON(400, gin.H{"error": "获取用户提醒时间失败,请重新再试..."})
 			utils.LogError("获取用户提醒时间失败", logrus.Fields{})
 			return
 		}
 		id, _ := getCurrentUserID(c)
+
+		// 先开启提醒状态（如果还未开启）
+		user, _ := repository.GetUserByID(id)
+		if !user.IsRemind {
+			repository.UpdateUserRemindStatus(id, true)
+			utils.LogInfo("自动开启提醒功能", logrus.Fields{"user_id": id})
+		}
+
+		// 更新提醒时间
 		err := repository.UpdateUserRemindTime(id, Remind.RemindHour, Remind.ReminMin)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "更新用户提醒时间失败,请重新再试..."})
 			utils.LogError("更新用户提醒时间失败", logrus.Fields{})
 			return
 		}
+
+		// 更新定时任务（提醒状态为 true）
+		UpdateUserReminderJob(id, Remind.RemindHour, Remind.ReminMin, true)
+
 		utils.LogInfo("更新用户提醒时间成功", logrus.Fields{"user_id": id, "remind_hour": Remind.RemindHour, "remin_min": Remind.ReminMin})
 		c.JSON(200, gin.H{"message": "更新用户提醒时间成功!"})
 	}
@@ -352,7 +366,12 @@ func UpdateUserRemind() gin.HandlerFunc {
 			utils.LogError("更新用户提醒状态失败", logrus.Fields{})
 			return
 		}
+
+		// 更新定时任务
+		UpdateUserReminderJob(id, user.RemindHour, user.RemindMin, user.IsRemind)
+
 		utils.LogInfo("更新用户提醒状态成功", logrus.Fields{"user_id": id, "is_remind": user.IsRemind})
-		c.JSON(200, gin.H{"message": "更新用户提醒状态成功!"})
+		c.JSON(200, gin.H{"message": "更新用户提醒状态成功!",
+			"状态": user.IsRemind})
 	}
 }
