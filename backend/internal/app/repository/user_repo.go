@@ -112,6 +112,12 @@ func UpdatePassword(id uint, newPassword string) error {
 	return result.Error
 }
 
+// 通过邮箱更新密码
+func UpdatePasswordByEmail(email string, newPassword string) error {
+	result := DB.Model(&model.User{}).Where("email=?", email).Update("Password", newPassword)
+	return result.Error
+}
+
 // 更新用户名
 func UpdateUserName(id uint, newName string) error {
 	result := DB.Model(&model.User{}).Where("id=?", id).Update("Name", newName)

@@ -10,6 +10,7 @@ func BasicUser(r *gin.Engine) {
 	r.POST("/api/register", service.RegisterUser())
 	r.POST("/api/login", service.LoginUser())
 	r.POST("/api/sendEmailCode", service.VerifyEmail())
+	r.POST("/api/forgetcode", service.ForgetPassword())
 	e := r.Use(service.JWTAuth())
 	e.PUT("/updatePassword", service.UpdateUserPassword())
 	e.PUT("/updateUsername", service.UpdateUserName())

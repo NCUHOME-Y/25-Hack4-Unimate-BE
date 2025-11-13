@@ -12,6 +12,7 @@ type User struct {
 	Password     string        `json:"password"`
 	Status       string        `json:"status"`
 	DoFlag       time.Time     `json:"do_flag"`
+	Timeremind   time.Time     `json:"time_remind"`
 	FlagNumber   int           `json:"flag_number"`
 	Count        int           `json:"count"`
 	DaKaNumber   []Daka_number `grom:"foreignKey" `
