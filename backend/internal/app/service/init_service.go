@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
 	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
@@ -11,17 +13,26 @@ import (
 func Init() {
 	cron := cron.New()
 	users, _ := repository.GetAllUser()
-	for _, user := range users {
+	for _, u := range users {
+		user := u
 		cron.AddFunc("@daily", func() {
 			InitDakaNumberRecord(user.DaKaNumber, user.ID)
 			InitDaliyLearnTimeRecord(user.ID)
 			InitDaliyFlag(user.Flags)
 		})
 		cron.AddFunc("@monthly", func() {
-
+			InitMonthlyDakaRecord(user.ID)
 		})
-		cron.Start()
+		if !user.IsRemind {
+			continue
+		}
+		str := fmt.Sprintf("0 %d %d * * *", user.RemindMin, user.RemindHour)
+		cron.AddFunc(str, func() {
+			utils.SentEmail(user.Email, "知序：提醒您要好好自律哦", "灵魂的欲望是你命运的先知")
+		})
 	}
+	cron.Start()
+	utils.LogInfo("初始化定时任务成功", nil)
 }
 
 // 初始化每天学习时间记录

@@ -360,3 +360,15 @@ func UpdateUserExistStatus(email string) error {
 	result := DB.Model(&model.User{}).Where("email = ?", email).Update("exist", true)
 	return result.Error
 }
+
+// 存储用户提醒时间
+func UpdateUserRemindTime(id uint, hour int, min int) error {
+	result := DB.Model(&model.User{}).Where("id=?", id).Updates(map[string]interface{}{"remind_hour": hour, "remin_min": min})
+	return result.Error
+}
+
+// 是否开启提醒
+func UpdateUserRemindStatus(id uint, IsRemind bool) error {
+	result := DB.Model(&model.User{}).Where("id=?", id).Update("is_remind", IsRemind)
+	return result.Error
+}

@@ -42,6 +42,8 @@ func VerifyEmail() gin.HandlerFunc {
 			return
 		}
 		repository.UpdateUserExistStatus(req.Email)
+		utils.LogInfo("邮箱验证成功", logrus.Fields{"user_email": req.Email})
+		utils.SentEmail(req.Email, "邮箱验证成功", "恭喜您成功验证账户")
 		c.JSON(200, gin.H{"success": true})
 	}
 }

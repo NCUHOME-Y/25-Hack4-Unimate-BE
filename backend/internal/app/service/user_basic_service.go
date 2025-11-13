@@ -315,3 +315,44 @@ func GetDaKaRecords() gin.HandlerFunc {
 		})
 	}
 }
+
+// 用户选择的时间定时提醒
+func GetUserRemindTime() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var Remind struct {
+			RemindHour int `json:"time_remind"`
+			ReminMin   int `json:"min_remind"`
+		}
+		if err := c.ShouldBindJSON(&Remind); err != nil {
+			c.JSON(500, gin.H{"error": "获取用户提醒时间失败,请重新再试..."})
+			utils.LogError("获取用户提醒时间失败", logrus.Fields{})
+			return
+		}
+		id, _ := getCurrentUserID(c)
+		err := repository.UpdateUserRemindTime(id, Remind.RemindHour, Remind.ReminMin)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "更新用户提醒时间失败,请重新再试..."})
+			utils.LogError("更新用户提醒时间失败", logrus.Fields{})
+			return
+		}
+		utils.LogInfo("更新用户提醒时间成功", logrus.Fields{"user_id": id, "remind_hour": Remind.RemindHour, "remin_min": Remind.ReminMin})
+		c.JSON(200, gin.H{"message": "更新用户提醒时间成功!"})
+	}
+}
+
+// 用户选择是否开启提醒
+func UpdateUserRemind() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := getCurrentUserID(c)
+		user, _ := repository.GetUserByID(id)
+		user.IsRemind = !user.IsRemind
+		err := repository.UpdateUserRemindStatus(id, user.IsRemind)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "更新用户提醒状态失败,请重新再试..."})
+			utils.LogError("更新用户提醒状态失败", logrus.Fields{})
+			return
+		}
+		utils.LogInfo("更新用户提醒状态成功", logrus.Fields{"user_id": id, "is_remind": user.IsRemind})
+		c.JSON(200, gin.H{"message": "更新用户提醒状态成功!"})
+	}
+}

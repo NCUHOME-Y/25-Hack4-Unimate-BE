@@ -11,8 +11,10 @@ type User struct {
 	Exist        bool          `json:"exist"`
 	Password     string        `json:"password"`
 	Status       string        `json:"status"`
+	IsRemind     bool          `json:"is_remind" gorm:"default:true"`
 	DoFlag       time.Time     `json:"do_flag"`
-	Timeremind   time.Time     `json:"time_remind"`
+	RemindHour   int           `json:"time_remind" default:"17"`
+	RemindMin    int           `json:"min_remind" default:"8"`
 	FlagNumber   int           `json:"flag_number"`
 	Count        int           `json:"count"`
 	DaKaNumber   []Daka_number `grom:"foreignKey" `
