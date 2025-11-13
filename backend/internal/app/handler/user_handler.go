@@ -61,18 +61,29 @@ func ChatWebSocket(r *gin.Engine) {
 
 func Ranking(r *gin.Engine) {
 	e := r.Use(service.JWTAuth())
-	e.GET("/api/ranking", service.GetUserCount())
+	e.GET("/api/countranking", service.GetUserCount())
+	e.GET("/api/learnTimeRanking", service.GetUserCount())
+	e.GET("/api/dakaRanking", service.GetUserTotalDaka())
 }
 
 func LearnTime(r *gin.Engine) {
 	e := r.Use(service.JWTAuth())
 	e.POST("/api/addLearnTime", service.RecordLearnTime())
-	e.GET("/api/getLearnTime", service.GetLearnTimeRecords())
+	e.GET("/api/getLearnTimemonth", service.GetLearnTimeRecords())
 	e.GET("/api/getdakatotal", service.GetUserDakaTotal())
 	e.GET("/api/getmonthdaka", service.GetUserMonthDaka())
+	e.GET("/api/get7daylearntime", service.GetLearnTimeLast7Days())
+	e.GET("/api/getLearnTime180days", service.GetLearnTimeLast180Days())
+	e.GET("/api/getLearnTimemonly", service.GetLearnTimeRecordsMonth())
 }
 
 func Achievement(r *gin.Engine) {
 	e := r.Use(service.JWTAuth())
 	e.GET("/api/getUserAchievement", service.GetUserAchievement())
+}
+
+func Search(r *gin.Engine) {
+	e := r.Use(service.JWTAuth())
+	e.POST("/api/searchUser", service.SearchUser())
+	e.POST("/api/searchPosts", service.SearchPosts())
 }

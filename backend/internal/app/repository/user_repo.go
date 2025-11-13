@@ -88,6 +88,17 @@ func GetUserByID(userID uint) (model.User, error) {
 	return user, result.Error
 }
 
+// 搜索关键词查询用户，可以是邮箱是用户名
+func SearchUsers(keyword string) ([]model.User, error) {
+	var users []model.User
+	like := "%" + keyword + "%"
+	err := DB.Preload("Achievement").
+		Preload("Flags").
+		Preload("Posts").
+		Where("user_name=like AND user_email=like", like, like).Find(&users).Error // 把 Flags 一起查出来
+	return users, err
+}
+
 // 更新flag的可见性
 func UpdateFlagVisibility(flagID uint, isHidden bool) error {
 	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("is_hiden", isHidden)
@@ -182,6 +193,7 @@ func DeletePostFromDB(postID uint) error {
 	return result.Error
 }
 
+// 添加评论
 func AddPostCommentToDB(postId uint, comment model.PostComment) error {
 	comment.PostID = postId
 	result := DB.Create(&comment)
@@ -192,6 +204,15 @@ func AddPostCommentToDB(postId uint, comment model.PostComment) error {
 func DeletePostCommentFromDB(commentID uint) error {
 	result := DB.Delete(&model.PostComment{}, commentID)
 	return result.Error
+}
+
+// 根据关键词找帖子
+func SearchPosts(keyword string) ([]model.Post, error) {
+	var posts []model.Post
+	like := "%" + keyword + "%"
+	err := DB.Preload("Comments").
+		Where("title LIKE ? OR content LIKE ?", like, like).Find(&posts).Error
+	return posts, err
 }
 
 // 获取最近打卡的十个人
@@ -240,6 +261,20 @@ func GetUserByCount() ([]model.User, error) {
 	return users, result.Error
 }
 
+// 获取所有20个用户，按月学习时间排序
+func GetUserByMonthLearnTime() ([]model.User, error) {
+	var users []model.User
+	result := DB.Order("month_learntime desc").Limit(20).Find(&users)
+	return users, result.Error
+}
+
+// 获取20个用户，按月打卡数量排序
+func GetUserByDaka() ([]model.User, error) {
+	var users []model.User
+	result := DB.Order("month_daka desc").Limit(20).Find(&users)
+	return users, result.Error
+}
+
 // 通过flag id找到对应的flag
 func GetFlagByID(flagID uint) (model.Flag, error) {
 	var flag model.Flag
@@ -257,7 +292,7 @@ func GetAllPosts() ([]model.Post, error) {
 // 获取所有可见的flag
 func GetVisibleFlags() ([]model.Flag, error) {
 	var flags []model.Flag
-	result := DB.Where("is_hiden = ?", false).Find(&flags)
+	result := DB.Preload("FlagComment").Where("is_hiden = ?", false).Find(&flags)
 	return flags, result.Error
 }
 
@@ -282,11 +317,38 @@ func UpdateLearnTimeDuration(user_id uint, duration int) error {
 	return err
 }
 
-// 获取用户最近的学习时长记录
+// 获取今天的学习时长记录
+func GetTodayLearnTime(user_id uint) (model.LearnTime, error) {
+	var learnTime model.LearnTime
+	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Limit(1).First(&learnTime).Error
+	return learnTime, err
+}
+
+// 获取7天的学习时长
+func GetSevenDaysLearnTime(user_id uint) ([]model.LearnTime, error) {
+	var learnTime []model.LearnTime
+	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Limit(7).Find(&learnTime).Error
+	return learnTime, err
+}
+
+// 获取用户最近30天的学习时长记录
 func GetRecentLearnTime(user_id uint) ([]model.LearnTime, error) {
 	var learnTime []model.LearnTime
 	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Limit(30).Find(&learnTime).Error
 	return learnTime, err
+}
+
+// 获取用户最近180天的学习时长记录
+func GetRecent180LearnTime(user_id uint) ([]model.LearnTime, error) {
+	var learnTime []model.LearnTime
+	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Limit(180).Find(&learnTime).Error
+	return learnTime, err
+}
+
+// 存user
+func SaveUserToDB(user model.User) error {
+	result := DB.Save(&user)
+	return result.Error
 }
 
 // 获取所有用户

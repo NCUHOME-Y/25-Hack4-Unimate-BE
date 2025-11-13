@@ -24,6 +24,8 @@ func main() {
 	utils.LogInfo("聊天模块加载成功", nil)
 	handler.Ranking(r) //排行榜相关
 	utils.LogInfo("排行榜模块加载成功", nil)
+	handler.Search(r) //搜索相关
+	utils.LogInfo("搜索模块加载成功", nil)
 	handler.LearnTime(r) //学习时长相关
 	utils.LogInfo("学习时长模块加载成功", nil)
 	handler.Achievement(r) //成就相关

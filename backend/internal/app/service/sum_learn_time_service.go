@@ -38,7 +38,7 @@ func RecordLearnTime() gin.HandlerFunc {
 	}
 }
 
-// 获取一个月的学习时长记录
+// 获取最近一个月的学习时长记录
 func GetLearnTimeRecords() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _ := getCurrentUserID(c)
@@ -49,6 +49,39 @@ func GetLearnTimeRecords() gin.HandlerFunc {
 			return
 		}
 		utils.LogInfo("获取学习时长记录成功", logrus.Fields{"user_id": id})
+		c.JSON(200, gin.H{
+			"learn_times": learnTimes,
+		})
+	}
+}
+
+// 获取最近7天的数据
+func GetLearnTimeLast7Days() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := getCurrentUserID(c)
+		learnTimes, err := repository.GetSevenDaysLearnTime(id)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取最近7天学习时长记录失败,请重新再试..."})
+			utils.LogError("获取最近7天学习时长记录失败", logrus.Fields{"user_id": id})
+			return
+		}
+		utils.LogInfo("获取最近7天学习时长记录成功", logrus.Fields{"user_id": id})
+		c.JSON(200, gin.H{
+			"learn_times": learnTimes,
+		})
+	}
+}
+
+// 获取最近180的数据
+func GetLearnTimeLast180Days() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := getCurrentUserID(c)
+		learnTimes, err := repository.GetRecent180LearnTime(id)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取最近180天学习时长记录失败,请重新再试..."})
+			utils.LogError("获取最近180天学习时长记录失败", logrus.Fields{"user_id": id})
+		}
+		utils.LogInfo("获取最近180天学习时长记录成功", logrus.Fields{"user_id": id})
 		c.JSON(200, gin.H{
 			"learn_times": learnTimes,
 		})
@@ -73,6 +106,17 @@ func GetUserMonthDaka() gin.HandlerFunc {
 		dakaNumber, _ := repository.GetRecentDakaNumber(id)
 		c.JSON(200, gin.H{
 			"month_daka": dakaNumber.MonthDaka,
+		})
+	}
+}
+
+// 月学习时长
+func GetLearnTimeRecordsMonth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := getCurrentUserID(c)
+		user, _ := repository.GetUserByID(id)
+		c.JSON(200, gin.H{
+			"month_learntime": user.MonthLearntime,
 		})
 	}
 }

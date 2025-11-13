@@ -43,6 +43,11 @@ func Init() {
 		// 每月任务
 		_, err = cronScheduler.AddFunc("@monthly", func() {
 			InitMonthlyDakaRecord(user.ID)
+			user.MonthLearntime = 0
+			err := repository.SaveUserToDB(user)
+			if err != nil {
+				utils.LogError("重置用户每月学习时长失败", logrus.Fields{"user_id": user.ID, "error": err.Error()})
+			}
 			utils.LogInfo("执行每月初始化任务", logrus.Fields{"user_id": user.ID})
 		})
 		if err != nil {
@@ -195,6 +200,9 @@ func UpdateUserReminderJob(userID uint, hour, min int, isRemind bool) {
 
 // 初始化每天学习时间记录
 func InitDaliyLearnTimeRecord(id uint) {
+	user, _ := repository.GetUserByID(id)
+	Time, _ := repository.GetTodayLearnTime(id)
+	user.MonthLearntime = user.MonthLearntime + Time.Duration
 	err := repository.AddNewLearnTimeToDB(id)
 	if err != nil {
 		utils.LogError("添加新的学习时间记录失败", logrus.Fields{"user_id": id})
@@ -203,7 +211,7 @@ func InitDaliyLearnTimeRecord(id uint) {
 	utils.LogInfo("添加新的学习时间记录成功", logrus.Fields{"user_id": id})
 }
 
-// 初始化每天学习时间记录
+// 初始化每天flag
 func InitDaliyFlag(flags []model.Flag) {
 	for _, flag := range flags {
 		err := repository.UpdateFlagHadDone(flag.ID, false)
@@ -228,6 +236,11 @@ func InitDakaNumberRecord(daka []model.Daka_number, id uint) {
 	if daka1.HadDone {
 		daka1.MonthDaka = daka1.MonthDaka + 1
 		user.Daka = user.Daka + 1
+	}
+	err := repository.SaveUserToDB(user)
+	if err != nil {
+		utils.LogError("保存用户数据失败", logrus.Fields{"user_id": id})
+		return
 	}
 }
 

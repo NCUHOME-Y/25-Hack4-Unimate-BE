@@ -5,24 +5,25 @@ import (
 )
 
 type User struct {
-	ID           uint          `gorm:"primaryKey" json:"user_id"`
-	Name         string        `json:"name"`
-	Email        string        `json:"email"`
-	Exist        bool          `json:"exist"`
-	Password     string        `json:"password"`
-	Status       string        `json:"status"`
-	IsRemind     bool          `json:"is_remind" gorm:"default:true"`
-	DoFlag       time.Time     `json:"do_flag"`
-	RemindHour   int           `json:"time_remind" default:"17"`
-	RemindMin    int           `json:"min_remind" default:"8"`
-	Daka         int           `json:"daka"`
-	FlagNumber   int           `json:"flag_number"`
-	Count        int           `json:"count"`
-	DaKaNumber   []Daka_number `grom:"foreignKey" `
-	LearnTimes   []LearnTime   `gorm:"foreignKey:UserID"`  //外键绑定learn_time表
-	Flags        []Flag        `gorm:"foreignKey:UserID"`  //外键绑定flag表
-	Posts        []Post        `gorm:"foreignKey:UserID"`  //外键绑定post表
-	Achievements []Achievement `gorm:"foreignKey:UserID;"` //多对多绑定achievement表
+	ID             uint          `gorm:"primaryKey" json:"user_id"`
+	Name           string        `json:"name"`
+	Email          string        `json:"email"`
+	Exist          bool          `json:"exist"`
+	Password       string        `json:"password"`
+	Status         string        `json:"status"`
+	IsRemind       bool          `json:"is_remind" gorm:"default:true"`
+	DoFlag         time.Time     `json:"do_flag"`
+	RemindHour     int           `json:"time_remind" default:"17"`
+	RemindMin      int           `json:"min_remind" default:"8"`
+	Daka           int           `json:"daka"`
+	MonthLearntime int           `json:"month_learn_time"`
+	FlagNumber     int           `json:"flag_number"`
+	Count          int           `json:"count"`
+	DaKaNumber     []Daka_number `grom:"foreignKey" `
+	LearnTimes     []LearnTime   `gorm:"foreignKey:UserID"`  //外键绑定learn_time表
+	Flags          []Flag        `gorm:"foreignKey:UserID"`  //外键绑定flag表
+	Posts          []Post        `gorm:"foreignKey:UserID"`  //外键绑定post表
+	Achievements   []Achievement `gorm:"foreignKey:UserID;"` //多对多绑定achievement表
 }
 
 // Flag
