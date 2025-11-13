@@ -33,7 +33,7 @@ func DBconnect() {
 		return
 	}
 	DB = db
-	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.Comment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{}, &model.EmailCode{})
+	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{}, &model.EmailCode{}, &model.FlagComment{})
 }
 
 // user添加到数据库
@@ -106,6 +106,21 @@ func UpdatePlanContent(flagID uint, newPlanContent string) error {
 	return result.Error
 }
 
+// 更新flag的评论
+func UpdateFlagComment(flagID uint, newComment string) error {
+	var flagComment model.FlagComment
+	flagComment.FlagID = flagID
+	flagComment.Content = newComment
+	result := DB.Model(&model.FlagComment{}).Where("flag_id = ?", flagID).Create(&flagComment)
+	return result.Error
+}
+
+// 删除flag的评论
+func DeleteFlagComment(flagcommentID uint) error {
+	result := DB.Model(&model.FlagComment{}).Where("id = ?", flagcommentID).Delete(&model.FlagComment{})
+	return result.Error
+}
+
 // 更新用户密码
 func UpdatePassword(id uint, newPassword string) error {
 	result := DB.Model(&model.User{}).Where("id=?", id).Update("Password", newPassword)
@@ -167,15 +182,15 @@ func DeletePostFromDB(postID uint) error {
 	return result.Error
 }
 
-func AddPostCommentToDB(postId uint, comment model.Comment) error {
-	comment.CommentID = postId
+func AddPostCommentToDB(postId uint, comment model.PostComment) error {
+	comment.PostID = postId
 	result := DB.Create(&comment)
 	return result.Error
 }
 
 // 删除评论
 func DeletePostCommentFromDB(commentID uint) error {
-	result := DB.Delete(&model.Comment{}, commentID)
+	result := DB.Delete(&model.PostComment{}, commentID)
 	return result.Error
 }
 
@@ -371,4 +386,30 @@ func UpdateUserRemindTime(id uint, hour int, min int) error {
 func UpdateUserRemindStatus(id uint, IsRemind bool) error {
 	result := DB.Model(&model.User{}).Where("id=?", id).Update("is_remind", IsRemind)
 	return result.Error
+}
+
+// flag点赞
+func UpdateFlagLikes(flagID uint, like int) error {
+	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("likes", like)
+	return result.Error
+}
+
+// post点赞
+func UpdatePostLikes(postID uint, like int) error {
+	result := DB.Model(&model.Post{}).Where("id = ?", postID).Update("likes", like)
+	return result.Error
+}
+
+// 获取帖子点赞数
+func GetFlagLikes(flagID uint) (int, error) {
+	var flag model.Flag
+	result := DB.Where("id = ?", flagID).First(&flag)
+	return flag.Like, result.Error
+}
+
+// 获取帖子点赞
+func GetPostLikes(flagID uint) (int, error) {
+	var post model.Post
+	result := DB.Where("id = ?", flagID).First(&post)
+	return post.Like, result.Error
 }

@@ -49,15 +49,15 @@ func DeleteUserPost() gin.HandlerFunc {
 	}
 }
 
-// 发表评论
+// 发表帖子评论
 func CommentOnPost() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var comment model.Comment
+		var comment model.PostComment
 		if err := c.ShouldBindJSON(&comment); err != nil {
 			c.JSON(400, gin.H{"error": "Invalid input"})
 			return
 		}
-		err := repository.AddPostCommentToDB(comment.CommentID, comment)
+		err := repository.AddPostCommentToDB(comment.PostID, comment)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to add comment"})
 			utils.LogError("数据库添加评论失败", nil)
@@ -68,7 +68,7 @@ func CommentOnPost() gin.HandlerFunc {
 	}
 }
 
-// 删除评论
+// 删除帖子评论
 func DeleteUserPostComment() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
@@ -115,5 +115,122 @@ func GetVisibleFlags() gin.HandlerFunc {
 		}
 		utils.LogInfo("获取所有可见flag成功", nil)
 		c.JSON(200, gin.H{"flags": flags})
+	}
+}
+
+// 点赞flag
+func LikeFlag() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			FlagID uint `json:"flag_id"`
+			Like   int  `json:"like"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "Invalid input"})
+			return
+		}
+		err := repository.UpdateFlagLikes(req.FlagID, req.Like)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "点赞flag失败,请重新再试..."})
+			utils.LogError("数据库点赞flag失败", nil)
+			return
+		}
+	}
+}
+
+// 发表flag评论
+func CommentOnFlag() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var comment model.FlagComment
+		if err := c.ShouldBindJSON(&comment); err != nil {
+			c.JSON(400, gin.H{"error": "Invalid input"})
+			return
+		}
+		err := repository.UpdateFlagComment(comment.FlagID, comment.Content)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to add comment"})
+			utils.LogError("数据库添加flag评论失败", nil)
+			return
+		}
+	}
+}
+
+// 删除flag评论
+func DeleteFlagComment() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			FlagCommentID uint `json:"flagcomment_id"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "Invalid input"})
+			return
+		}
+		err := repository.DeleteFlagComment(req.FlagCommentID)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to delete comment"})
+			utils.LogError("数据库删除flag评论失败", nil)
+			return
+		}
+	}
+}
+
+// 帖子点赞更改
+func LikePost() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			PostID uint `json:"post_id"`
+			Like   int  `json:"like"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "Invalid input"})
+			return
+		}
+		err := repository.UpdatePostLikes(req.PostID, req.Like)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "点赞帖子失败,请重新再试..."})
+			utils.LogError("数据库点赞帖子失败", nil)
+			return
+		}
+	}
+}
+
+// 获取flag点赞
+func GetFlagLikes() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			FlagID uint `json:"flag_id"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "Invalid input"})
+			return
+		}
+		like, err := repository.GetFlagLikes(req.FlagID)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取flag点赞失败,请重新再试..."})
+			utils.LogError("数据库获取flag点赞失败", nil)
+			return
+		}
+		c.JSON(200, gin.H{"like": like})
+	}
+}
+
+// 获取post点赞
+func GetPostLikes() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			PostID uint `json:"post_id"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "Invalid input"})
+			return
+		}
+		like, err := repository.GetPostLikes(req.PostID)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取post点赞失败,请重新再试..."})
+			utils.LogError("数据库获取post点赞失败", nil)
+			return
+		}
+		c.JSON(200, gin.H{"like": like})
 	}
 }

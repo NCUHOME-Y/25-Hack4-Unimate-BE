@@ -35,8 +35,17 @@ func Flag(r *gin.Engine) {
 	r.GET("/api/getRecentDoFlagUsers", service.GetRecentDoFlagUsers())
 }
 
+func BasicFlag(r *gin.Engine) {
+	e := r.Use(service.JWTAuth())
+	e.POST("/api/likeFlag", service.LikeFlag())
+	e.POST("/api/flagcomment", service.CommentOnFlag())
+	e.DELETE("/api/flagdeletecomment", service.DeleteFlagComment())
+	e.GET("/api/getflaglike", service.GetFlagLikes())
+}
 func BasicPost(r *gin.Engine) {
 	e := r.Use(service.JWTAuth())
+	e.POST("/api/likepost", service.LikePost())
+	e.GET("/api/getpostlike", service.GetPostLikes())
 	e.POST("/api/postUserPost", service.PostUserPost())
 	e.DELETE("/api/deleteUserPost", service.DeleteUserPost())
 	e.POST("/api/commentOnPost", service.CommentOnPost())

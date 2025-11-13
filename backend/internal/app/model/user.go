@@ -26,38 +26,48 @@ type User struct {
 
 // Flag
 type Flag struct {
-	ID             uint      `gorm:"primaryKey" json:"id"`
-	Flag           string    `json:"flag"`
-	PlanContent    string    `json:"plan_content"`
-	Label          string    `json:"label"`
-	Priority       int       `json:"priority"`
-	UserID         uint      `json:"user_id"`
-	IsHiden        bool      `json:"is_hiden"`
-	HadDone        bool      `json:"had_done"`             //是否完成
-	DoneNumber     int       `json:"done_number"`          //已完成程度
-	PlanDoneNumber int       `json:"plan_done_number"`     //目标程度
-	AgreeNumber    int       `json:"agree_number"`         //点赞数量
-	Comments       []Comment `gorm:"foreignKey:CommentID"` //外键绑定comment表
-	CreatedAt      time.Time `json:"created_at"`           //创建时间
-	StartTime      time.Time `json:"start_time"`           //开始时间
-	DeadTime       time.Time `json:"time"`                 //结束时间
+	ID             uint          `gorm:"primaryKey" json:"id"`
+	Flag           string        `json:"flag"`
+	PlanContent    string        `json:"plan_content"`
+	Label          string        `json:"label"`
+	Priority       int           `json:"priority"`
+	UserID         uint          `json:"user_id"`
+	IsHiden        bool          `json:"is_hiden"`
+	HadDone        bool          `json:"had_done"`             //是否完成
+	DoneNumber     int           `json:"done_number"`          //已完成程度
+	PlanDoneNumber int           `json:"plan_done_number"`     //目标程度
+	Like           int           `json:"like"`                 //点赞数量
+	Comments       []FlagComment `gorm:"foreignKey:CommentID"` //外键绑定comment表
+	CreatedAt      time.Time     `json:"created_at"`           //创建时间
+	StartTime      time.Time     `json:"start_time"`           //开始时间
+	DeadTime       time.Time     `json:"time"`                 //结束时间
 }
 
 // 帖子
 type Post struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	UserID    uint      `gorm:"fori" json:"user_id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Comments  []Comment `gorm:"foreignKey:CommentID"` //外键绑定post_comment表
+	ID        uint          `gorm:"primaryKey" json:"id"`
+	Title     string        `json:"title"`
+	Content   string        `json:"content"`
+	Like      int           `json:"like"`
+	UserID    uint          `gorm:"fori" json:"user_id"`
+	CreatedAt time.Time     `json:"created_at"`
+	UpdatedAt time.Time     `json:"updated_at"`
+	Comments  []PostComment `gorm:"foreignKey:PostID"` //外键绑定post_comment表
 }
 
 // 帖子评论
-type Comment struct {
+type PostComment struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	CommentID uint      `json:"comment_id"`
+	PostID    uint      `json:"post_id"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// flag评论
+type FlagComment struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	FlagID    uint      `json:"flag_id"`
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

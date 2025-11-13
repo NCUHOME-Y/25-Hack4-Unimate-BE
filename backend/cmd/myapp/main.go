@@ -18,6 +18,8 @@ func main() {
 	utils.LogInfo("签到模块加载成功", nil)
 	handler.BasicPost(r) //帖子相关
 	utils.LogInfo("帖子模块加载成功", nil)
+	handler.BasicFlag(r)
+	utils.LogInfo("Flag模块加载成功", nil)
 	handler.ChatWebSocket(r) //聊天相关
 	utils.LogInfo("聊天模块加载成功", nil)
 	handler.Ranking(r) //排行榜相关
