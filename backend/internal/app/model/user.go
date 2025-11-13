@@ -8,7 +8,7 @@ type User struct {
 	ID           uint          `gorm:"primaryKey" json:"user_id"`
 	Name         string        `json:"name"`
 	Email        string        `json:"email"`
-	Phone        string        `json:"phone"`
+	Exist        bool          `json:"exist"`
 	Password     string        `json:"password"`
 	Status       string        `json:"status"`
 	DoFlag       time.Time     `json:"do_flag"`
@@ -82,4 +82,14 @@ type Daka_number struct {
 	HadDone   bool      `json:"had_done"`
 	MonthDaka int       `json:"month_daka"`
 	DaKaDate  time.Time `json:"daka_date"`
+}
+
+// 邮箱验证码
+type EmailCode struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Email     string    `json:"email"`
+	HadUse    bool      `json:"had_use"`
+	Code      string    `json:"code"`
+	CreatedAt time.Time `json:"created_at"`
+	Expires   time.Time `json:"expires"`
 }

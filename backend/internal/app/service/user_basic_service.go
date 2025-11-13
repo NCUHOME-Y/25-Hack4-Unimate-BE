@@ -91,40 +91,41 @@ func getCurrentUserID(c *gin.Context) (uint, bool) {
 // 用户注册
 func RegisterUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var user_new struct {
-			Name     string `json:"name"`
-			Email    string `json:"email"`
-			Phone    string `json:"phone"`
-			Password string `json:"password"`
-		}
-		if err := c.ShouldBindJSON(&user_new); err != nil {
+		var user model.User
+		if err := c.ShouldBindJSON(&user); err != nil {
 			c.JSON(400, gin.H{"error": "注册失败,请重新再试..."})
 			log.Print("Binding error")
 			return
 		}
-		user_exist, _ := repository.GetUserByEmail(user_new.Email)
+		user_exist, _ := repository.GetUserByEmail(user.Email)
 		if user_exist.ID != 0 {
 			c.JSON(401, gin.H{"error": "用户名已存在,请更换用户名..."})
 			log.Print("User already exists")
 			return
 		}
-		new_password, err := utils.HashPassword(user_new.Password)
+		password, err := utils.HashPassword(user.Password)
+		user.Password = password
 		if err != nil {
 			c.JSON(402, gin.H{"error": "注册失败,请重新再试..."})
 		}
-		user := model.User{
-			Phone:    user_new.Phone,
-			Name:     user_new.Name,
-			Email:    user_new.Email,
-			Password: new_password,
+		//验证码机制
+		code := utils.GenerateCode()
+		err = utils.SentEmail(user.Email, "知序验证码", "您的验证码是："+code+"\n该验证码5分钟内有效,请尽快使用。")
+		if err != nil {
+			c.JSON(403, gin.H{"error": "验证码发送失败,请重新再试..."})
+			utils.LogError("验证码发送失败", logrus.Fields{"user_email": user.Email})
+			return
 		}
+		repository.SaveEmailCodeToDB(code, user.Email)
+		user.Exist = false
+		// 初始化用户成就表
 		user = InitAchievementTable(user)
 		if err := repository.AddUserToDB(user); err != nil {
-			c.JSON(403, gin.H{"error": "注册失败,请重新再试..."})
+			c.JSON(405, gin.H{"error": "注册失败,请重新再试..."})
 			utils.LogError("数据库添加用户失败", logrus.Fields{})
 			return
 		}
-		utils.LogInfo("用户注册成功", logrus.Fields{"user_email": user_new.Email})
+		utils.LogInfo("用户注册成功", logrus.Fields{"user_email": user.Email})
 		c.JSON(http.StatusOK, gin.H{"message": "注册成功!"})
 	}
 }
@@ -141,6 +142,14 @@ func LoginUser() gin.HandlerFunc {
 			return
 		}
 		user, _ := repository.GetUserByEmail(user_login.Email)
+		if !user.Exist {
+			err := repository.DeleteUserByEmail(user_login.Email)
+			if err != nil {
+				utils.LogError("删除未验证用户失败", logrus.Fields{"user_email": user_login.Email})
+			}
+			c.JSON(403, gin.H{"error": "邮箱未验证,请前往验证..."})
+			return
+		}
 		if !utils.CheckPasswordHash(user_login.Password, user.Password) || user.ID == 0 {
 			c.JSON(401, gin.H{"error": "用户名或密码错误,请重新再试..."})
 			return

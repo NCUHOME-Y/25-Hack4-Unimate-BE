@@ -33,7 +33,7 @@ func DBconnect() {
 		return
 	}
 	DB = db
-	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.Comment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{})
+	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.Comment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{}, &model.EmailCode{})
 }
 
 // user添加到数据库
@@ -46,6 +46,12 @@ func AddUserToDB(user model.User) error {
 func AddFlagToDB(Id uint, flag model.Flag) error {
 	flag.UserID = Id
 	result := DB.Create(&flag)
+	return result.Error
+}
+
+// 通过邮箱删除用户
+func DeleteUserByEmail(email string) error {
+	result := DB.Where("email = ?", email).Delete(&model.User{})
 	return result.Error
 }
 
@@ -323,4 +329,28 @@ func AddNewDakaNumberToDB(user_id uint) error {
 		MonthDaka: 0,
 	}).Error
 	return err
+}
+
+// 存验证码
+func SaveEmailCodeToDB(code string, email string) error {
+	var emailCode model.EmailCode
+	emailCode.Code = code
+	emailCode.Email = email
+	emailCode.CreatedAt = time.Now()
+	emailCode.Expires = time.Now().Add(time.Minute * 5) // 设置过期时间为5分钟后
+	result := DB.Create(&emailCode)
+	return result.Error
+}
+
+// 根据邮箱找到第一个验证码
+func GetEmailCodeByEmail(email string) (model.EmailCode, error) {
+	var emailCode model.EmailCode
+	result := DB.Where("email = ?", email).Order("created_at desc").First(&emailCode)
+	return emailCode, result.Error
+}
+
+// 修改用户的验证状态
+func UpdateUserExistStatus(email string) error {
+	result := DB.Model(&model.User{}).Where("email = ?", email).Update("exist", true)
+	return result.Error
 }

@@ -1,15 +1,19 @@
 package utils
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
+	"github.com/go-mail/mail/v2"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -111,4 +115,29 @@ func LogError(message string, fields logrus.Fields) {
 }
 func LogDebug(message string, fields logrus.Fields) {
 	logger.WithFields(fields).Debug(message)
+}
+
+// 发送邮箱
+func SentEmail(to, subject, body string) error {
+	m := mail.NewMessage()
+	m.SetHeader("From", os.Getenv("SMTP_FROM"))
+	m.SetHeader("To", to)
+	m.SetHeader("Subject", subject)
+	m.SetBody("text/plain", body)
+
+	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
+	d := mail.NewDialer(os.Getenv("SMTP_HOST"), port, os.Getenv("SMTP_USER"), os.Getenv("SMTP_PASS"))
+	if err := d.DialAndSend(m); err != nil {
+		fmt.Printf("❌ 发送失败详情: %+v\n", err)
+		return err
+	}
+	fmt.Println("✅ 发送完成")
+	return nil
+}
+
+// 生成验证码
+func GenerateCode() string {
+	var num uint32
+	binary.Read(rand.Reader, binary.BigEndian, &num)
+	return fmt.Sprintf("%06d", num%1_000_000)
 }
