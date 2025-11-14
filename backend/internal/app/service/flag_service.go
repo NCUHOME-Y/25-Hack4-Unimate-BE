@@ -39,14 +39,15 @@ func GetUserFlags() gin.HandlerFunc {
 func PostUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var flag struct {
-			Flag           string    `json:"flag"`
-			PlanContent    string    `json:"plan_content"`
-			IsHiden        bool      `json:"is_hiden"`
-			Label          string    `json:"label"`
-			Priority       int       `json:"priority"`
-			PlanDoneNumber int       `json:"plan_done_number"`
-			DeadTime       time.Time `json:"deadtime"`
-			StartTime      time.Time `json:"starttime"`
+			Title     string    `json:"title"`
+			Detail    string    `json:"detail"`
+			IsPublic  bool      `json:"is_public"`
+			Label     string    `json:"label"`
+			Priority  int       `json:"priority"`
+			Total     int       `json:"total"`
+			Points    int       `json:"points"`
+			EndTime   time.Time `json:"end_time"`
+			StartTime time.Time `json:"start_time"`
 		}
 		if err := c.ShouldBindJSON(&flag); err != nil {
 			c.JSON(500, gin.H{"err": "添加flag失败,请重新再试..."})
@@ -54,15 +55,16 @@ func PostUserFlags() gin.HandlerFunc {
 			return
 		}
 		flag_model := model.Flag{
-			Flag:           flag.Flag,
-			PlanContent:    flag.PlanContent,
-			IsHiden:        flag.IsHiden,
-			Label:          flag.Label,
-			Priority:       flag.Priority,
-			PlanDoneNumber: flag.PlanDoneNumber,
-			CreatedAt:      time.Now(),
-			StartTime:      flag.StartTime,
-			DeadTime:       flag.DeadTime,
+			Title:     flag.Title,
+			Detail:    flag.Detail,
+			IsPublic:  flag.IsPublic,
+			Label:     flag.Label,
+			Priority:  flag.Priority,
+			Total:     flag.Total,
+			Points:    flag.Points,
+			CreatedAt: time.Now(),
+			StartTime: flag.StartTime,
+			EndTime:   flag.EndTime,
 		}
 		id, ok := getCurrentUserID(c)
 		if !ok {
@@ -75,7 +77,7 @@ func PostUserFlags() gin.HandlerFunc {
 			utils.LogError("数据库添加flag失败", logrus.Fields{})
 			return
 		}
-		utils.LogInfo("添加用户flag成功", logrus.Fields{"user_id": id, "flag": flag.Flag})
+		utils.LogInfo("添加用户flag成功", logrus.Fields{"user_id": id, "flag": flag.Title})
 		c.JSON(http.StatusOK, gin.H{"success": true,
 			"flag": flag_model})
 	}
@@ -85,7 +87,7 @@ func PostUserFlags() gin.HandlerFunc {
 func DoneUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID uint `json:"flag_id"`
+			ID uint `json:"id"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "更新flag失败,请重新再试..."})
@@ -103,8 +105,8 @@ func DoneUserFlags() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
 			return
 		}
-		flag.DoneNumber += 1
-		err = repository.UpdateFlagDoneNumber(req.ID, flag.DoneNumber)
+		flag.Count += 1
+		err = repository.UpdateFlagDoneNumber(req.ID, flag.Count)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
 			utils.LogError("数据库更新flag失败", logrus.Fields{})
@@ -112,7 +114,7 @@ func DoneUserFlags() gin.HandlerFunc {
 		}
 		utils.LogInfo("用户打卡成功", logrus.Fields{"user_id": id, "flag_id": req.ID})
 		c.JSON(200, gin.H{"success": true,
-			"count": flag.DoneNumber})
+			"count": flag.Count})
 	}
 }
 
@@ -120,7 +122,7 @@ func DoneUserFlags() gin.HandlerFunc {
 func DeleteUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID uint `json:"flag_id"`
+			ID uint `json:"id"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "删除flag失败,请重新再试..."})
@@ -142,7 +144,7 @@ func DeleteUserFlags() gin.HandlerFunc {
 func FinshDoneFlag() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID uint `json:"flag_id"`
+			ID uint `json:"id"`
 		}
 		level := c.Query("level")
 		id, _ := getCurrentUserID(c)
@@ -231,7 +233,7 @@ func GetNotDoneFlags() gin.HandlerFunc {
 func UpdateFlagHide() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID uint `json:"flag_id"`
+			ID uint `json:"id"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "更新flag失败,请重新再试..."})
@@ -243,8 +245,8 @@ func UpdateFlagHide() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
 			return
 		}
-		flag.IsHiden = !flag.IsHiden
-		err = repository.UpdateFlagVisibility(req.ID, flag.IsHiden)
+		flag.IsPublic = !flag.IsPublic
+		err = repository.UpdateFlagVisibility(req.ID, flag.IsHidden)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
 			utils.LogError("数据库更新flag公开状态失败", logrus.Fields{})

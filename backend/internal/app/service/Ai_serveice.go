@@ -76,10 +76,10 @@ func GenerateLearningPlan(c *gin.Context) {
 		return
 	}
 	repository.AddFlagToDB(id, model.Flag{
-		Flag:        req.Flag,
-		PlanContent: plan,
-		CreatedAt:   time.Now(),
-		IsHiden:     false,
+		Title:     req.Flag,
+		Detail:    plan,
+		CreatedAt: time.Now(),
+		IsPublic:  true, // AI生成的Flag默认公开
 	})
 	//埋点
 	repository.AddTrackPointToDB(id, "生成学习计划")

@@ -1,12 +1,10 @@
 package service
 
 import (
-	"time"
-
 	"log"
 	"net/http"
+	"time"
 
-	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
 	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
 	"github.com/gin-gonic/gin"
@@ -50,40 +48,96 @@ func VerifyEmail() gin.HandlerFunc {
 
 func ForgetPassword() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var user model.User
-		if err := c.ShouldBindJSON(&user); err != nil {
-			c.JSON(400, gin.H{"error": "注册失败,请重新再试..."})
+		var requestData struct {
+			Email       string `json:"email"`
+			Code        string `json:"code"`
+			NewPassword string `json:"new_password"`
+		}
+		if err := c.ShouldBindJSON(&requestData); err != nil {
+			c.JSON(400, gin.H{"error": "请求参数错误,请重新再试..."})
 			log.Print("Binding error")
 			return
 		}
-		user_exist, _ := repository.GetUserByEmail(user.Email)
-		if user_exist.ID != 0 {
-			c.JSON(401, gin.H{"error": "用户名已存在,请更换用户名..."})
-			log.Print("User already exists")
+
+		// 验证密码长度
+		if len(requestData.NewPassword) < 8 {
+			c.JSON(400, gin.H{"error": "密码长度至少8位"})
 			return
 		}
-		password, err := utils.HashPassword(user.Password)
-		user.Password = password
-		if err != nil {
-			c.JSON(402, gin.H{"error": "注册失败,请重新再试..."})
+
+		// 验证用户是否存在
+		user_exist, _ := repository.GetUserByEmail(requestData.Email)
+		if user_exist.ID == 0 {
+			c.JSON(404, gin.H{"error": "用户不存在"})
+			log.Print("User not found")
+			return
 		}
-		//验证码机制
+
+		// 验证验证码
+		email, err := repository.GetEmailCodeByEmail(requestData.Email)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "验证码错误或已过期"})
+			utils.LogError("获取验证码失败", logrus.Fields{"user_email": requestData.Email})
+			return
+		}
+		if email.Code != requestData.Code {
+			c.JSON(400, gin.H{"error": "验证码错误"})
+			utils.LogError("验证码错误", logrus.Fields{"user_email": requestData.Email})
+			return
+		}
+		if email.Expires.Before(time.Now()) {
+			c.JSON(400, gin.H{"error": "验证码已过期"})
+			utils.LogError("验证码已过期", logrus.Fields{"user_email": requestData.Email})
+			return
+		}
+
+		// 加密新密码
+		hashedPassword, err := utils.HashPassword(requestData.NewPassword)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "密码加密失败,请重新再试..."})
+			utils.LogError("密码加密失败", logrus.Fields{})
+			return
+		}
+
+		// 更新密码
+		err = repository.UpdatePasswordByEmail(requestData.Email, hashedPassword)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "密码更新失败,请重新再试..."})
+			utils.LogError("数据库更新密码失败", logrus.Fields{})
+			return
+		}
+
+		utils.LogInfo("用户密码重置成功", logrus.Fields{"user_email": requestData.Email})
+		c.JSON(http.StatusOK, gin.H{"message": "密码重置成功!"})
+	}
+}
+
+// 发送邮箱验证码
+func SendEmailCode() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			Email string `json:"email"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "无效的请求参数"})
+			utils.LogError("绑定发送验证码请求参数错误", nil)
+			return
+		}
+
+		// 生成验证码
 		code := utils.GenerateCode()
-		err = utils.SentEmail(user.Email, "知序验证码", "您的验证码是："+code+"\n该验证码5分钟内有效,请尽快使用。")
+
+		// 发送邮件
+		err := utils.SentEmail(req.Email, "知序验证码", "您的验证码是："+code+"\n该验证码5分钟内有效,请尽快使用。")
 		if err != nil {
-			c.JSON(403, gin.H{"error": "验证码发送失败,请重新再试..."})
-			utils.LogError("验证码发送失败", logrus.Fields{"user_email": user.Email})
+			c.JSON(500, gin.H{"error": "验证码发送失败,请重新再试..."})
+			utils.LogError("验证码发送失败", logrus.Fields{"user_email": req.Email, "error": err.Error()})
 			return
 		}
-		repository.SaveEmailCodeToDB(code, user.Email)
-		user.Exist = false
-		err = repository.UpdatePasswordByEmail(user.Email, user.Password)
-		if err != nil {
-			c.JSON(405, gin.H{"error": "请重新再试..."})
-			utils.LogError("数据库添加用户失败", logrus.Fields{})
-			return
-		}
-		utils.LogInfo("用户注册成功", logrus.Fields{"user_email": user.Email})
-		c.JSON(http.StatusOK, gin.H{"message": "修改密码成功!"})
+
+		// 保存验证码到数据库
+		repository.SaveEmailCodeToDB(code, req.Email)
+		utils.LogInfo("验证码发送成功", logrus.Fields{"user_email": req.Email})
+		c.JSON(http.StatusOK, gin.H{"message": "验证码已发送!"})
 	}
 }

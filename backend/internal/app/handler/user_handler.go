@@ -9,7 +9,8 @@ import (
 func BasicUser(r *gin.Engine) {
 	r.POST("/api/register", service.RegisterUser())
 	r.POST("/api/login", service.LoginUser())
-	r.POST("/api/sendEmailCode", service.VerifyEmail())
+	r.POST("/api/sendEmailCode", service.SendEmailCode()) // 修复：发送验证码
+	r.POST("/api/verifyEmail", service.VerifyEmail())     // 新增：验证邮箱验证码
 	r.POST("/api/forgetcode", service.ForgetPassword())
 	e := r.Use(service.JWTAuth())
 	e.PUT("/updatePassword", service.UpdateUserPassword())
@@ -90,3 +91,41 @@ func Search(r *gin.Engine) {
 	e.POST("/api/searchUser", service.SearchUser())
 	e.POST("/api/searchPosts", service.SearchPosts())
 }
+
+// AI 学习计划路由
+func AI(r *gin.Engine) {
+	e := r.Use(service.JWTAuth())
+	e.POST("/api/ai/generate-plan", service.GenerateLearningPlan)
+}
+
+// P1修复：聊天历史和聊天室管理路由
+// TODO: 实现这些函数
+// func ChatHistory(r *gin.Engine) {
+// 	e := r.Use(service.JWTAuth())
+// 	// 公共聊天室
+// 	e.GET("/api/chat/rooms", service.GetChatRooms())
+// 	e.GET("/api/chat/history/:roomId", service.GetChatHistory())
+// 	e.DELETE("/api/chat/messages/:messageId", service.DeleteChatMessage())
+// 	// 私聊
+// 	e.GET("/api/private-chat/conversations", service.GetPrivateChatConversations())
+// 	e.GET("/api/private-chat/history", service.GetPrivateChatHistory())
+// 	e.DELETE("/api/private-chat/messages/:messageId", service.DeletePrivateChatMessage())
+// }
+
+// P1修复：RESTful风格的帖子路由（兼容前端）
+// TODO: 实现这些函数
+// func PostRESTful(r *gin.Engine) {
+// 	e := r.Use(service.JWTAuth())
+// 	e.GET("/posts", service.GetPostsRESTful())
+// 	e.GET("/posts/search", service.SearchPostsRESTful())
+// 	e.GET("/posts/:postId", service.GetPostByIdRESTful())
+// 	e.POST("/posts", service.PostUserPost()) // 复用现有的创建帖子
+// 	e.DELETE("/posts/:postId", service.DeletePostRESTful())
+// 	e.DELETE("/posts/task/:taskId", service.DeletePostByTaskIdRESTful())
+// 	e.POST("/posts/:postId/like", service.LikePostRESTful())
+// 	e.DELETE("/posts/:postId/like", service.UnlikePostRESTful())
+// 	e.GET("/posts/:postId/comments", service.GetPostCommentsRESTful())
+// 	e.POST("/posts/:postId/comments", service.AddPostCommentRESTful())
+// 	e.DELETE("/posts/:postId/comments/:commentId", service.DeletePostCommentRESTful())
+// 	e.GET("/users/:userId", service.GetUserInfoRESTful())
+// }

@@ -1,17 +1,41 @@
 package main
 
 import (
+	"log"
+
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/handler"
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/service"
 	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// 首先加载环境变量
+	if err := godotenv.Load(".env"); err != nil {
+		log.Printf("警告: 加载 .env 文件失败: %v", err)
+	}
+
 	repository.DBconnect() //数据库连接
 	service.Init()         //初始化每天学习时间记录
 	r := gin.Default()
+
+	// 添加全局 CORS 中间件
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
+
 	handler.BasicUser(r) //用户相关
 	utils.LogInfo("服务器启动成功", nil)
 	handler.Flag(r) //签到相关
@@ -30,6 +54,13 @@ func main() {
 	utils.LogInfo("学习时长模块加载成功", nil)
 	handler.Achievement(r) //成就相关
 	utils.LogInfo("成就模块加载成功", nil)
+	handler.AI(r) //AI学习计划
+	utils.LogInfo("AI模块加载成功", nil)
+	// TODO: 实现这些函数后再启用
+	// handler.ChatHistory(r) //聊天历史 // P1修复：聊天历史和房间管理
+	// utils.LogInfo("聊天历史模块加载成功", nil)
+	// handler.PostRESTful(r) //RESTful帖子 // P1修复：RESTful风格帖子接口
+	// utils.LogInfo("RESTful帖子模块加载成功", nil)
 	r.Run("0.0.0.0:8080")
 	utils.LogInfo("服务器运行中，监听端口8080", nil)
 }

@@ -2,3 +2,69 @@
 *.log
 *.tmps
 /dist/
+
+# 可执行文件
+main.exe
+*.exe
+*.dll
+*.so
+*.dylib
+
+# 临时文件
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# 日志文件
+logs/
+*.log
+log.txt
+error.log
+access.log
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+
+# IDE 和编辑器文件
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# Go 构建产物
+*.test
+*.out
+vendor/
+go.sum.bak
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 备份文件
+*.bak
+*.backup
+*.old
+
+# 配置文件（如果包含敏感信息）
+config.local.*
+secrets.*
+
+# 临时工具文件
+hash_password.go
+*_password.go
+temp_*.go
+test_*.go
+
+# 文档文件（如果不想上传）
+*.md
+README.md
+配置完成.md

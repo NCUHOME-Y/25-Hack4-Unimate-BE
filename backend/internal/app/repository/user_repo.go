@@ -8,8 +8,6 @@ import (
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model" // 你的自定义包
 	"github.com/sirupsen/logrus"
 
-	"github.com/joho/godotenv"
-
 	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -21,11 +19,6 @@ var (
 
 // 链接数据库
 func DBconnect() {
-	err := godotenv.Load(".env")
-	if err != nil {
-		utils.LogError("加载 .env 文件失败", logrus.Fields{"error": err})
-		return
-	}
 	dsn := os.Getenv("DB_DSN")
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -55,6 +48,12 @@ func DeleteUserByEmail(email string) error {
 	return result.Error
 }
 
+// 更新用户信息
+func UpdateUser(user model.User) error {
+	result := DB.Save(&user)
+	return result.Error
+}
+
 // 从数据库删除flag
 func DeleteFlagFromDB(flagID uint) error {
 	result := DB.Delete(&model.Flag{}, flagID)
@@ -71,20 +70,14 @@ func GetFlagsByUserID(userID uint) ([]model.Flag, error) {
 // 通过用户邮箱获取用户
 func GetUserByEmail(Email string) (model.User, error) {
 	var user model.User
-	DB.Preload("Achievement").First(&user, Email)
-	DB.Preload("Flags").First(&user, Email)
-	DB.Preload("Posts").First(&user, Email)
-	result := DB.Where("email=?", Email).First(&user)
+	result := DB.Preload("Achievements").Preload("Flags").Preload("Posts").Where("email = ?", Email).First(&user)
 	return user, result.Error
 }
 
 // 通过用户ID获取用户
 func GetUserByID(userID uint) (model.User, error) {
 	var user model.User
-	DB.Preload("Achievement").First(&user, userID)
-	DB.Preload("Flags").First(&user, userID)
-	DB.Preload("Posts").First(&user, userID) // 把 Flags 一起查出来
-	result := DB.Where("id=?", userID).First(&user)
+	result := DB.Preload("Achievements").Preload("Flags").Preload("Posts").Where("id = ?", userID).First(&user)
 	return user, result.Error
 }
 
@@ -264,14 +257,14 @@ func GetUserByCount() ([]model.User, error) {
 // 获取所有20个用户，按月学习时间排序
 func GetUserByMonthLearnTime() ([]model.User, error) {
 	var users []model.User
-	result := DB.Order("month_learntime desc").Limit(20).Find(&users)
+	result := DB.Order("month_learn_time desc").Limit(20).Find(&users)
 	return users, result.Error
 }
 
-// 获取20个用户，按月打卡数量排序
+// 获取20个用户，按总打卡数量排序
 func GetUserByDaka() ([]model.User, error) {
 	var users []model.User
-	result := DB.Order("month_daka desc").Limit(20).Find(&users)
+	result := DB.Order("daka desc").Limit(20).Find(&users)
 	return users, result.Error
 }
 
@@ -473,7 +466,7 @@ func UpdatePostLikes(postID uint, like int) error {
 func GetFlagLikes(flagID uint) (int, error) {
 	var flag model.Flag
 	result := DB.Where("id = ?", flagID).First(&flag)
-	return flag.Like, result.Error
+	return flag.Likes, result.Error
 }
 
 // 获取帖子点赞
@@ -493,7 +486,24 @@ func SaveLabelToDB(id uint, labal string) error {
 func GetLabelByUserID(userID uint) (model.Label, error) {
 	var label model.Label
 	err := DB.Where("user_id = ?", userID).First(&label).Error
-	return label, err
+	// 如果用户没有标签记录，创建一个默认的
+	if err != nil {
+		if err.Error() == "record not found" {
+			label = model.Label{
+				UserID: userID,
+				Life:   0,
+				Study:  0,
+				Work:   0,
+				Like:   0,
+				Sport:  0,
+			}
+			// 创建默认记录
+			DB.Create(&label)
+			return label, nil
+		}
+		return label, err
+	}
+	return label, nil
 }
 
 // 存储埋点
