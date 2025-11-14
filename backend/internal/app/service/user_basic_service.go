@@ -97,10 +97,18 @@ func RegisterUser() gin.HandlerFunc {
 			log.Print("Binding error")
 			return
 		}
+		// 检查邮箱是否已注册
 		user_exist, _ := repository.GetUserByEmail(user.Email)
 		if user_exist.ID != 0 {
-			c.JSON(401, gin.H{"error": "用户名已存在,请更换用户名..."})
-			log.Print("User already exists")
+			c.JSON(401, gin.H{"error": "该邮箱已被注册,请更换邮箱..."})
+			log.Print("Email already exists")
+			return
+		}
+		// 检查用户名是否已存在
+		name_exist, _ := repository.GetUserByName(user.Name)
+		if name_exist.ID != 0 {
+			c.JSON(401, gin.H{"error": "该用户名已被使用,请更换用户名..."})
+			log.Print("Username already exists")
 			return
 		}
 		password, err := utils.HashPassword(user.Password)
@@ -142,7 +150,13 @@ func LoginUser() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "登录失败,请重新再试..."})
 			return
 		}
-		user, _ := repository.GetUserByEmail(user_login.Email)
+		user, err := repository.GetUserByEmail(user_login.Email)
+		// 检查用户是否存在
+		if err != nil || user.ID == 0 {
+			c.JSON(401, gin.H{"error": "用户名或密码错误,请重新再试..."})
+			return
+		}
+		// 检查邮箱是否已验证
 		if !user.Exist {
 			err := repository.DeleteUserByEmail(user_login.Email)
 			if err != nil {
@@ -151,7 +165,8 @@ func LoginUser() gin.HandlerFunc {
 			c.JSON(403, gin.H{"error": "邮箱未验证,请前往验证..."})
 			return
 		}
-		if !utils.CheckPasswordHash(user_login.Password, user.Password) || user.ID == 0 {
+		// 检查密码是否正确
+		if !utils.CheckPasswordHash(user_login.Password, user.Password) {
 			c.JSON(401, gin.H{"error": "用户名或密码错误,请重新再试..."})
 			return
 		}
@@ -226,6 +241,12 @@ func UpdateUserName() gin.HandlerFunc {
 		}
 		if req.NewName == "" {
 			c.JSON(500, gin.H{"error": "用户名不能为空,请重新再试..."})
+			return
+		}
+		// 检查新用户名是否已被其他用户使用
+		name_exist, _ := repository.GetUserByName(req.NewName)
+		if name_exist.ID != 0 && name_exist.ID != id {
+			c.JSON(400, gin.H{"error": "该用户名已被使用,请更换用户名..."})
 			return
 		}
 		err := repository.UpdateUserName(id, req.NewName)

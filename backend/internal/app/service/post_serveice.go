@@ -6,6 +6,7 @@ import (
 	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // 发布帖子
@@ -57,13 +58,25 @@ func CommentOnPost() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "Invalid input"})
 			return
 		}
+
+		utils.LogInfo("开始添加评论", logrus.Fields{
+			"post_id": comment.PostID,
+			"content": comment.Content,
+		})
+
 		err := repository.AddPostCommentToDB(comment.PostID, comment)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to add comment"})
-			utils.LogError("数据库添加评论失败", nil)
+			utils.LogError("数据库添加评论失败", logrus.Fields{
+				"post_id": comment.PostID,
+				"error":   err.Error(),
+			})
 			return
 		}
-		utils.LogInfo("用户发表评论成功", nil)
+		utils.LogInfo("用户发表评论成功", logrus.Fields{
+			"post_id":    comment.PostID,
+			"comment_id": comment.ID,
+		})
 		c.JSON(200, gin.H{"success": true})
 	}
 }
@@ -179,18 +192,44 @@ func LikePost() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
 			PostID uint `json:"post_id"`
-			Like   int  `json:"like"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": "Invalid input"})
 			return
 		}
-		err := repository.UpdatePostLikes(req.PostID, req.Like)
-		if err != nil {
-			c.JSON(500, gin.H{"error": "点赞帖子失败,请重新再试..."})
-			utils.LogError("数据库点赞帖子失败", nil)
+
+		// 获取当前用户ID（用于记录点赞关系）
+		userID, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(401, gin.H{"error": "未授权"})
 			return
 		}
+
+		utils.LogInfo("开始处理帖子点赞", logrus.Fields{
+			"post_id": req.PostID,
+			"user_id": userID,
+		})
+
+		// 切换点赞状态（如果已点赞则取消，未点赞则点赞）
+		newLikeCount, err := repository.TogglePostLike(req.PostID, userID)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "点赞帖子失败,请重新再试..."})
+			utils.LogError("数据库点赞帖子失败", logrus.Fields{
+				"post_id": req.PostID,
+				"error":   err.Error(),
+			})
+			return
+		}
+
+		utils.LogInfo("帖子点赞成功", logrus.Fields{
+			"post_id":   req.PostID,
+			"new_likes": newLikeCount,
+		})
+
+		c.JSON(200, gin.H{
+			"success": true,
+			"likes":   newLikeCount,
+		})
 	}
 }
 

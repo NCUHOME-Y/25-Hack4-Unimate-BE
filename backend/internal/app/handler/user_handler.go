@@ -7,12 +7,17 @@ import (
 )
 
 func BasicUser(r *gin.Engine) {
+	// 公开接口：不需要认证
 	r.POST("/api/register", service.RegisterUser())
 	r.POST("/api/login", service.LoginUser())
 	r.POST("/api/sendEmailCode", service.SendEmailCode()) // 修复：发送验证码
 	r.POST("/api/verifyEmail", service.VerifyEmail())     // 新增：验证邮箱验证码
+	r.POST("/api/loginWithOTP", service.LoginWithOTP())   // 新增：验证码登录
 	r.POST("/api/forgetcode", service.ForgetPassword())
-	e := r.Use(service.JWTAuth())
+
+	// 需要认证的接口：创建路由组而不是污染全局路由器
+	e := r.Group("/")
+	e.Use(service.JWTAuth())
 	e.PUT("/updatePassword", service.UpdateUserPassword())
 	e.PUT("/updateUsername", service.UpdateUserName())
 	e.PUT("/api/UpdateStatus", service.UpdateStatus())
@@ -25,7 +30,12 @@ func BasicUser(r *gin.Engine) {
 }
 
 func Flag(r *gin.Engine) {
-	e := r.Use(service.JWTAuth())
+	// 公开接口：不需要认证
+	r.GET("/api/getRecentDoFlagUsers", service.GetRecentDoFlagUsers())
+
+	// 需要认证的接口：创建路由组
+	e := r.Group("/")
+	e.Use(service.JWTAuth())
 	e.POST("/api/addFlag", service.PostUserFlags())
 	e.GET("/api/getUserFlags", service.GetUserFlags())
 	e.PUT("/api/updateFlagHide", service.UpdateFlagHide())
@@ -34,43 +44,52 @@ func Flag(r *gin.Engine) {
 	e.DELETE("/api/deleteFlag", service.DeleteUserFlags())
 	e.GET("/api/getDoneFlags", service.GetDoneFlags())
 	e.GET("/api/getUnDoneFlags", service.GetNotDoneFlags())
-	r.GET("/api/getRecentDoFlagUsers", service.GetRecentDoFlagUsers())
 }
 
 func BasicFlag(r *gin.Engine) {
-	e := r.Use(service.JWTAuth())
+	// 所有接口需要认证：创建路由组
+	e := r.Group("/")
+	e.Use(service.JWTAuth())
 	e.POST("/api/likeFlag", service.LikeFlag())
 	e.POST("/api/flagcomment", service.CommentOnFlag())
 	e.DELETE("/api/flagdeletecomment", service.DeleteFlagComment())
 	e.GET("/api/getflaglike", service.GetFlagLikes())
 }
 func BasicPost(r *gin.Engine) {
-	e := r.Use(service.JWTAuth())
+	// 公开接口：不需要认证
+	r.GET("/api/getAllPosts", service.GetAllPosts())
+	r.GET("/api/getflag", service.GetVisibleFlags())
+
+	// 需要认证的接口：创建路由组
+	e := r.Group("/")
+	e.Use(service.JWTAuth())
 	e.POST("/api/likepost", service.LikePost())
 	e.GET("/api/getpostlike", service.GetPostLikes())
 	e.POST("/api/postUserPost", service.PostUserPost())
 	e.DELETE("/api/deleteUserPost", service.DeleteUserPost())
 	e.POST("/api/commentOnPost", service.CommentOnPost())
 	e.DELETE("/api/deleteComment", service.DeleteUserPostComment())
-	e.GET("/api/getAllPosts", service.GetAllPosts())
-	e.GET("/api/getflag", service.GetVisibleFlags())
 }
 
 func ChatWebSocket(r *gin.Engine) {
-	e := r.Use(service.JWTAuth())
+	// 所有接口需要认证：创建路由组
+	e := r.Group("/")
+	e.Use(service.JWTAuth())
 	e.GET("/ws/chat", service.WsHandler())
 }
 
 func Ranking(r *gin.Engine) {
-	e := r.Use(service.JWTAuth())
-	e.GET("/api/getUseflagrRank", service.GetUserByFlagNumber())
-	e.GET("/api/countranking", service.GetUserCount())
-	e.GET("/api/learnTimeRanking", service.GetUserMonthLearnTime())
-	e.GET("/api/dakaRanking", service.GetUserTotalDaka())
+	// 排行榜应该是公开的，所有人都能看
+	r.GET("/api/getUseflagrRank", service.GetUserByFlagNumber())
+	r.GET("/api/countranking", service.GetUserCount())
+	r.GET("/api/learnTimeRanking", service.GetUserMonthLearnTime())
+	r.GET("/api/dakaRanking", service.GetUserTotalDaka())
 }
 
 func LearnTime(r *gin.Engine) {
-	e := r.Use(service.JWTAuth())
+	// 所有接口需要认证：创建路由组
+	e := r.Group("/")
+	e.Use(service.JWTAuth())
 	e.POST("/api/addLearnTime", service.RecordLearnTime())
 	e.GET("/api/getlabel", service.GetLabelByUserID())
 	e.GET("/api/getLearnTimemonth", service.GetLearnTimeRecords())
@@ -82,19 +101,25 @@ func LearnTime(r *gin.Engine) {
 }
 
 func Achievement(r *gin.Engine) {
-	e := r.Use(service.JWTAuth())
+	// 所有接口需要认证：创建路由组
+	e := r.Group("/")
+	e.Use(service.JWTAuth())
 	e.GET("/api/getUserAchievement", service.GetUserAchievement())
 }
 
 func Search(r *gin.Engine) {
-	e := r.Use(service.JWTAuth())
+	// 所有接口需要认证：创建路由组
+	e := r.Group("/")
+	e.Use(service.JWTAuth())
 	e.POST("/api/searchUser", service.SearchUser())
 	e.POST("/api/searchPosts", service.SearchPosts())
 }
 
 // AI 学习计划路由
 func AI(r *gin.Engine) {
-	e := r.Use(service.JWTAuth())
+	// 所有接口需要认证：创建路由组
+	e := r.Group("/")
+	e.Use(service.JWTAuth())
 	e.POST("/api/ai/generate-plan", service.GenerateLearningPlan)
 }
 

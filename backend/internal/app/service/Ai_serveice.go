@@ -66,7 +66,7 @@ func GenerateLearningPlan(c *gin.Context) {
 	fmt.Printf("📝 收到学习计划请求: %+v\n", req)
 
 	// 生成学习计划
-	plan, difficulty, err := planner.GenerateLearningPlan(req)
+	flag, plan, difficulty, err := planner.GenerateLearningPlan(req)
 	if err != nil {
 		fmt.Printf("❌ 生成学习计划失败: %v\n", err)
 		c.JSON(http.StatusInternalServerError, LearningPlanResponse{
@@ -86,7 +86,7 @@ func GenerateLearningPlan(c *gin.Context) {
 	fmt.Printf("✅ 成功生成学习计划，难度: %d\n", difficulty)
 	c.JSON(http.StatusOK, LearningPlanResponse{
 		Success: true,
-		Flag:    req.Flag,
+		Flag:    flag,
 		Count:   difficulty,
 		Plan:    plan,
 	})
@@ -109,7 +109,7 @@ func CORSMiddleware() gin.HandlerFunc {
 }
 
 // 生成学习计划的核心方法
-func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (string, int, error) {
+func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (string, string, int, error) {
 	// 构建系统提示词
 	systemPrompt := `你是"太傅AI学习计划生成器"，专门为用户制定科学合理的学习路径。请根据用户的学习目标(flag)生成详细的三阶段学习计划，并评估难度等级(1-5分)。
 
@@ -120,6 +120,7 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 
 请严格按照以下JSON格式返回，不要包含其他内容：
 {
+	"flag": "按照大致方向生成具体的flag目标",
 	"difficulty": 分数,
 	"plan": "学习几乎详细的三阶段学习计划内容"
 }`
@@ -140,26 +141,28 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 	response, err := p.callOpenAI(systemPrompt, userPrompt)
 	if err != nil {
 		fmt.Printf("❌ AI调用失败: %v\n", err)
-		return "", 0, err
+		return "", "", 0, err
 	}
 
 	fmt.Printf("✅ AI返回成功\n")
 
 	// 解析AI响应
-	plan, difficulty, err := p.parseAIResponse(response)
+	flag, plan, difficulty, err := p.parseAIResponse(response)
 	if err != nil {
 		fmt.Printf("❌ 解析AI响应失败: %v\n", err)
-		return "", 0, err
+		return "", "", 0, err
 	}
 
 	fmt.Printf("✅ 解析成功，难度: %d\n", difficulty)
-	return plan, difficulty, nil
+	return flag, plan, difficulty, nil
 }
 
 // 解析AI响应
-func (p *TaiFuLearningPlanner) parseAIResponse(response string) (string, int, error) {
+func (p *TaiFuLearningPlanner) parseAIResponse(response string) (string, string, int, error) {
 	// 尝试解析JSON响应
 	var result struct {
+		Flag string `json:"flag"`
+
 		Difficulty int    `json:"difficulty"`
 		Plan       string `json:"plan"`
 	}
@@ -168,15 +171,15 @@ func (p *TaiFuLearningPlanner) parseAIResponse(response string) (string, int, er
 	if err != nil {
 		fmt.Printf("❌ 解析失败，返回原始响应: %v\n", err)
 		// 如果解析失败，返回原始响应作为计划
-		return response, 3, nil
+		return "", response, 3, nil
 	}
 
 	if result.Plan == "" {
 		fmt.Printf("⚠️ 解析的计划为空\n")
-		return response, result.Difficulty, nil
+		return "", response, result.Difficulty, nil
 	}
 
-	return result.Plan, result.Difficulty, nil
+	return result.Flag, result.Plan, result.Difficulty, nil
 }
 
 // 调用OpenAI API

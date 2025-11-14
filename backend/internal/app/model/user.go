@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -65,14 +66,30 @@ func (f *Flag) BeforeSave(tx *gorm.DB) error {
 
 // 帖子
 type Post struct {
-	ID        uint          `gorm:"primaryKey" json:"id"`
-	Title     string        `json:"title"`
-	Content   string        `json:"content"`
-	Like      int           `json:"like"`
-	UserID    uint          `gorm:"fori" json:"user_id"`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
-	Comments  []PostComment `gorm:"foreignKey:PostID" json:"comments"` //外键绑定post_comment表
+	ID         uint          `gorm:"primaryKey" json:"id"`
+	Title      string        `json:"title"`
+	Content    string        `json:"content"`
+	Like       int           `json:"like"`
+	UserID     uint          `gorm:"fori" json:"user_id"`
+	User       *User         `gorm:"foreignKey:UserID" json:"user,omitempty"` // 关联用户信息
+	UserName   string        `gorm:"-" json:"userName"`                       // 前端需要的用户名（计算字段）
+	UserAvatar string        `gorm:"-" json:"userAvatar"`                     // 前端需要的用户头像（计算字段）
+	CreatedAt  time.Time     `json:"created_at"`
+	UpdatedAt  time.Time     `json:"updated_at"`
+	Comments   []PostComment `gorm:"foreignKey:PostID" json:"comments"` //外键绑定post_comment表
+}
+
+// AfterFind - GORM钩子：查询后自动填充用户信息
+func (p *Post) AfterFind(tx *gorm.DB) error {
+	if p.User != nil {
+		p.UserName = p.User.Name
+		p.UserAvatar = "/default-avatar.png" // 默认头像
+		if p.User.HeadShow > 0 {
+			// 将 int 转换为 string
+			p.UserAvatar = "/avatars/" + fmt.Sprintf("%d", p.User.HeadShow) + ".png"
+		}
+	}
+	return nil
 }
 
 // 帖子评论

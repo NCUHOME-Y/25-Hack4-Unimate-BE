@@ -2,7 +2,6 @@ package repository
 
 import (
 	"os"
-
 	"time"
 
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model" // 你的自定义包
@@ -71,6 +70,13 @@ func GetFlagsByUserID(userID uint) ([]model.Flag, error) {
 func GetUserByEmail(Email string) (model.User, error) {
 	var user model.User
 	result := DB.Preload("Achievements").Preload("Flags").Preload("Posts").Where("email = ?", Email).First(&user)
+	return user, result.Error
+}
+
+// 通过用户名获取用户
+func GetUserByName(name string) (model.User, error) {
+	var user model.User
+	result := DB.Where("name = ?", name).First(&user)
 	return user, result.Error
 }
 
@@ -282,10 +288,10 @@ func GetFlagByID(flagID uint) (model.Flag, error) {
 	return flag, result.Error
 }
 
-// 获取所有的帖子
+// 获取所有的帖子（包含用户信息）
 func GetAllPosts() ([]model.Post, error) {
 	var posts []model.Post
-	result := DB.Preload("Comments").Order("created_at desc").Find(&posts)
+	result := DB.Preload("Comments").Preload("User").Order("created_at desc").Find(&posts)
 	return posts, result.Error
 }
 
@@ -457,8 +463,63 @@ func UpdateFlagLikes(flagID uint, like int) error {
 }
 
 // post点赞
+// 切换帖子点赞状态（自动判断点赞/取消点赞）
+func TogglePostLike(postID uint, userID uint) (int, error) {
+	utils.LogInfo("TogglePostLike 函数被调用", map[string]interface{}{
+		"post_id": postID,
+		"user_id": userID,
+	})
+
+	var post model.Post
+
+	// 获取帖子当前点赞数
+	if err := DB.Where("id = ?", postID).First(&post).Error; err != nil {
+		utils.LogError("查询帖子失败", map[string]interface{}{
+			"post_id": postID,
+			"error":   err.Error(),
+		})
+		return 0, err
+	}
+
+	utils.LogInfo("查询到帖子", map[string]interface{}{
+		"post_id":      postID,
+		"current_like": post.Like,
+	})
+
+	// TODO: 实现用户点赞关系表来记录谁点赞了哪些帖子
+	// 目前简化实现：直接增加点赞数
+	// 生产环境应该：
+	// 1. 检查 user_post_likes 表是否存在该用户对该帖子的点赞记录
+	// 2. 如果存在则删除记录并减少点赞数
+	// 3. 如果不存在则创建记录并增加点赞数
+
+	// 简化实现：每次调用都增加点赞数（前端控制）
+	newLikeCount := post.Like + 1
+
+	utils.LogInfo("准备更新点赞数", map[string]interface{}{
+		"post_id":  postID,
+		"old_like": post.Like,
+		"new_like": newLikeCount,
+	})
+
+	if err := DB.Model(&model.Post{}).Where("id = ?", postID).Update("like", newLikeCount).Error; err != nil {
+		utils.LogError("更新点赞数失败", map[string]interface{}{
+			"post_id": postID,
+			"error":   err.Error(),
+		})
+		return 0, err
+	}
+
+	utils.LogInfo("点赞数更新成功", map[string]interface{}{
+		"post_id":  postID,
+		"new_like": newLikeCount,
+	})
+
+	return newLikeCount, nil
+}
+
 func UpdatePostLikes(postID uint, like int) error {
-	result := DB.Model(&model.Post{}).Where("id = ?", postID).Update("likes", like)
+	result := DB.Model(&model.Post{}).Where("id = ?", postID).Update("like", like)
 	return result.Error
 }
 
@@ -521,4 +582,10 @@ func GetTrackPointsByUserIDAndTime() ([]model.TrackPoint, error) {
 	var trackPoints []model.TrackPoint
 	err := DB.Order("timestam desc").Find(&trackPoints).Error
 	return trackPoints, err
+}
+
+// 自从数据库中删除验证码
+func DeleteEmailCodeByEmail(email string) error {
+	result := DB.Where("email = ?", email).Delete(&model.EmailCode{})
+	return result.Error
 }
