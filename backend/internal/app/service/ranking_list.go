@@ -30,6 +30,8 @@ func GetUserCount() gin.HandlerFunc {
 			c.JSON(500, gin.H{"error": "获取排行榜失败,请重新再试..."})
 			return
 		}
+		//埋点
+		repository.AddTrackPointToDB(0, "查看积分排行榜")
 		c.JSON(200, gin.H{"message": "获取排行榜成功", "data": users})
 	}
 }
@@ -42,6 +44,7 @@ func GetUserMonthLearnTime() gin.HandlerFunc {
 			c.JSON(500, gin.H{"error": "获取排行榜失败,请重新再试..."})
 			return
 		}
+		repository.AddTrackPointToDB(0, "查看月学习时间排行榜")
 		c.JSON(200, gin.H{"message": "获取排行榜成功", "data": users})
 	}
 }
@@ -53,6 +56,7 @@ func GetUserTotalDaka() gin.HandlerFunc {
 		if err != nil {
 			c.JSON(500, gin.H{"error": "获取排行榜失败,请重新再试..."})
 		}
+		repository.AddTrackPointToDB(0, "查看总打卡数排行榜")
 		c.JSON(200, gin.H{"message": "获取排行榜成功", "data": users})
 	}
 }
@@ -64,6 +68,7 @@ func GetUserByFlagNumber() gin.HandlerFunc {
 		if err != nil {
 			c.JSON(500, gin.H{"error": "获取排行榜失败,请重新再试..."})
 		}
+		repository.AddTrackPointToDB(0, "查看flag数量排行榜")
 		c.JSON(200, gin.H{"message": "获取排行榜成功", "data": users})
 	}
 }

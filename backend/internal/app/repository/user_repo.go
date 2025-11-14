@@ -33,7 +33,7 @@ func DBconnect() {
 		return
 	}
 	DB = db
-	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{}, &model.EmailCode{}, &model.FlagComment{})
+	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{}, &model.EmailCode{}, &model.FlagComment{}, &model.TrackPoint{})
 }
 
 // user添加到数据库
@@ -494,4 +494,21 @@ func GetLabelByUserID(userID uint) (model.Label, error) {
 	var label model.Label
 	err := DB.Where("user_id = ?", userID).First(&label).Error
 	return label, err
+}
+
+// 存储埋点
+func AddTrackPointToDB(user_id uint, event string) error {
+	var trackPoint model.TrackPoint
+	trackPoint.UserID = user_id
+	trackPoint.Event = event
+	trackPoint.Timestamp = time.Now()
+	result := DB.Create(&trackPoint)
+	return result.Error
+}
+
+// 按时间读取所有埋点
+func GetTrackPointsByUserIDAndTime() ([]model.TrackPoint, error) {
+	var trackPoints []model.TrackPoint
+	err := DB.Order("timestam desc").Find(&trackPoints).Error
+	return trackPoints, err
 }

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
 	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
 
 	"github.com/gin-gonic/gin"
@@ -66,11 +67,11 @@ func WsHandler() gin.HandlerFunc {
 			utils.LogError("WebSocket连接升级失败", map[string]interface{}{"error": err.Error()})
 			return
 		}
-
 		client := &Client{ID: id, Conn: conn, Send: make(chan []byte, 256)}
 		manager.Register <- client
 		utils.LogInfo("✅ WebSocket连接成功", map[string]interface{}{"user_id": id, "remote_addr": c.Request.RemoteAddr})
-
+		//埋点
+		repository.AddTrackPointToDB(id, "用户使用聊天功能")
 		go ReadPump(client)
 		go WritePump(client)
 	}

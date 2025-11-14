@@ -81,6 +81,8 @@ func GenerateLearningPlan(c *gin.Context) {
 		CreatedAt:   time.Now(),
 		IsHiden:     false,
 	})
+	//埋点
+	repository.AddTrackPointToDB(id, "生成学习计划")
 	fmt.Printf("✅ 成功生成学习计划，难度: %d\n", difficulty)
 	c.JSON(http.StatusOK, LearningPlanResponse{
 		Success: true,

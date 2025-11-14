@@ -22,6 +22,7 @@ func SearchUser() gin.HandlerFunc {
 			utils.LogError("搜索用户失败", nil)
 			return
 		}
+		repository.AddTrackPointToDB(0, "搜索用户")
 		c.JSON(200, gin.H{"message": "搜索用户成功", "data": users})
 	}
 }
@@ -42,6 +43,7 @@ func SearchPosts() gin.HandlerFunc {
 			utils.LogError("搜索帖子失败", nil)
 			return
 		}
+		repository.AddTrackPointToDB(0, "搜索帖子")
 		c.JSON(200, gin.H{"post": posts})
 	}
 }

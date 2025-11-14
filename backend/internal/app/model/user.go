@@ -121,3 +121,11 @@ type Label struct {
 	Like   int  `json:"like"`
 	Sport  int  `json:"sport"`
 }
+
+// 埋点
+type TrackPoint struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `json:"user_id"`
+	Event     string    `json:"event"`
+	Timestamp time.Time `json:"timestamp"`
+}
