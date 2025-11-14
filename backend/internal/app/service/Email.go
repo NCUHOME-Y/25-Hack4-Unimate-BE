@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -105,12 +106,10 @@ func LoginWithOTP() gin.HandlerFunc {
 		// 验证码正确，查找用户
 		user, err := repository.GetUserByEmail(req.Email)
 		if err != nil || user.ID == 0 {
-			c.JSON(404, gin.H{"error": "用户不存在，请先注册"})
-			utils.LogError("用户不存在", logrus.Fields{"user_email": req.Email})
+			c.JSON(400, gin.H{"error": "该邮箱尚未注册,请先注册账号"})
+			utils.LogError("验证码登录失败-用户不存在", logrus.Fields{"user_email": req.Email})
 			return
-		}
-
-		// 生成JWT token
+		} // 生成JWT token
 		token, err := utils.GenerateToken(user.ID, user.Name, user.Email)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "生成token失败,请重新再试..."})
@@ -209,14 +208,36 @@ func SendEmailCode() gin.HandlerFunc {
 			return
 		}
 
+		// 检查发送频率限制（1分钟内只能发送一次）
+		canSend, lastSentTime, err := repository.CheckEmailCodeRateLimit(req.Email)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "检查发送频率失败,请重新再试..."})
+			utils.LogError("检查验证码发送频率失败", logrus.Fields{"user_email": req.Email, "error": err.Error()})
+			return
+		}
+		if !canSend {
+			// 计算还需要等待多少秒
+			waitSeconds := 60 - int(time.Since(lastSentTime).Seconds())
+			if waitSeconds < 0 {
+				waitSeconds = 0
+			}
+			c.JSON(429, gin.H{
+				"error":        "发送过于频繁,请稍后再试",
+				"wait_seconds": waitSeconds,
+				"message":      fmt.Sprintf("请等待%d秒后再试", waitSeconds),
+			})
+			utils.LogInfo("验证码发送被限流", logrus.Fields{"user_email": req.Email, "wait_seconds": waitSeconds})
+			return
+		}
+
 		// 生成验证码
 		code := utils.GenerateCode()
 
 		// 发送邮件
-		err := utils.SentEmail(req.Email, "知序验证码", "您的验证码是："+code+"\n该验证码5分钟内有效,请尽快使用。")
-		if err != nil {
+		sendErr := utils.SentEmail(req.Email, "知序验证码", "您的验证码是："+code+"\n该验证码5分钟内有效,请尽快使用。")
+		if sendErr != nil {
 			c.JSON(500, gin.H{"error": "验证码发送失败,请重新再试..."})
-			utils.LogError("验证码发送失败", logrus.Fields{"user_email": req.Email, "error": err.Error()})
+			utils.LogError("验证码发送失败", logrus.Fields{"user_email": req.Email, "error": sendErr.Error()})
 			return
 		}
 

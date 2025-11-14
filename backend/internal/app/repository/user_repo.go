@@ -386,13 +386,41 @@ func GetAchievementByName(usrID uint, name string) (model.Achievement, error) {
 
 // 添加打卡记录
 func DakaNumberToDB(user_id uint) error {
+	// 先查询是否存在打卡记录
+	var dakaNumber model.Daka_number
+	err := DB.Where("user_id = ?", user_id).Order("daka_date desc").First(&dakaNumber).Error
+
+	if err == gorm.ErrRecordNotFound {
+		// 如果不存在,创建新的打卡记录
+		return AddNewDakaNumberToDB(user_id)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// 如果存在,更新had_done状态
 	result := DB.Model(&model.Daka_number{}).Where("user_id = ?", user_id).Order("daka_date desc").Limit(1).Update("had_done", true)
 	return result.Error
 }
 
 // 添加打卡记录
 func AddDakaNumberToDB(user_id uint) error {
-	err := DB.Model(&model.Daka_number{}).Where("user_id=?", user_id).Order("id desc").Limit(1).Update("monthDaka", gorm.Expr("monthDaka + ?", 1)).Error
+	// 先查询是否存在打卡记录
+	var dakaNumber model.Daka_number
+	err := DB.Where("user_id=?", user_id).Order("id desc").First(&dakaNumber).Error
+
+	if err == gorm.ErrRecordNotFound {
+		// 如果不存在,创建新的打卡记录
+		return AddNewDakaNumberToDB(user_id)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// 如果存在,更新monthDaka
+	err = DB.Model(&model.Daka_number{}).Where("user_id=?", user_id).Order("id desc").Limit(1).Update("monthDaka", gorm.Expr("monthDaka + ?", 1)).Error
 	return err
 }
 
@@ -436,6 +464,29 @@ func GetEmailCodeByEmail(email string) (model.EmailCode, error) {
 	var emailCode model.EmailCode
 	result := DB.Where("email = ?", email).Order("created_at desc").First(&emailCode)
 	return emailCode, result.Error
+}
+
+// 删除过期的验证码
+func DeleteExpiredEmailCodes() error {
+	result := DB.Where("expires < ?", time.Now()).Delete(&model.EmailCode{})
+	return result.Error
+}
+
+// 检查邮箱最近1分钟内是否发送过验证码
+func CheckEmailCodeRateLimit(email string) (bool, time.Time, error) {
+	var emailCode model.EmailCode
+	oneMinuteAgo := time.Now().Add(-time.Minute)
+	err := DB.Where("email = ? AND created_at > ?", email, oneMinuteAgo).Order("created_at desc").First(&emailCode).Error
+	if err == gorm.ErrRecordNotFound {
+		// 没有找到最近1分钟的记录，可以发送
+		return true, time.Time{}, nil
+	}
+	if err != nil {
+		// 数据库错误
+		return false, time.Time{}, err
+	}
+	// 找到了最近的记录，不能发送，返回创建时间
+	return false, emailCode.CreatedAt, nil
 }
 
 // 修改用户的验证状态
