@@ -180,11 +180,18 @@ func LoginUser() gin.HandlerFunc {
 			return
 		}
 		utils.LogInfo("用户登录成功", logrus.Fields{"user_id": user.ID, "user_email": user.Email})
-		c.JSON(http.StatusOK, gin.H{"message": "登录成功!",
-			"user_id": user.ID,
-			"name":    user.Name,
-			"email":   user.Email,
-			"token":   token})
+		c.JSON(http.StatusOK, gin.H{
+			"message":          "登录成功!",
+			"user_id":          user.ID,
+			"name":             user.Name,
+			"email":            user.Email,
+			"head_show":        user.HeadShow,
+			"daka":             user.Daka,
+			"flag_number":      user.FlagNumber,
+			"count":            user.Count,
+			"month_learn_time": user.MonthLearntime,
+			"token":            token,
+		})
 	}
 }
 
@@ -301,7 +308,20 @@ func GetUser() gin.HandlerFunc {
 			return
 		}
 		utils.LogInfo("获取用户信息成功", logrus.Fields{"user_id": id})
-		c.JSON(http.StatusOK, gin.H{"user": user})
+		c.JSON(http.StatusOK, gin.H{
+			"id":               user.ID,
+			"user_id":          user.ID,
+			"username":         user.Name,
+			"name":             user.Name,
+			"email":            user.Email,
+			"phone":            user.Email,
+			"head_show":        user.HeadShow,
+			"daka":             user.Daka,
+			"flag_number":      user.FlagNumber,
+			"count":            user.Count,
+			"month_learn_time": user.MonthLearntime,
+			"user":             user,
+		})
 	}
 }
 
@@ -312,7 +332,7 @@ func DoDaKa() gin.HandlerFunc {
 		err := repository.DakaNumberToDB(id)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "打卡失败,请重新再试..."})
-			utils.LogError("数据库更新用户打卡数据失败", logrus.Fields{})
+			utils.LogError("数据库更新用户打卡数据失败", logrus.Fields{"error": err.Error()})
 			return
 		}
 		utils.LogInfo("用户打卡成功", logrus.Fields{"user_id": id})
@@ -324,17 +344,23 @@ func DoDaKa() gin.HandlerFunc {
 func GetDaKaRecords() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _ := getCurrentUserID(c)
-		dakaNumbers, err := repository.GetRecentDakaNumber(id)
+		dakaRecords, err := repository.GetMonthDakaRecords(id)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "获取打卡记录失败,请重新再试..."})
-			utils.LogError("获取打卡记录失败", logrus.Fields{"user_id": id})
+			utils.LogError("获取打卡记录失败", logrus.Fields{"user_id": id, "error": err.Error()})
 			return
 		}
-		utils.LogInfo("获取打卡记录成功", logrus.Fields{"user_id": id})
-		c.JSON(200, gin.H{
-			"daka_date": dakaNumbers.MonthDaka,
-			"time":      dakaNumbers.DaKaDate,
-		})
+
+		// 转换为前端需要的日期格式数组
+		var dates []map[string]string
+		for _, record := range dakaRecords {
+			dates = append(dates, map[string]string{
+				"date": record.DaKaDate.Format("2006-01-02"),
+			})
+		}
+
+		utils.LogInfo("获取打卡记录成功", logrus.Fields{"user_id": id, "count": len(dates)})
+		c.JSON(200, dates)
 	}
 }
 
@@ -409,6 +435,13 @@ func SwithHead() gin.HandlerFunc {
 			log.Print("Binding error")
 			return
 		}
+
+		// 验证头像编号必须在1-6之间
+		if req.Number < 1 || req.Number > 6 {
+			c.JSON(400, gin.H{"error": "头像编号必须在1-6之间"})
+			return
+		}
+
 		user, _ := repository.GetUserByID(id)
 		user.HeadShow = req.Number
 		repository.SaveUserToDB(user)

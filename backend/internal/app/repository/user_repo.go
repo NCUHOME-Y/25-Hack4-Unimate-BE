@@ -25,7 +25,7 @@ func DBconnect() {
 		return
 	}
 	DB = db
-	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{}, &model.EmailCode{}, &model.FlagComment{}, &model.TrackPoint{})
+	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{}, &model.EmailCode{}, &model.FlagComment{}, &model.TrackPoint{}, &model.ChatMessage{})
 }
 
 // user添加到数据库
@@ -38,6 +38,12 @@ func AddUserToDB(user model.User) error {
 func AddFlagToDB(Id uint, flag model.Flag) error {
 	flag.UserID = Id
 	result := DB.Create(&flag)
+	return result.Error
+}
+
+// 更新flag的完整信息
+func UpdateFlag(flagID uint, updates map[string]interface{}) error {
+	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Updates(updates)
 	return result.Error
 }
 
@@ -209,7 +215,7 @@ func DeletePostCommentFromDB(commentID uint) error {
 func SearchPosts(keyword string) ([]model.Post, error) {
 	var posts []model.Post
 	like := "%" + keyword + "%"
-	err := DB.Preload("Comments").
+	err := DB.Preload("User").Preload("Comments").
 		Where("title LIKE ? OR content LIKE ?", like, like).Find(&posts).Error
 	return posts, err
 }
@@ -388,20 +394,58 @@ func GetAchievementByName(usrID uint, name string) (model.Achievement, error) {
 func DakaNumberToDB(user_id uint) error {
 	// 先查询是否存在打卡记录
 	var dakaNumber model.Daka_number
-	err := DB.Where("user_id = ?", user_id).Order("daka_date desc").First(&dakaNumber).Error
+	err := DB.Where("user_id = ?", user_id).Order("id desc").First(&dakaNumber).Error
 
 	if err == gorm.ErrRecordNotFound {
-		// 如果不存在,创建新的打卡记录
-		return AddNewDakaNumberToDB(user_id)
+		// 如果不存在,创建新的打卡记录并设置为已打卡
+		err := DB.Create(&model.Daka_number{
+			UserID:    user_id,
+			HadDone:   true,
+			DaKaDate:  time.Now(),
+			MonthDaka: 1, // 第一次打卡，月打卡数为1
+		}).Error
+		if err != nil {
+			return err
+		}
+		// 更新用户总打卡数
+		return DB.Model(&model.User{}).Where("id = ?", user_id).Update("daka", gorm.Expr("daka + ?", 1)).Error
 	}
 
 	if err != nil {
 		return err
 	}
 
-	// 如果存在,更新had_done状态
-	result := DB.Model(&model.Daka_number{}).Where("user_id = ?", user_id).Order("daka_date desc").Limit(1).Update("had_done", true)
-	return result.Error
+	// 检查今天是否已经打卡
+	today := time.Now().Format("2006-01-02")
+	recordDate := dakaNumber.DaKaDate.Format("2006-01-02")
+
+	if recordDate == today {
+		// 今天已经打卡，切换状态（支持取消打卡）
+		newStatus := !dakaNumber.HadDone
+		err = DB.Model(&model.Daka_number{}).Where("id = ?", dakaNumber.ID).Update("had_done", newStatus).Error
+		if err != nil {
+			return err
+		}
+		// 更新用户总打卡数（取消打卡则-1，打卡则+1）
+		if newStatus {
+			return DB.Model(&model.User{}).Where("id = ?", user_id).Update("daka", gorm.Expr("daka + ?", 1)).Error
+		} else {
+			return DB.Model(&model.User{}).Where("id = ?", user_id).Update("daka", gorm.Expr("daka - ?", 1)).Error
+		}
+	} else {
+		// 不是今天的记录，创建新的打卡记录
+		err := DB.Create(&model.Daka_number{
+			UserID:    user_id,
+			HadDone:   true,
+			DaKaDate:  time.Now(),
+			MonthDaka: dakaNumber.MonthDaka + 1, // 月打卡数+1
+		}).Error
+		if err != nil {
+			return err
+		}
+		// 更新用户总打卡数
+		return DB.Model(&model.User{}).Where("id = ?", user_id).Update("daka", gorm.Expr("daka + ?", 1)).Error
+	}
 }
 
 // 添加打卡记录
@@ -427,8 +471,21 @@ func AddDakaNumberToDB(user_id uint) error {
 // 获取用户最近的打卡记录
 func GetRecentDakaNumber(user_id uint) (model.Daka_number, error) {
 	var daka_number model.Daka_number
-	err := DB.Where("user_id = ?", user_id).Order("daka_date desc").First(&daka_number).Error
+	err := DB.Where("user_id = ?", user_id).Order("id desc").First(&daka_number).Error
 	return daka_number, err
+}
+
+// 获取用户本月所有打卡记录
+func GetMonthDakaRecords(user_id uint) ([]model.Daka_number, error) {
+	var records []model.Daka_number
+	// 获取本月第一天
+	now := time.Now()
+	firstDay := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+
+	err := DB.Where("user_id = ? AND had_done = true AND daka_date >= ?", user_id, firstDay).
+		Order("daka_date asc").
+		Find(&records).Error
+	return records, err
 }
 
 // 每日更新打卡状态
@@ -639,4 +696,42 @@ func GetTrackPointsByUserIDAndTime() ([]model.TrackPoint, error) {
 func DeleteEmailCodeByEmail(email string) error {
 	result := DB.Where("email = ?", email).Delete(&model.EmailCode{})
 	return result.Error
+}
+
+// 保存聊天消息
+func SaveChatMessage(message *model.ChatMessage) error {
+	result := DB.Create(message)
+	return result.Error
+}
+
+// 获取聊天室历史消息（最近30条）
+func GetChatHistory(roomID string, limit int) ([]model.ChatMessage, error) {
+	var messages []model.ChatMessage
+	err := DB.Preload("User").Where("room_id = ?", roomID).Order("created_at desc").Limit(limit).Find(&messages).Error
+	if err != nil {
+		return nil, err
+	}
+	// 反转顺序，让最早的消息在前面
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+	return messages, nil
+}
+
+// 获取私聊历史消息（最近30条）
+func GetPrivateChatHistory(userID1, userID2 uint, limit int) ([]model.ChatMessage, error) {
+	var messages []model.ChatMessage
+	err := DB.Preload("User").
+		Where("(from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)", userID1, userID2, userID2, userID1).
+		Order("created_at desc").
+		Limit(limit).
+		Find(&messages).Error
+	if err != nil {
+		return nil, err
+	}
+	// 反转顺序
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+	return messages, nil
 }

@@ -24,8 +24,18 @@ func PostUserPost() gin.HandlerFunc {
 			utils.LogError("数据库添加帖子失败", nil)
 			return
 		}
+		// 获取刚创建的帖子（包含ID和用户信息）
+		posts, _ := repository.GetAllPosts()
+		var createdPost model.Post
+		if len(posts) > 0 {
+			createdPost = posts[0] // 最新的帖子
+		}
 		utils.LogInfo("用户发布帖子成功", nil)
-		c.JSON(200, gin.H{"success": true})
+		c.JSON(200, gin.H{
+			"success": true,
+			"post":    createdPost,
+			"message": "帖子发布成功",
+		})
 	}
 }
 
@@ -113,7 +123,11 @@ func GetAllPosts() gin.HandlerFunc {
 			return
 		}
 		utils.LogInfo("获取所有帖子成功", nil)
-		c.JSON(200, gin.H{"posts": posts})
+		c.JSON(200, gin.H{
+			"success": true,
+			"posts":   posts,
+			"total":   len(posts),
+		})
 	}
 }
 
@@ -127,7 +141,11 @@ func GetVisibleFlags() gin.HandlerFunc {
 			return
 		}
 		utils.LogInfo("获取所有可见flag成功", nil)
-		c.JSON(200, gin.H{"flags": flags})
+		c.JSON(200, gin.H{
+			"success": true,
+			"flags":   flags,
+			"total":   len(flags),
+		})
 	}
 }
 

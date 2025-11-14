@@ -32,8 +32,27 @@ func GetUserAchievement() gin.HandlerFunc {
 			utils.LogError("获取用户成就失败", nil)
 			return
 		}
+
+		// 转换为前端期望的格式
+		type AchievementResponse struct {
+			ID          uint   `json:"id"`
+			Name        string `json:"name"`
+			Description string `json:"description"`
+			IsUnlocked  bool   `json:"isUnlocked"`
+		}
+
+		result := make([]AchievementResponse, len(achievements))
+		for i, a := range achievements {
+			result[i] = AchievementResponse{
+				ID:          a.ID,
+				Name:        a.Name,
+				Description: a.Description,
+				IsUnlocked:  a.HadDone,
+			}
+		}
+
 		utils.LogInfo("获取用户成就成功", nil)
-		c.JSON(200, gin.H{"message": "获取用户成就成功", "data": achievements})
+		c.JSON(200, gin.H{"message": "获取用户成就成功", "achievements": result})
 	}
 }
 

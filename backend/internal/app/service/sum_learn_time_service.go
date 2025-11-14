@@ -4,7 +4,6 @@ import (
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
 	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
 	"github.com/gin-gonic/gin"
-	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 )
 
@@ -12,29 +11,38 @@ import (
 func RecordLearnTime() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _ := getCurrentUserID(c)
-		cron := cron.New()
-		cron.AddFunc("@daily", func() {
-			err := repository.AddNewLearnTimeToDB(id)
-			if err != nil {
-				utils.LogError("添加新的学习时间记录失败", nil)
-				return
-			}
-			utils.LogInfo("添加新的学习时间记录成功", nil)
-		})
-		cron.Start()
+
 		var req struct {
-			Duration int `json:"duration"` // 学习时长，单位为分钟
+			Duration int `json:"duration"` // 学习时长，单位为秒
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": "Invalid input"})
+			c.JSON(400, gin.H{"error": "参数格式错误"})
+			utils.LogError("解析学习时长参数失败", logrus.Fields{"error": err.Error()})
 			return
 		}
+
+		// 更新learn_times表（每日记录）
 		err := repository.UpdateLearnTimeDuration(id, req.Duration)
 		if err != nil {
-			c.JSON(500, gin.H{"error": "Failed to update learn time"})
-			utils.LogError("更新学习时间记录失败", nil)
+			c.JSON(500, gin.H{"error": "记录学习时长失败"})
+			utils.LogError("更新学习时间记录失败", logrus.Fields{"user_id": id, "duration": req.Duration, "error": err.Error()})
 			return
 		}
+
+		// 更新用户的month_learntime（累计本月学习时长）
+		user, err := repository.GetUserByID(id)
+		if err == nil {
+			newMonthTime := user.MonthLearntime + req.Duration
+			err = repository.DB.Model(&user).Update("month_learntime", newMonthTime).Error
+			if err != nil {
+				utils.LogError("更新用户月学习时长失败", logrus.Fields{"user_id": id, "error": err.Error()})
+			} else {
+				utils.LogInfo("更新用户月学习时长成功", logrus.Fields{"user_id": id, "duration": req.Duration, "total": newMonthTime})
+			}
+		}
+
+		utils.LogInfo("记录学习时长成功", logrus.Fields{"user_id": id, "duration": req.Duration})
+		c.JSON(200, gin.H{"success": true, "message": "学习时长已记录", "duration": req.Duration})
 	}
 }
 

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -36,7 +35,8 @@ type Flag struct {
 	ID        uint          `gorm:"primaryKey" json:"id"`
 	Title     string        `gorm:"column:flag" json:"title"`          // 前端: title
 	Detail    string        `gorm:"column:plan_content" json:"detail"` // 前端: detail
-	Label     string        `json:"label"`                             // 前端: label (1-5)
+	LabelStr  string        `gorm:"column:label" json:"-"`             // 数据库字段（字符串）
+	Label     int           `gorm:"-" json:"label"`                    // 前端: label (1-5数字)
 	Priority  int           `json:"priority"`                          // 前端: priority (1-4)
 	UserID    uint          `json:"user_id"`
 	IsHidden  bool          `gorm:"column:is_hiden;not null;default:false" json:"-"` // 数据库字段（不导出到JSON）
@@ -52,15 +52,50 @@ type Flag struct {
 	EndTime   time.Time     `gorm:"column:time" json:"end_time"`                     // 前端: endTime
 }
 
-// AfterFind - GORM钩子：查询后自动将 IsHidden 反转为 IsPublic
+// AfterFind - GORM钩子：查询后自动将 IsHidden 反转为 IsPublic，并转换label
 func (f *Flag) AfterFind(tx *gorm.DB) error {
 	f.IsPublic = !f.IsHidden
+
+	// 将字符串label转换为数字（统一前后端格式）
+	labelMap := map[string]int{
+		"life":  1,
+		"study": 2,
+		"work":  3,
+		"like":  4,
+		"sport": 5,
+		"生活":    1,
+		"学习":    2,
+		"工作":    3,
+		"兴趣":    4,
+		"运动":    5,
+	}
+	if val, ok := labelMap[f.LabelStr]; ok {
+		f.Label = val
+	} else {
+		f.Label = 2 // 默认学习
+	}
+
 	return nil
 }
 
-// BeforeSave - GORM钩子：保存前将 IsPublic 反转为 IsHidden
+// BeforeSave - GORM钩子：保存前将 IsPublic 反转为 IsHidden，并转换label
 func (f *Flag) BeforeSave(tx *gorm.DB) error {
 	f.IsHidden = !f.IsPublic
+
+	// 将数字label转换为字符串存储到数据库
+	labelMap := map[int]string{
+		1: "生活",
+		2: "学习",
+		3: "工作",
+		4: "兴趣",
+		5: "运动",
+	}
+	if val, ok := labelMap[f.Label]; ok {
+		f.LabelStr = val
+	} else {
+		f.LabelStr = "学习" // 默认学习
+	}
+
 	return nil
 }
 
@@ -70,7 +105,7 @@ type Post struct {
 	Title      string        `json:"title"`
 	Content    string        `json:"content"`
 	Like       int           `json:"like"`
-	UserID     uint          `gorm:"fori" json:"user_id"`
+	UserID     uint          `gorm:"foreignKey:UserID" json:"user_id"`
 	User       *User         `gorm:"foreignKey:UserID" json:"user,omitempty"` // 关联用户信息
 	UserName   string        `gorm:"-" json:"userName"`                       // 前端需要的用户名（计算字段）
 	UserAvatar string        `gorm:"-" json:"userAvatar"`                     // 前端需要的用户头像（计算字段）
@@ -83,10 +118,12 @@ type Post struct {
 func (p *Post) AfterFind(tx *gorm.DB) error {
 	if p.User != nil {
 		p.UserName = p.User.Name
-		p.UserAvatar = "/default-avatar.png" // 默认头像
-		if p.User.HeadShow > 0 {
-			// 将 int 转换为 string
-			p.UserAvatar = "/avatars/" + fmt.Sprintf("%d", p.User.HeadShow) + ".png"
+		if p.User.HeadShow > 0 && p.User.HeadShow <= 6 {
+			// 映射到前端 assets 的图片路径
+			avatarFiles := []string{"131601", "131629", "131937", "131951", "132014", "133459"}
+			p.UserAvatar = "/src/assets/images/screenshot_20251114_" + avatarFiles[p.User.HeadShow-1] + ".png"
+		} else {
+			p.UserAvatar = ""
 		}
 	}
 	return nil
@@ -128,10 +165,10 @@ type LearnTime struct {
 
 type Daka_number struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	UserID    uint      `json:"user_id"`
-	HadDone   bool      `json:"had_done"`
-	MonthDaka int       `json:"month_daka"`
-	DaKaDate  time.Time `json:"daka_date"`
+	UserID    uint      `gorm:"column:user_id" json:"user_id"`
+	HadDone   bool      `gorm:"column:had_done" json:"had_done"`
+	MonthDaka int       `gorm:"column:month_daka" json:"month_daka"`
+	DaKaDate  time.Time `gorm:"column:daka_date" json:"daka_date"`
 }
 
 // 邮箱验证码
@@ -161,4 +198,29 @@ type TrackPoint struct {
 	UserID    uint      `json:"user_id"`
 	Event     string    `json:"event"`
 	Timestamp time.Time `json:"timestamp"`
+}
+
+// 聊天消息
+type ChatMessage struct {
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	FromUserID uint      `json:"from" gorm:"column:from_user_id"`
+	ToUserID   uint      `json:"to" gorm:"column:to_user_id"` // 0表示群聊
+	RoomID     string    `json:"room_id"`
+	Content    string    `json:"content"`
+	CreatedAt  time.Time `json:"created_at"`
+	User       *User     `gorm:"foreignKey:FromUserID" json:"-"` // 关联发送者信息
+	UserName   string    `gorm:"-" json:"user_name"`
+	UserAvatar string    `gorm:"-" json:"user_avatar"`
+}
+
+// AfterFind - GORM钩子：查询后自动填充用户信息
+func (m *ChatMessage) AfterFind(tx *gorm.DB) error {
+	if m.User != nil {
+		m.UserName = m.User.Name
+		if m.User.HeadShow > 0 && m.User.HeadShow <= 6 {
+			avatarFiles := []string{"131601", "131629", "131937", "131951", "132014", "133459"}
+			m.UserAvatar = "/src/assets/images/screenshot_20251114_" + avatarFiles[m.User.HeadShow-1] + ".png"
+		}
+	}
+	return nil
 }

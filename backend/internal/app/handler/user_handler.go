@@ -39,6 +39,7 @@ func Flag(r *gin.Engine) {
 	e.POST("/api/addFlag", service.PostUserFlags())
 	e.GET("/api/getUserFlags", service.GetUserFlags())
 	e.PUT("/api/updateFlagHide", service.UpdateFlagHide())
+	e.PUT("/api/updateFlag", service.UpdateFlagInfo())
 	e.PUT("/api/doneFlag", service.DoneUserFlags())
 	e.POST("/api/finshDoneFlag", service.FinshDoneFlag())
 	e.DELETE("/api/deleteFlag", service.DeleteUserFlags())
@@ -76,6 +77,15 @@ func ChatWebSocket(r *gin.Engine) {
 	e := r.Group("/")
 	e.Use(service.JWTAuth())
 	e.GET("/ws/chat", service.WsHandler())
+
+	// 聊天室管理接口
+	r.GET("/api/chat/rooms", service.GetChatRooms())
+	e.POST("/api/chat/rooms", service.CreateChatRoom())
+	e.DELETE("/api/chat/rooms/:room_id", service.DeleteChatRoom())
+
+	// 聊天历史接口
+	e.GET("/api/chat/history/:room_id", service.GetChatHistory())
+	e.GET("/api/private-chat/history", service.GetPrivateChatHistory())
 }
 
 func Ranking(r *gin.Engine) {
