@@ -56,3 +56,14 @@ func GetUserTotalDaka() gin.HandlerFunc {
 		c.JSON(200, gin.H{"message": "获取排行榜成功", "data": users})
 	}
 }
+
+// 按flag数量排序
+func GetUserByFlagNumber() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		users, err := repository.GetUserByFlagNumber()
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取排行榜失败,请重新再试..."})
+		}
+		c.JSON(200, gin.H{"message": "获取排行榜成功", "data": users})
+	}
+}

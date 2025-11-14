@@ -275,6 +275,13 @@ func GetUserByDaka() ([]model.User, error) {
 	return users, result.Error
 }
 
+// 20个用户按完成flag数量排序
+func GetUserByFlagNumber() ([]model.User, error) {
+	var users []model.User
+	result := DB.Order("flag_number desc").Limit(20).Find(&users)
+	return users, result.Error
+}
+
 // 通过flag id找到对应的flag
 func GetFlagByID(flagID uint) (model.Flag, error) {
 	var flag model.Flag
@@ -474,4 +481,17 @@ func GetPostLikes(flagID uint) (int, error) {
 	var post model.Post
 	result := DB.Where("id = ?", flagID).First(&post)
 	return post.Like, result.Error
+}
+
+// 储存标签
+func SaveLabelToDB(id uint, labal string) error {
+	err := DB.Model(&model.Label{}).Where("user_id = ?", id).Update(labal, gorm.Expr(labal+" + ?", 1)).Error
+	return err
+}
+
+// 调取用户不同种类的标签数
+func GetLabelByUserID(userID uint) (model.Label, error) {
+	var label model.Label
+	err := DB.Where("user_id = ?", userID).First(&label).Error
+	return label, err
 }

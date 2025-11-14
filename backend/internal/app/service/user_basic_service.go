@@ -375,3 +375,22 @@ func UpdateUserRemind() gin.HandlerFunc {
 			"状态": user.IsRemind})
 	}
 }
+
+// 头像切换
+func SwithHead() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			Number int `json:"number"`
+		}
+		id, _ := getCurrentUserID(c)
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(500, gin.H{"err": "头像切换失败,请重新再试..."})
+			log.Print("Binding error")
+			return
+		}
+		user, _ := repository.GetUserByID(id)
+		user.HeadShow = req.Number
+		repository.SaveUserToDB(user)
+		c.JSON(200, gin.H{"success": true})
+	}
+}

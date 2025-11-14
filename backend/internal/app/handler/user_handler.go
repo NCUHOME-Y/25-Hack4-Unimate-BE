@@ -16,6 +16,7 @@ func BasicUser(r *gin.Engine) {
 	e.PUT("/updateUsername", service.UpdateUserName())
 	e.PUT("/api/UpdateStatus", service.UpdateStatus())
 	e.GET("/api/getUser", service.GetUser())
+	e.POST("/api/swithhead", service.SwithHead())
 	e.PUT("/api/updateDaka", service.DoDaKa())
 	e.PUT("/api/updateRemindTime", service.UpdateUserRemindTime())
 	e.PUT("/api/updateRemindStatus", service.UpdateUserRemind())
@@ -61,14 +62,16 @@ func ChatWebSocket(r *gin.Engine) {
 
 func Ranking(r *gin.Engine) {
 	e := r.Use(service.JWTAuth())
+	e.GET("/api/getUseflagrRank", service.GetUserByFlagNumber())
 	e.GET("/api/countranking", service.GetUserCount())
-	e.GET("/api/learnTimeRanking", service.GetUserCount())
+	e.GET("/api/learnTimeRanking", service.GetUserMonthLearnTime())
 	e.GET("/api/dakaRanking", service.GetUserTotalDaka())
 }
 
 func LearnTime(r *gin.Engine) {
 	e := r.Use(service.JWTAuth())
 	e.POST("/api/addLearnTime", service.RecordLearnTime())
+	e.GET("/api/getlabel", service.GetLabelByUserID())
 	e.GET("/api/getLearnTimemonth", service.GetLearnTimeRecords())
 	e.GET("/api/getdakatotal", service.GetUserDakaTotal())
 	e.GET("/api/getmonthdaka", service.GetUserMonthDaka())

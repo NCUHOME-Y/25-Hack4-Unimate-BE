@@ -153,6 +153,10 @@ func FinshDoneFlag() gin.HandlerFunc {
 			return
 		}
 		user, _ := repository.GetUserByID(id)
+		flag, _ := repository.GetFlagByID(req.ID)
+		repository.SaveLabelToDB(id, flag.Label)
+		user.FlagNumber++
+		repository.SaveUserToDB(user)
 		count, _ := strconv.Atoi(level)
 		newcount := user.Count + count
 		repository.FlagNumberAddDB(id, user.FlagNumber+1)

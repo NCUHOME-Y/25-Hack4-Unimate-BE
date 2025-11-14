@@ -120,3 +120,20 @@ func GetLearnTimeRecordsMonth() gin.HandlerFunc {
 		})
 	}
 }
+
+// 完成flag的标签数种类
+func GetLabelByUserID() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := getCurrentUserID(c)
+		labal, err := repository.GetLabelByUserID(id)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取用户标签失败,请重新再试..."})
+			utils.LogError("获取用户标签失败", logrus.Fields{"user_id": id})
+			return
+		}
+		utils.LogInfo("获取用户标签成功", logrus.Fields{"user_id": id})
+		c.JSON(200, gin.H{
+			"label": labal,
+		})
+	}
+}
