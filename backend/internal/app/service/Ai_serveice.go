@@ -7,9 +7,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
 	"github.com/gin-gonic/gin"
 )
@@ -18,7 +18,7 @@ import (
 type LearningPlanRequest struct {
 	Flag       string `json:"flag" binding:"required"` // 学习目标标识
 	Background string `json:"background,omitempty"`    // 用户背景
-	Level      int    `json:"preferences,omitempty"`   // 学习偏好
+	Difficulty int    `json:"difficulty,omitempty"`    // 难度分数: 50=简单, 150=中等, 200=困难
 }
 
 // 学习计划响应
@@ -49,6 +49,63 @@ func initPlanner() {
 	}
 }
 
+// 检测输入是否为有效的学习目标
+func isValidLearningGoal(input string) bool {
+	// 去除空格
+	trimmed := strings.TrimSpace(input)
+
+	// 长度检查
+	if len(trimmed) < 2 || len(trimmed) > 200 {
+		return false
+	}
+
+	// 检查是否包含有意义的汉字、英文或数字
+	hasValidContent := false
+	for _, r := range trimmed {
+		if (r >= '\u4e00' && r <= '\u9fa5') || // 汉字
+			(r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || // 英文
+			(r >= '0' && r <= '9') { // 数字
+			hasValidContent = true
+			break
+		}
+	}
+	if !hasValidContent {
+		return false
+	}
+
+	// 检查是否全是重复字符（如：aaaaaa）
+	if isRepeatingChars(trimmed) {
+		return false
+	}
+
+	// 检查是否全是无意义符号
+	invalidPatterns := []string{
+		"!!!!!", "?????", ".....", "-----", "*****",
+		"asdfg", "qwert", "12345", "abcde",
+	}
+	for _, pattern := range invalidPatterns {
+		if strings.Contains(strings.ToLower(trimmed), pattern) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// 检查是否为重复字符
+func isRepeatingChars(s string) bool {
+	if len(s) < 3 {
+		return false
+	}
+	firstChar := s[0]
+	for i := 1; i < len(s); i++ {
+		if s[i] != firstChar {
+			return false
+		}
+	}
+	return true
+}
+
 func GenerateLearningPlan(c *gin.Context) {
 	// 确保 planner 已初始化
 	initPlanner()
@@ -59,6 +116,16 @@ func GenerateLearningPlan(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, LearningPlanResponse{
 			Success: false,
 			Error:   fmt.Sprintf("请求格式错误: %v", err),
+		})
+		return
+	}
+
+	// 输入合法性检测
+	if !isValidLearningGoal(req.Flag) {
+		fmt.Printf("⚠️ 检测到无效输入: %s\n", req.Flag)
+		c.JSON(http.StatusBadRequest, LearningPlanResponse{
+			Success: false,
+			Error:   "输入内容无效，请输入有意义的学习目标（如：学习Python编程、提升英语口语等）",
 		})
 		return
 	}
@@ -75,15 +142,10 @@ func GenerateLearningPlan(c *gin.Context) {
 		})
 		return
 	}
-	repository.AddFlagToDB(id, model.Flag{
-		Title:     req.Flag,
-		Detail:    plan,
-		CreatedAt: time.Now(),
-		IsPublic:  true, // AI生成的Flag默认公开
-	})
-	//埋点
+
+	// 埋点：生成学习计划（不添加Flag，让前端决定）
 	repository.AddTrackPointToDB(id, "生成学习计划")
-	fmt.Printf("✅ 成功生成学习计划，难度: %d\n", difficulty)
+	fmt.Printf("✅ 成功生成学习计划，难度: %d，计划长度: %d\n", difficulty, len(plan))
 	c.JSON(http.StatusOK, LearningPlanResponse{
 		Success: true,
 		Flag:    flag,
@@ -111,28 +173,89 @@ func CORSMiddleware() gin.HandlerFunc {
 // 生成学习计划的核心方法
 func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (string, string, int, error) {
 	// 构建系统提示词
-	systemPrompt := `你是"太傅AI学习计划生成器"，专门为用户制定科学合理的学习路径。请根据用户的学习目标(flag)生成详细的三阶段学习计划，并评估难度等级(1-5分)。
+	systemPrompt := `你是"太傅AI学习计划生成器",专门为用户制定科学合理的学习路径。请根据用户的学习目标和个人背景,生成详细的三阶段学习计划,并自动拆解为具体可执行的Flag任务。
 
 难度评分标准：
-50分 - 入门级，适合零基础，1-2周可掌握
-150分 - 基础级，需要一些预备知识，1个月左右
-200分 - 专家级，需要大量时间和实践，半年以上深度钻研
+50分 - 入门级,适合零基础,1-2周可掌握,拆解为3-5个简单Flag
+150分 - 基础级,需要一些预备知识,1个月左右,拆解为5-6个中等Flag  
+200分 - 专家级,需要大量时间和实践,半年以上深度钻研,拆解为6-8个挑战Flag
 
-请严格按照以下JSON格式返回，不要包含其他内容：
+注意：Flag数量必须控制在1-8个之间，确保每个Flag都有明确的可执行性
+
+请严格按照以下JSON格式返回(不要包含markdown代码块标记):
 {
-	"flag": "按照大致方向生成具体的flag目标",
-	"difficulty": 分数,
-	"plan": "学习几乎详细的三阶段学习计划内容"
-}`
+	"flag": "根据用户目标生成的具体精炼标题(10-20字)",
+	"difficulty": 分数(50/150/200),
+	"plan": "详细的三阶段学习计划..."
+}
+
+plan字段格式要求:
+1. 必须包含3个明确的阶段,每个阶段用"阶段一:"或"第一阶段:"标识
+2. 每个阶段必须包含:
+   - 阶段目标（该阶段要达成的核心能力）
+   - 学习要点（2-4个关键知识点，详细说明学习内容）
+   - 实践建议（具体的练习方法和资源推荐）
+   - 时间规划（建议的学习时长和进度安排）
+3. 每个阶段下生成2-3个具体的、可执行的Flag任务
+4. 任务必须用数字或符号标记(如"1. "、"- "、"• ")
+5. 任务描述要具体可执行,包含明确的完成标准
+6. 总共生成的任务数量控制在1-8个之间
+
+示例格式:
+阶段一:基础入门（预计1-2周）
+【阶段目标】掌握Python基础语法，能够编写简单程序
+【学习要点】
+- 变量、数据类型（整数、浮点数、字符串、布尔值）
+- 基本运算符和表达式
+- 条件语句（if-elif-else）和循环（for/while）
+- 函数定义和调用
+【实践建议】
+- 推荐资源：Python官方教程、菜鸟教程
+- 每天编写2-3个小程序巩固知识点
+- 使用在线编程平台（如LeetCode入门题）练习
+【具体任务】
+1. 完成Python语法基础教程前5章，并做笔记
+2. 编写10个基础练习程序（变量、循环、函数各3个）
+
+阶段二:进阶学习（预计2-3周）
+【阶段目标】掌握Python核心数据结构和面向对象编程
+【学习要点】
+- 列表、元组、字典、集合的使用和常用方法
+- 字符串处理和正则表达式
+- 文件读写操作
+- 面向对象编程：类、对象、继承、多态
+【实践建议】
+- 通过实际案例理解数据结构的应用场景
+- 编写小工具来练习文件操作（如批量重命名）
+- 设计简单的类来建模现实问题
+【具体任务】
+1. 掌握列表和字典操作，完成20道相关练习题
+2. 编写一个简单的学生成绩管理系统（使用类和文件操作）
+
+阶段三:项目实战（预计2-4周）
+【阶段目标】独立完成完整项目，建立编程自信
+【学习要点】
+- 项目规划和模块划分
+- 代码组织和注释规范
+- 调试技巧和错误处理
+- 第三方库的使用（如requests、pandas）
+【实践建议】
+- 从简单项目开始，逐步增加复杂度
+- 使用Git进行版本控制
+- 参考GitHub上的优秀开源项目
+【具体任务】
+1. 开发一个实用工具（计算器、待办清单或天气查询应用）
+2. 总结学习笔记，整理知识脑图，分享学习心得`
 
 	// 构建用户提示词
 	userPrompt := fmt.Sprintf("学习目标: %s\n", req.Flag)
 	if req.Background != "" {
-		userPrompt += fmt.Sprintf("用户背景: %s\n", req.Background)
+		userPrompt += fmt.Sprintf("个人背景: %s\n", req.Background)
 	}
-	if req.Level != 0 {
-		userPrompt += fmt.Sprintf("学习偏好等级: %d\n", req.Level)
+	if req.Difficulty != 0 {
+		userPrompt += fmt.Sprintf("期望难度分数: %d\n", req.Difficulty)
 	}
+	userPrompt += "\n请根据以上信息生成学习计划,返回标准JSON格式。"
 
 	fmt.Printf("📋 系统提示: %s\n", systemPrompt)
 	fmt.Printf("📋 用户提示: %s\n", userPrompt)
@@ -144,7 +267,7 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 		return "", "", 0, err
 	}
 
-	fmt.Printf("✅ AI返回成功\n")
+	fmt.Printf("✅ AI返回成功,原始响应长度: %d\n", len(response))
 
 	// 解析AI响应
 	flag, plan, difficulty, err := p.parseAIResponse(response)
@@ -153,33 +276,61 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 		return "", "", 0, err
 	}
 
-	fmt.Printf("✅ 解析成功，难度: %d\n", difficulty)
+	// 验证结果
+	if plan == "" {
+		return "", "", 0, fmt.Errorf("AI返回的学习计划为空")
+	}
+	if difficulty == 0 {
+		difficulty = req.Difficulty // 使用请求的难度作为默认值
+	}
+
+	fmt.Printf("✅ 解析成功,难度: %d, 计划长度: %d\n", difficulty, len(plan))
 	return flag, plan, difficulty, nil
 }
 
 // 解析AI响应
 func (p *TaiFuLearningPlanner) parseAIResponse(response string) (string, string, int, error) {
+	// 清理响应（移除可能的markdown代码块标记）
+	cleanResponse := response
+	cleanResponse = strings.TrimPrefix(cleanResponse, "```json")
+	cleanResponse = strings.TrimPrefix(cleanResponse, "```")
+	cleanResponse = strings.TrimSuffix(cleanResponse, "```")
+	cleanResponse = strings.TrimSpace(cleanResponse)
+
 	// 尝试解析JSON响应
 	var result struct {
-		Flag string `json:"flag"`
-
+		Flag       string `json:"flag"`
 		Difficulty int    `json:"difficulty"`
 		Plan       string `json:"plan"`
 	}
 
-	err := json.Unmarshal([]byte(response), &result)
+	err := json.Unmarshal([]byte(cleanResponse), &result)
 	if err != nil {
-		fmt.Printf("❌ 解析失败，返回原始响应: %v\n", err)
-		// 如果解析失败，返回原始响应作为计划
-		return "", response, 3, nil
+		fmt.Printf("❌ JSON解析失败: %v\n", err)
+		fmt.Printf("尝试解析的内容前100字符: %s\n", cleanResponse[:min(100, len(cleanResponse))])
+
+		// 如果解析失败,返回原始响应作为计划
+		return "", cleanResponse, 0, nil
 	}
 
+	// 验证必要字段
 	if result.Plan == "" {
-		fmt.Printf("⚠️ 解析的计划为空\n")
-		return "", response, result.Difficulty, nil
+		fmt.Printf("⚠️ 解析的计划为空,使用原始响应\n")
+		return result.Flag, cleanResponse, result.Difficulty, nil
 	}
+
+	fmt.Printf("✅ 成功解析: flag=%s, difficulty=%d, plan长度=%d\n",
+		result.Flag, result.Difficulty, len(result.Plan))
 
 	return result.Flag, result.Plan, result.Difficulty, nil
+}
+
+// min helper function
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // 调用OpenAI API
@@ -196,7 +347,7 @@ func (p *TaiFuLearningPlanner) callOpenAI(systemPrompt, userPrompt string) (stri
 
 	// 准备请求数据
 	requestData := map[string]interface{}{
-		"model": "Qwen/Qwen2.5-Coder-32B-Instruct",
+		"model": "Qwen/Qwen3-VL-30B-A3B-Instruct",
 		"messages": []map[string]string{
 			{"role": "system", "content": systemPrompt},
 			{"role": "user", "content": userPrompt},

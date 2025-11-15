@@ -41,20 +41,44 @@ func GetUserFlags() gin.HandlerFunc {
 func PostUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var flag struct {
-			Title     string `json:"title"`
-			Detail    string `json:"detail"`
-			IsPublic  bool   `json:"is_public"`
-			Label     int    `json:"label"` // 前端发送数字
-			Priority  int    `json:"priority"`
-			Total     int    `json:"total"`
-			Points    int    `json:"points"`
-			EndTime   string `json:"end_time"`   // 改为string，手动解析
-			StartTime string `json:"start_time"` // 改为string，手动解析
+			Title       string `json:"title"`
+			Detail      string `json:"detail"`
+			IsPublic    bool   `json:"is_public"`
+			Label       int    `json:"label"`    // 前端发送数字1-5
+			Priority    int    `json:"priority"` // 前端发送数字1-4
+			Total       int    `json:"total"`
+			Points      int    `json:"points"`
+			DailyLimit  int    `json:"daily_limit"`  // 每日完成次数限制
+			IsRecurring bool   `json:"is_recurring"` // 是否循环任务
+			EndTime     string `json:"end_time"`     // 改为string，手动解析
+			StartTime   string `json:"start_time"`   // 改为string，手动解析
 		}
 		if err := c.ShouldBindJSON(&flag); err != nil {
 			c.JSON(500, gin.H{"err": "添加flag失败,请重新再试..."})
 			log.Printf("Binding error: %v", err)
 			return
+		}
+
+		// 验证label范围(1-5)，设置默认值
+		if flag.Label < 1 || flag.Label > 5 {
+			log.Printf("⚠️ Invalid label: %d, defaulting to 1", flag.Label)
+			flag.Label = 1 // 默认学习类
+		}
+
+		// 验证priority范围(1-4)，设置默认值
+		if flag.Priority < 1 || flag.Priority > 4 {
+			log.Printf("⚠️ Invalid priority: %d, defaulting to 3", flag.Priority)
+			flag.Priority = 3 // 默认一般
+		}
+
+		// 验证daily_limit，设置默认值
+		if flag.DailyLimit < 1 {
+			flag.DailyLimit = 1 // 默认每天至少1次
+		}
+
+		// 验证total，设置默认值
+		if flag.Total < 1 {
+			flag.Total = 1
 		}
 
 		// 解析时间字符串
@@ -71,10 +95,10 @@ func PostUserFlags() gin.HandlerFunc {
 			Title:     flag.Title,
 			Detail:    flag.Detail,
 			IsPublic:  flag.IsPublic,
-			Label:     flag.Label, // 前端发送数字，BeforeSave会转换为字符串
+			Label:     flag.Label,
 			Priority:  flag.Priority,
 			Total:     flag.Total,
-			Points:    flag.Points,
+			Points:    flag.Points, // 添加积分字段
 			CreatedAt: time.Now(),
 			StartTime: startTime,
 			EndTime:   endTime,
