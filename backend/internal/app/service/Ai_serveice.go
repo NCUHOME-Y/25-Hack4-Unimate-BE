@@ -41,11 +41,18 @@ var planner *TaiFuLearningPlanner
 // 初始化 planner（延迟初始化，等待 .env 加载）
 func initPlanner() {
 	if planner == nil {
+		apiKey := os.Getenv("APIKEY")
+		if apiKey == "" {
+			fmt.Printf("❌ 警告：APIKEY环境变量未设置\n")
+		} else {
+			fmt.Printf("✅ API Key已加载，前缀: %s...\n", apiKey[:min(10, len(apiKey))])
+		}
+
 		planner = &TaiFuLearningPlanner{
-			APIKey:  os.Getenv("APIKEY"),
+			APIKey:  apiKey,
 			BaseURL: "https://api.siliconflow.cn/v1/chat/completions",
 		}
-		fmt.Printf("planner配置完成")
+		fmt.Printf("✅ planner配置完成\n")
 	}
 }
 
@@ -345,15 +352,21 @@ func (p *TaiFuLearningPlanner) callOpenAI(systemPrompt, userPrompt string) (stri
 		return "", fmt.Errorf("❌ API密钥未配置，请检查环境变量 APIKEY")
 	}
 
-	// 准备请求数据
+	// 准备请求数据 - 使用标准格式
+	type Message struct {
+		Role    string `json:"role"`
+		Content string `json:"content"`
+	}
+
 	requestData := map[string]interface{}{
-		"model": "Qwen/Qwen3-VL-30B-A3B-Instruct",
-		"messages": []map[string]string{
-			{"role": "system", "content": systemPrompt},
-			{"role": "user", "content": userPrompt},
+		"model": "Qwen/Qwen2.5-7B-Instruct", // 使用更稳定的模型
+		"messages": []Message{
+			{Role: "system", Content: systemPrompt},
+			{Role: "user", Content: userPrompt},
 		},
 		"max_tokens":  3000,
-		"temperature": 0.3,
+		"temperature": 0.7,
+		"stream":      false, // 明确禁用流式输出
 	}
 
 	requestBody, err := json.Marshal(requestData)

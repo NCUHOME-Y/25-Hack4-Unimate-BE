@@ -210,28 +210,43 @@ func (manager *Manager) Start() {
 
 			// 私聊消息（to > 0）
 			if message.ToID > 0 {
+				// 发给目标用户
 				if targetClient, ok := manager.GlobalClients[message.ToID]; ok {
 					select {
 					case targetClient.Send <- data:
-						log.Printf("Private message from %d to %d delivered", message.FromID, message.ToID)
+						log.Printf("📨 Private message from %d to %d delivered", message.FromID, message.ToID)
 					default:
-						log.Printf("Failed to send private message from %d to %d", message.FromID, message.ToID)
+						log.Printf("❌ Failed to send private message from %d to %d", message.FromID, message.ToID)
 					}
 				} else {
-					log.Printf("Target user %d not online for private message", message.ToID)
+					log.Printf("⚠️ Target user %d not online for private message", message.ToID)
+				}
+
+				// 也发回给发送者（让发送者看到确认，并且刷新后能看到历史）
+				if senderClient, ok := manager.GlobalClients[message.FromID]; ok {
+					select {
+					case senderClient.Send <- data:
+						log.Printf("✅ Private message echoed back to sender %d", message.FromID)
+					default:
+						log.Printf("⚠️ Failed to echo private message to sender %d", message.FromID)
+					}
 				}
 			} else if message.RoomID != "" {
-				// 房间广播消息
+				// 房间广播消息（发给所有人，包括发送者）
 				if room, ok := manager.Rooms[message.RoomID]; ok {
 					room.LastActive = time.Now()
-					for _, client := range room.Clients {
+					successCount := 0
+					for clientID, client := range room.Clients {
 						select {
 						case client.Send <- data:
+							successCount++
 						default:
+							log.Printf("⚠️ Failed to send to client %d in room %s", clientID, message.RoomID)
 							close(client.Send)
 							delete(room.Clients, client.ID)
 						}
 					}
+					log.Printf("📢 Room message broadcast: from=%d room=%s sent_to=%d/%d users", message.FromID, message.RoomID, successCount, len(room.Clients))
 				}
 			}
 			manager.mu.RUnlock()
@@ -302,7 +317,12 @@ func ReadPump(client *Client) {
 			Content:    message.Content,
 			CreatedAt:  message.CreatedAt,
 		}
-		repository.SaveChatMessage(&chatMsg)
+		err = repository.SaveChatMessage(&chatMsg)
+		if err != nil {
+			utils.LogError("保存聊天消息失败", map[string]interface{}{"error": err.Error(), "from": message.FromID, "to": message.ToID})
+		} else {
+			utils.LogInfo("💾 消息已保存", map[string]interface{}{"id": chatMsg.ID, "from": message.FromID, "to": message.ToID, "room": message.RoomID, "content": message.Content})
+		}
 
 		manager.Broadcast <- message
 	}
@@ -496,5 +516,33 @@ func GetPrivateChatHistory() gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"messages": messages})
+	}
+}
+
+// 获取私聊会话列表（按对方用户分组，显示最新消息）
+func GetPrivateConversations() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
+			return
+		}
+
+		utils.LogInfo("获取私聊会话列表", logrus.Fields{"user_id": userID})
+
+		conversations, err := repository.GetPrivateConversations(userID)
+		if err != nil {
+			utils.LogError("获取私聊会话列表失败", logrus.Fields{"user_id": userID, "error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "获取会话列表失败"})
+			return
+		}
+
+		// 确保返回空数组而不是null
+		if conversations == nil {
+			conversations = []repository.Conversation{}
+		}
+
+		utils.LogInfo("会话列表获取成功", logrus.Fields{"user_id": userID, "count": len(conversations)})
+		c.JSON(http.StatusOK, gin.H{"conversations": conversations})
 	}
 }

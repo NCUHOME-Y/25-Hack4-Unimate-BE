@@ -749,3 +749,86 @@ func GetPrivateChatHistory(userID1, userID2 uint, limit int) ([]model.ChatMessag
 	}
 	return messages, nil
 }
+
+// Conversation 会话信息
+type Conversation struct {
+	UserID        uint      `json:"user_id"`
+	UserName      string    `json:"user_name"`
+	UserAvatar    string    `json:"user_avatar"`
+	LastMessage   string    `json:"last_message"`
+	LastMessageAt time.Time `json:"last_message_at"`
+	UnreadCount   int       `json:"unread_count"`
+}
+
+// 获取私聊会话列表（按最后消息时间排序）
+func GetPrivateConversations(userID uint) ([]Conversation, error) {
+	var conversations []Conversation
+
+	// 简化版本：直接查询所有私聊消息，在Go中处理分组
+	var messages []model.ChatMessage
+	err := DB.Preload("User").
+		Where("(from_user_id = ? OR to_user_id = ?) AND (room_id = '' OR room_id IS NULL)", userID, userID).
+		Order("created_at DESC").
+		Find(&messages).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	// 按对方用户ID分组，保留最新消息
+	conversationMap := make(map[uint]*Conversation)
+	for _, msg := range messages {
+		// 确定对方用户ID
+		var otherUserID uint
+		if msg.FromUserID == userID {
+			otherUserID = msg.ToUserID
+		} else {
+			otherUserID = msg.FromUserID
+		}
+
+		// 如果已存在且不是更新的消息，跳过
+		if existing, exists := conversationMap[otherUserID]; exists {
+			if !msg.CreatedAt.After(existing.LastMessageAt) {
+				continue
+			}
+		}
+
+		// 获取用户信息
+		var user model.User
+		if err := DB.First(&user, otherUserID).Error; err != nil {
+			continue
+		}
+
+		// 构建头像路径
+		var avatar string
+		if user.HeadShow > 0 && user.HeadShow <= 6 {
+			avatarFiles := []string{"131601", "131629", "131937", "131951", "132014", "133459"}
+			avatar = "/src/assets/images/screenshot_20251114_" + avatarFiles[user.HeadShow-1] + ".png"
+		}
+
+		conversationMap[otherUserID] = &Conversation{
+			UserID:        user.ID,
+			UserName:      user.Name,
+			UserAvatar:    avatar,
+			LastMessage:   msg.Content,
+			LastMessageAt: msg.CreatedAt,
+			UnreadCount:   0, // TODO: 实现未读计数
+		}
+	}
+
+	// 转换为切片并按时间排序
+	for _, conv := range conversationMap {
+		conversations = append(conversations, *conv)
+	}
+
+	// 按最后消息时间排序（最新的在前）
+	for i := 0; i < len(conversations); i++ {
+		for j := i + 1; j < len(conversations); j++ {
+			if conversations[j].LastMessageAt.After(conversations[i].LastMessageAt) {
+				conversations[i], conversations[j] = conversations[j], conversations[i]
+			}
+		}
+	}
+
+	return conversations, nil
+}

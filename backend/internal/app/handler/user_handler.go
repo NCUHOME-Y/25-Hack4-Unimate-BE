@@ -78,14 +78,15 @@ func ChatWebSocket(r *gin.Engine) {
 	e.Use(service.JWTAuth())
 	e.GET("/ws/chat", service.WsHandler())
 
-	// 聊天室管理接口
-	r.GET("/api/chat/rooms", service.GetChatRooms())
+	// 聊天室管理接口（修复：添加认证）
+	e.GET("/api/chat/rooms", service.GetChatRooms())
 	e.POST("/api/chat/rooms", service.CreateChatRoom())
 	e.DELETE("/api/chat/rooms/:room_id", service.DeleteChatRoom())
 
 	// 聊天历史接口
 	e.GET("/api/chat/history/:room_id", service.GetChatHistory())
 	e.GET("/api/private-chat/history", service.GetPrivateChatHistory())
+	e.GET("/api/private-chat/conversations", service.GetPrivateConversations())
 }
 
 func Ranking(r *gin.Engine) {
