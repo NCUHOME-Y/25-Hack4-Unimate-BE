@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # MySQL 数据库服务
+  mysql:
+    image: mysql:8.0
+    container_name: unimate-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: unimate_db
+      MYSQL_USER: unimate_user
+      MYSQL_PASSWORD: unimate_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # 可选：初始化 SQL 脚本
+    networks:
+      - unimate-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Go 后端应用服务
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: unimate-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      # 数据库连接配置
+      DB_DSN: "unimate_user:unimate_password@tcp(mysql:3306)/unimate_db?charset=utf8mb4&parseTime=True&loc=Local"
+      # 其他环境变量
+      GIN_MODE: release
+      JWT_SECRET: YUMUMUHAOSHUAIHAOLIHAOXIXIXIXIXIIDOAFJOPJOPEFPOAFHIPGAHFIGOISHRGFHOIAOPIGHAWIHEROFIHAWRF
+      APIKEY: sk-mxedomoffdguxdhaaxvlupijqopyhegnrisbxmaeutnjkkta
+      SMTP_HOST: smtp.qq.com
+      SMTP_PORT: "587"
+      SMTP_USER: 323191343@qq.com
+      SMTP_PASS: xheutbnipqnwcabf
+      SMTP_FROM: 323191343@qq.com
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - unimate-network
+    volumes:
+      - ./logs:/app/logs  # 可选：日志持久化
+
+# 数据卷定义
+volumes:
+  mysql_data:
+    driver: local
+
+# 网络定义
+networks:
+  unimate-network:
+    driver: bridge
