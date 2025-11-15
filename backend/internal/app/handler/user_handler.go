@@ -56,6 +56,13 @@ func BasicFlag(r *gin.Engine) {
 	e.POST("/api/flagcomment", service.CommentOnFlag())
 	e.DELETE("/api/flagdeletecomment", service.DeleteFlagComment())
 	e.GET("/api/getflaglike", service.GetFlagLikes())
+
+	// 新增接口：获取有日期的flag（用于日历高亮）
+	e.GET("/api/flags/with-dates", service.GetFlagsWithDates())
+	// 新增接口：获取预设flag
+	e.GET("/api/flags/preset", service.GetPresetFlags())
+	// 新增接口：获取过期flag
+	e.GET("/api/flags/expired", service.GetExpiredFlags())
 }
 func BasicPost(r *gin.Engine) {
 	// 公开接口：不需要认证

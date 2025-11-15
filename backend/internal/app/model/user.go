@@ -48,8 +48,8 @@ type Flag struct {
 	Likes     int           `gorm:"column:like" json:"likes"`                        // 前端: agreeNumber → likes
 	Comments  []FlagComment `gorm:"foreignKey:FlagID" json:"comments"`               // 评论列表
 	CreatedAt time.Time     `json:"created_at"`                                      // 前端: createdAt
-	StartTime time.Time     `json:"start_time"`                                      // 前端: startTime
-	EndTime   time.Time     `gorm:"column:time" json:"end_time"`                     // 前端: endTime
+	StartTime time.Time     `gorm:"column:start_time" json:"start_time"`             // 前端: startTime
+	EndTime   time.Time     `gorm:"column:end_time" json:"end_time"`                 // 前端: endTime
 }
 
 // AfterFind - GORM钩子：查询后自动将 IsHidden 反转为 IsPublic，并转换label

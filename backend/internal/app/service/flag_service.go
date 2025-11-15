@@ -81,14 +81,28 @@ func PostUserFlags() gin.HandlerFunc {
 			flag.Total = 1
 		}
 
-		// 解析时间字符串
-		startTime, parseErr := time.Parse(time.RFC3339, flag.StartTime)
-		if parseErr != nil {
-			startTime = time.Now()
+		// 解析时间字符串，只保留年月日，时分秒设为00:00:00
+		// 如果前端不传日期（空字符串），则使用零值（表示无限期）
+		var startTime time.Time
+		if flag.StartTime != "" {
+			parsedStart, parseErr := time.Parse(time.RFC3339, flag.StartTime)
+			if parseErr != nil {
+				log.Printf("⚠️ 解析起始日期失败: %v, 使用零值（无限期）", parseErr)
+				startTime = time.Time{} // 零值，表示无限期
+			} else {
+				startTime = time.Date(parsedStart.Year(), parsedStart.Month(), parsedStart.Day(), 0, 0, 0, 0, parsedStart.Location())
+			}
 		}
-		endTime, parseErr := time.Parse(time.RFC3339, flag.EndTime)
-		if parseErr != nil {
-			endTime = time.Now().Add(30 * 24 * time.Hour)
+
+		var endTime time.Time
+		if flag.EndTime != "" {
+			parsedEnd, parseErr := time.Parse(time.RFC3339, flag.EndTime)
+			if parseErr != nil {
+				log.Printf("⚠️ 解析结束日期失败: %v, 使用零值（无限期）", parseErr)
+				endTime = time.Time{} // 零值，表示无限期
+			} else {
+				endTime = time.Date(parsedEnd.Year(), parsedEnd.Month(), parsedEnd.Day(), 23, 59, 59, 0, parsedEnd.Location())
+			}
 		}
 
 		flag_model := model.Flag{
@@ -168,6 +182,20 @@ func DoneUserFlags() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
 			return
 		}
+
+		// 校验flag是否在有效日期范围内
+		today := time.Now()
+		if !flag.StartTime.IsZero() && today.Before(flag.StartTime) {
+			c.JSON(400, gin.H{"error": "该flag未到起始日期，无法打卡"})
+			utils.LogInfo("打卡失败：未到起始日期", logrus.Fields{"flag_id": req.ID, "start_time": flag.StartTime})
+			return
+		}
+		if !flag.EndTime.IsZero() && today.After(flag.EndTime) {
+			c.JSON(400, gin.H{"error": "该flag已过结束日期，无法打卡"})
+			utils.LogInfo("打卡失败：已过结束日期", logrus.Fields{"flag_id": req.ID, "end_time": flag.EndTime})
+			return
+		}
+
 		flag.Count += 1
 		err = repository.UpdateFlagDoneNumber(req.ID, flag.Count)
 		if err != nil {
@@ -398,5 +426,65 @@ func UpdateFlagInfo() gin.HandlerFunc {
 
 		utils.LogInfo("flag更新成功", logrus.Fields{"flag_id": req.ID})
 		c.JSON(200, gin.H{"success": true, "message": "Flag更新成功"})
+	}
+}
+
+// 获取有起始日期的flag（用于日历高亮）
+func GetFlagsWithDates() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(400, gin.H{"error": "获取用户信息失败"})
+			return
+		}
+		today := time.Now()
+		flags, err := repository.GetFlagsWithDatesByUserID(id, today)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取flag失败"})
+			utils.LogError("获取有日期的flag失败", logrus.Fields{"user_id": id, "error": err.Error()})
+			return
+		}
+		utils.LogInfo("获取有日期的flag成功", logrus.Fields{"user_id": id, "count": len(flags)})
+		c.JSON(200, gin.H{"flags": flags})
+	}
+}
+
+// 获取预设flag（未到起始日期的flag）
+func GetPresetFlags() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(400, gin.H{"error": "获取用户信息失败"})
+			return
+		}
+		today := time.Now()
+		flags, err := repository.GetPresetFlagsByUserID(id, today)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取预设flag失败"})
+			utils.LogError("获取预设flag失败", logrus.Fields{"user_id": id, "error": err.Error()})
+			return
+		}
+		utils.LogInfo("获取预设flag成功", logrus.Fields{"user_id": id, "count": len(flags)})
+		c.JSON(200, gin.H{"flags": flags})
+	}
+}
+
+// 获取过期flag
+func GetExpiredFlags() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(400, gin.H{"error": "获取用户信息失败"})
+			return
+		}
+		today := time.Now()
+		flags, err := repository.GetExpiredFlagsByUserID(id, today)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取过期flag失败"})
+			utils.LogError("获取过期flag失败", logrus.Fields{"user_id": id, "error": err.Error()})
+			return
+		}
+		utils.LogInfo("获取过期flag成功", logrus.Fields{"user_id": id, "count": len(flags)})
+		c.JSON(200, gin.H{"flags": flags})
 	}
 }
