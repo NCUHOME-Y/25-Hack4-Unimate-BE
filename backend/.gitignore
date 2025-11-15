@@ -68,3 +68,8 @@ test_*.go
 *.md
 README.md
 配置完成.md
+
+.yaml
+*.yml
+Dokerfile
+docker-compose.yaml
