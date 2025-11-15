@@ -10,11 +10,18 @@ import (
 
 func InitAchievementTable(user model.User) model.User {
 	achievements := []model.Achievement{
-		{UserID: user.ID, Name: "新手启程", Description: "第一次设置flag", HadDone: false},
-		{UserID: user.ID, Name: "坚持不懈", Description: "第一次坚持打卡完成", HadDone: false},
-		{UserID: user.ID, Name: "学习达人", Description: "累计打卡50次", HadDone: false},
-		{UserID: user.ID, Name: "任务收藏家", Description: "积分超过1000", HadDone: false},
-		{UserID: user.ID, Name: "专注家", Description: "累计学习时间超过1000min", HadDone: false},
+		{UserID: user.ID, Name: "首次完成", Description: "第一次设置flag", HadDone: false},
+		{UserID: user.ID, Name: "7天连卡", Description: "连续打卡7天", HadDone: false},
+		{UserID: user.ID, Name: "任务大师", Description: "完成50个flag", HadDone: false},
+		{UserID: user.ID, Name: "目标达成", Description: "积分超过1000", HadDone: false},
+		{UserID: user.ID, Name: "学习之星", Description: "累计学习时间超过1000分钟", HadDone: false},
+		{UserID: user.ID, Name: "坚持不懈", Description: "累计打卡30天", HadDone: false},
+		{UserID: user.ID, Name: "效率达人", Description: "单日完成5个flag", HadDone: false},
+		{UserID: user.ID, Name: "专注大师", Description: "单日学习时长超过4小时", HadDone: false},
+		{UserID: user.ID, Name: "早起鸟", Description: "早上6点前打卡5次", HadDone: false},
+		{UserID: user.ID, Name: "夜猫子", Description: "晚上10点后打卡5次", HadDone: false},
+		{UserID: user.ID, Name: "完美主义", Description: "连续10次满分完成flag", HadDone: false},
+		{UserID: user.ID, Name: "全能选手", Description: "完成5种不同标签的flag", HadDone: false},
 	}
 	user.Achievements = achievements
 	utils.LogInfo("初始化用户成就表成功", nil)

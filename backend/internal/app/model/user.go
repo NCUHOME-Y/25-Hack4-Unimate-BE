@@ -131,11 +131,29 @@ func (p *Post) AfterFind(tx *gorm.DB) error {
 
 // 帖子评论
 type PostComment struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	PostID    uint      `json:"post_id"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	PostID     uint      `json:"post_id"`
+	UserID     uint      `json:"userId" gorm:"column:user_id"` // 评论者ID
+	Content    string    `json:"content"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	User       *User     `gorm:"foreignKey:UserID" json:"-"` // 关联用户信息
+	UserName   string    `gorm:"-" json:"userName"`          // 前端需要的用户名（计算字段）
+	UserAvatar string    `gorm:"-" json:"userAvatar"`        // 前端需要的用户头像（计算字段）
+}
+
+// AfterFind - GORM钩子：查询后自动填充用户信息
+func (c *PostComment) AfterFind(tx *gorm.DB) error {
+	if c.User != nil {
+		c.UserName = c.User.Name
+		if c.User.HeadShow > 0 && c.User.HeadShow <= 6 {
+			avatarFiles := []string{"131601", "131629", "131937", "131951", "132014", "133459"}
+			c.UserAvatar = "/src/assets/images/screenshot_20251114_" + avatarFiles[c.User.HeadShow-1] + ".png"
+		} else {
+			c.UserAvatar = ""
+		}
+	}
+	return nil
 }
 
 // flag评论

@@ -42,6 +42,12 @@ func PostUserPost() gin.HandlerFunc {
 // 删除帖子
 func DeleteUserPost() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		userID, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(401, gin.H{"error": "未授权"})
+			return
+		}
+
 		var req struct {
 			PostID uint `json:"post_id"`
 		}
@@ -49,13 +55,25 @@ func DeleteUserPost() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "Invalid input"})
 			return
 		}
-		err := repository.DeletePostFromDB(req.PostID)
+
+		// 验证帖子所有权
+		post, err := repository.GetPostByID(req.PostID)
+		if err != nil {
+			c.JSON(404, gin.H{"error": "帖子不存在"})
+			return
+		}
+		if post.UserID != userID {
+			c.JSON(403, gin.H{"error": "无权删除此帖子"})
+			return
+		}
+
+		err = repository.DeletePostFromDB(req.PostID)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to delete post"})
 			utils.LogError("数据库删除帖子失败", nil)
 			return
 		}
-		utils.LogInfo("用户删除帖子成功", nil)
+		utils.LogInfo("用户删除帖子成功", logrus.Fields{"post_id": req.PostID, "user_id": userID})
 		c.JSON(200, gin.H{"success": true})
 	}
 }
@@ -63,37 +81,75 @@ func DeleteUserPost() gin.HandlerFunc {
 // 发表帖子评论
 func CommentOnPost() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var comment model.PostComment
-		if err := c.ShouldBindJSON(&comment); err != nil {
+		userID, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(401, gin.H{"error": "未授权"})
+			return
+		}
+
+		var req struct {
+			PostID  uint   `json:"postId"`
+			Content string `json:"content"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": "Invalid input"})
 			return
 		}
 
 		utils.LogInfo("开始添加评论", logrus.Fields{
-			"post_id": comment.PostID,
-			"content": comment.Content,
+			"post_id": req.PostID,
+			"user_id": userID,
+			"content": req.Content,
 		})
 
-		err := repository.AddPostCommentToDB(comment.PostID, comment)
+		comment := model.PostComment{
+			PostID:  req.PostID,
+			UserID:  userID,
+			Content: req.Content,
+		}
+
+		err := repository.AddPostCommentToDB(req.PostID, comment)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to add comment"})
 			utils.LogError("数据库添加评论失败", logrus.Fields{
-				"post_id": comment.PostID,
+				"post_id": req.PostID,
 				"error":   err.Error(),
 			})
 			return
 		}
+
+		// 重新查询评论以获取完整的用户信息
+		savedComment, err := repository.GetCommentByID(comment.ID)
+		if err != nil {
+			utils.LogError("查询评论失败", logrus.Fields{"comment_id": comment.ID})
+		}
+
 		utils.LogInfo("用户发表评论成功", logrus.Fields{
-			"post_id":    comment.PostID,
+			"post_id":    req.PostID,
 			"comment_id": comment.ID,
 		})
-		c.JSON(200, gin.H{"success": true})
+
+		c.JSON(200, gin.H{
+			"success":    true,
+			"id":         savedComment.ID,
+			"userId":     savedComment.UserID,
+			"userName":   savedComment.UserName,
+			"userAvatar": savedComment.UserAvatar,
+			"content":    savedComment.Content,
+			"createdAt":  savedComment.CreatedAt.Format("15:04"),
+		})
 	}
 }
 
 // 删除帖子评论
 func DeleteUserPostComment() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		userID, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(401, gin.H{"error": "未授权"})
+			return
+		}
+
 		var req struct {
 			CommentID uint `json:"comment_id"`
 		}
@@ -101,15 +157,26 @@ func DeleteUserPostComment() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "Invalid input"})
 			return
 		}
-		err := repository.DeletePostCommentFromDB(req.CommentID)
+
+		// 验证评论所有权
+		comment, err := repository.GetCommentByID(req.CommentID)
+		if err != nil {
+			c.JSON(404, gin.H{"error": "评论不存在"})
+			return
+		}
+		if comment.UserID != userID {
+			c.JSON(403, gin.H{"error": "无权删除此评论"})
+			return
+		}
+
+		err = repository.DeletePostCommentFromDB(req.CommentID)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to delete comment"})
 			utils.LogError("数据库删除评论失败", nil)
-
 			return
 		}
-		utils.LogInfo("用户删除评论成功", nil)
-		c.JSON(200, gin.H{"message": "Comment deleted successfully"})
+		utils.LogInfo("用户删除评论成功", logrus.Fields{"comment_id": req.CommentID, "user_id": userID})
+		c.JSON(200, gin.H{"success": true, "message": "Comment deleted successfully"})
 	}
 }
 

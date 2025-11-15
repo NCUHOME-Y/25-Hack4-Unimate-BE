@@ -297,8 +297,22 @@ func GetFlagByID(flagID uint) (model.Flag, error) {
 // 获取所有的帖子（包含用户信息）
 func GetAllPosts() ([]model.Post, error) {
 	var posts []model.Post
-	result := DB.Preload("Comments").Preload("User").Order("created_at desc").Find(&posts)
+	result := DB.Preload("Comments.User").Preload("User").Order("created_at desc").Find(&posts)
 	return posts, result.Error
+}
+
+// 根据ID获取单个帖子
+func GetPostByID(postID uint) (model.Post, error) {
+	var post model.Post
+	result := DB.Preload("Comments.User").Preload("User").First(&post, postID)
+	return post, result.Error
+}
+
+// 根据ID获取单个评论
+func GetCommentByID(commentID uint) (model.PostComment, error) {
+	var comment model.PostComment
+	result := DB.Preload("User").First(&comment, commentID)
+	return comment, result.Error
 }
 
 // 获取所有可见的flag
