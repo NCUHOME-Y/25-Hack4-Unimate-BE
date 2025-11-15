@@ -436,12 +436,14 @@ func SwithHead() gin.HandlerFunc {
 			return
 		}
 
-		// 验证头像编号必须在1-6之间
-		if req.Number < 1 || req.Number > 6 {
-			c.JSON(400, gin.H{"error": "头像编号必须在1-6之间"})
+		// 验证头像编号必须在1-12之间（现在支持12个头像）
+		if req.Number < 1 || req.Number > 12 {
+			c.JSON(400, gin.H{"error": "头像编号必须在1-12之间"})
+			log.Printf("Invalid avatar number: %d", req.Number)
 			return
 		}
 
+		log.Printf("切换头像 - 用户ID: %d, 头像编号: %d", id, req.Number)
 		user, _ := repository.GetUserByID(id)
 		user.HeadShow = req.Number
 		repository.SaveUserToDB(user)
