@@ -450,3 +450,59 @@ func SwithHead() gin.HandlerFunc {
 		c.JSON(200, gin.H{"success": true})
 	}
 }
+
+// 新增：添加积分接口
+func AddPointsHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(400, gin.H{"error": "用户未登录"})
+			utils.LogError("添加积分失败：用户未登录", nil)
+			return
+		}
+		var req struct {
+			Points int `json:"points"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			// 问题4修复：参数绑定失败时提供详细错误信息
+			c.JSON(400, gin.H{"error": "参数错误：积分值必须是有效的数字"})
+			utils.LogError("添加积分失败：参数绑定错误", logrus.Fields{"error": err.Error(), "body": c.Request.Body})
+			return
+		}
+
+		// 问题2修复：验证积分值必须为正整数
+		if req.Points <= 0 {
+			c.JSON(400, gin.H{"error": "积分值必须大于0"})
+			utils.LogError("添加积分失败：积分值无效", logrus.Fields{"user_id": id, "points": req.Points})
+			return
+		}
+
+		utils.LogInfo("开始添加积分", logrus.Fields{"user_id": id, "points": req.Points})
+
+		// 问题5&6修复：使用原子自增操作，直接传递增量
+		err := repository.CountAddDB(id, req.Points)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "积分添加失败，请稍后重试"})
+			utils.LogError("积分添加失败：数据库更新错误", logrus.Fields{"user_id": id, "points": req.Points, "error": err.Error()})
+			return
+		}
+
+		// 重新查询更新后的积分
+		user, err := repository.GetUserByID(id)
+		if err != nil {
+			// 即使查询失败，积分已添加成功
+			utils.LogError("查询用户失败（积分已添加）", logrus.Fields{"user_id": id, "error": err.Error()})
+			c.JSON(200, gin.H{"message": "积分添加成功", "count": 0})
+			return
+		}
+
+		// 问题1&3修复：确保返回正确的JSON结构，字段名小写
+		utils.LogInfo("积分添加成功", logrus.Fields{
+			"user_id":   id,
+			"points":    req.Points,
+			"old_count": user.Count - req.Points,
+			"new_count": user.Count,
+		})
+		c.JSON(200, gin.H{"message": "积分添加成功", "count": user.Count})
+	}
+}

@@ -247,9 +247,20 @@ func AddAchievementToDB(achievement model.Achievement) error {
 	return result.Error
 }
 
-// 用户积分增加
+// 插入单个成就（用于补全缺失成就）
+func InsertAchievement(userID uint, name string, description string) error {
+	achievement := model.Achievement{
+		UserID:      userID,
+		Name:        name,
+		Description: description,
+		HadDone:     false,
+	}
+	return DB.Create(&achievement).Error
+}
+
+// 用户积分增加（原子操作，避免并发问题）
 func CountAddDB(userID uint, count int) error {
-	result := DB.Model(&model.User{}).Where("id = ?", userID).Update("count", count)
+	result := DB.Model(&model.User{}).Where("id = ?", userID).Update("count", gorm.Expr("count + ?", count))
 	return result.Error
 }
 
@@ -350,25 +361,120 @@ func GetTodayLearnTime(user_id uint) (model.LearnTime, error) {
 	return learnTime, err
 }
 
-// 获取7天的学习时长
+// 获取7天的学习时长（补全缺失日期）
 func GetSevenDaysLearnTime(user_id uint) ([]model.LearnTime, error) {
 	var learnTime []model.LearnTime
-	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Limit(7).Find(&learnTime).Error
-	return learnTime, err
+	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Find(&learnTime).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 创建日期映射（只保存非负值）
+	dataMap := make(map[string]int)
+	for _, record := range learnTime {
+		dateStr := record.CreatedAt.Format("2006-01-02")
+		if record.Duration >= 0 {
+			dataMap[dateStr] = record.Duration
+		}
+	}
+
+	// 补全最近7天的数据（从6天前到今天）
+	result := make([]model.LearnTime, 7)
+	for i := 0; i < 7; i++ {
+		date := time.Now().AddDate(0, 0, -6+i) // 从6天前开始
+		dateStr := date.Format("2006-01-02")
+		duration := 0
+		if val, ok := dataMap[dateStr]; ok {
+			duration = val
+		}
+		result[i] = model.LearnTime{
+			UserID:    user_id,
+			CreatedAt: date,
+			Duration:  duration,
+		}
+	}
+	return result, nil
 }
 
-// 获取用户最近30天的学习时长记录
+// 获取用户最近30天的学习时长记录（补全缺失日期）
 func GetRecentLearnTime(user_id uint) ([]model.LearnTime, error) {
 	var learnTime []model.LearnTime
-	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Limit(30).Find(&learnTime).Error
-	return learnTime, err
+	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Find(&learnTime).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 创建日期映射（只保存非负值）
+	dataMap := make(map[string]int)
+	for _, record := range learnTime {
+		dateStr := record.CreatedAt.Format("2006-01-02")
+		if record.Duration >= 0 {
+			dataMap[dateStr] = record.Duration
+		}
+	}
+
+	// 补全最近30天的数据（从29天前到今天）
+	result := make([]model.LearnTime, 30)
+	for i := 0; i < 30; i++ {
+		date := time.Now().AddDate(0, 0, -29+i) // 从29天前开始
+		dateStr := date.Format("2006-01-02")
+		duration := 0
+		if val, ok := dataMap[dateStr]; ok {
+			duration = val
+		}
+		result[i] = model.LearnTime{
+			UserID:    user_id,
+			CreatedAt: date,
+			Duration:  duration,
+		}
+	}
+	return result, nil
 }
 
-// 获取用户最近180天的学习时长记录
+// 获取用户最近180天的学习时长记录（补全缺失日期，返回20个数据点）
 func GetRecent180LearnTime(user_id uint) ([]model.LearnTime, error) {
 	var learnTime []model.LearnTime
-	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Limit(180).Find(&learnTime).Error
-	return learnTime, err
+	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Find(&learnTime).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 创建日期映射（只保存非负值）
+	dataMap := make(map[string]int)
+	for _, record := range learnTime {
+		dateStr := record.CreatedAt.Format("2006-01-02")
+		if record.Duration >= 0 {
+			dataMap[dateStr] = record.Duration
+		}
+	}
+
+	// 生成20个数据点（覆盖180天，从最早到最晚）
+	result := make([]model.LearnTime, 20)
+	for i := 0; i < 20; i++ {
+		// 每个数据点代表9天的聚合（180/20=9）
+		// 从179天前开始，每9天一个点
+		startDay := 179 - i*9
+		date := time.Now().AddDate(0, 0, -startDay)
+
+		// 聚合该数据点对应的9天数据（当前天及之前8天）
+		totalDuration := 0
+		for j := 0; j < 9; j++ {
+			checkDate := date.AddDate(0, 0, -j)
+			checkDateStr := checkDate.Format("2006-01-02")
+			if val, ok := dataMap[checkDateStr]; ok {
+				if val >= 0 {
+					totalDuration += val
+				}
+			}
+		}
+
+		result[i] = model.LearnTime{
+			UserID:    user_id,
+			CreatedAt: date,
+			Duration:  totalDuration,
+		}
+	}
+	return result, nil
 }
 
 // 存user

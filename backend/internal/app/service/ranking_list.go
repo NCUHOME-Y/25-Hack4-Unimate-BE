@@ -10,16 +10,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 积分函数
+// 积分函数（已修正为使用原子自增）
 func AddUserCount(count string, id uint) {
-	user, _ := repository.GetUserByID(id)
 	var countInt, _ = strconv.Atoi(count)
-	newcount := user.Count + countInt
-	err := repository.CountAddDB(id, newcount)
+	err := repository.CountAddDB(id, countInt)
 	if err != nil {
 		log.Printf("[error] 积分更新失败: %v", err)
 		return
 	}
+	log.Printf("[info] 积分增加成功 - 用户ID: %d, 增加积分: %d", id, countInt)
 }
 
 // 积分排行榜
