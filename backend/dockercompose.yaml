@@ -39,11 +39,11 @@ services:
       # 其他环境变量
       GIN_MODE: release
       JWT_SECRET: YUMUMUHAOSHUAIHAOLIHAOXIXIXIXIXIIDOAFJOPJOPEFPOAFHIPGAHFIGOISHRGFHOIAOPIGHAWIHEROFIHAWRF
-      APIKEY: sk-mxedomoffdguxdhaaxvlupijqopyhegnrisbxmaeutnjkkta
+      APIKEY: 
       SMTP_HOST: smtp.qq.com
-      SMTP_PORT: "587"
+      SMTP_PORT: 587
       SMTP_USER: 323191343@qq.com
-      SMTP_PASS: xheutbnipqnwcabf
+      SMTP_PASS: 
       SMTP_FROM: 323191343@qq.com
     depends_on:
       mysql:
