@@ -32,24 +32,24 @@ type User struct {
 
 // Flag - 前端字段为主
 type Flag struct {
-	ID        uint          `gorm:"primaryKey" json:"id"`
-	Title     string        `gorm:"column:flag" json:"title"`          // 前端: title
-	Detail    string        `gorm:"column:plan_content" json:"detail"` // 前端: detail
-	LabelStr  string        `gorm:"column:label" json:"-"`             // 数据库字段（字符串）
-	Label     int           `gorm:"-" json:"label"`                    // 前端: label (1-5数字)
-	Priority  int           `json:"priority"`                          // 前端: priority (1-4)
-	UserID    uint          `json:"user_id"`
-	IsHidden  bool          `gorm:"column:is_hiden;not null;default:false" json:"-"` // 数据库字段（不导出到JSON）
-	IsPublic  bool          `gorm:"-" json:"is_public"`                              // 前端字段（不存储到数据库，通过 AfterFind 计算）
-	Completed bool          `gorm:"column:had_done" json:"completed"`                // 前端: completed
-	Count     int           `gorm:"column:done_number" json:"count"`                 // 前端: count (已完成次数)
-	Total     int           `gorm:"column:plan_done_number" json:"total"`            // 前端: total (目标次数)
-	Points    int           `json:"points"`                                          // 前端: points (积分)
-	Likes     int           `gorm:"column:like" json:"likes"`                        // 前端: agreeNumber → likes
-	Comments  []FlagComment `gorm:"foreignKey:FlagID" json:"comments"`               // 评论列表
-	CreatedAt time.Time     `json:"created_at"`                                      // 前端: createdAt
-	StartTime time.Time     `gorm:"column:start_time" json:"start_time"`             // 前端: startTime
-	EndTime   time.Time     `gorm:"column:end_time" json:"end_time"`                 // 前端: endTime
+	ID         uint          `gorm:"primaryKey" json:"id"`
+	Title      string        `gorm:"column:flag" json:"title"`          // 前端: title
+	Detail     string        `gorm:"column:plan_content" json:"detail"` // 前端: detail
+	LabelStr   string        `gorm:"column:label" json:"-"`             // 数据库字段（字符串）
+	Label      int           `gorm:"-" json:"label"`                    // 前端: label (1-5数字)
+	Priority   int           `json:"priority"`                          // 前端: priority (1-4)
+	UserID     uint          `json:"user_id"`
+	IsHidden   bool          `gorm:"column:is_hiden;not null;default:false" json:"-"` // 数据库字段（不导出到JSON）
+	IsPublic   bool          `gorm:"-" json:"is_public"`                              // 前端字段（不存储到数据库，通过 AfterFind 计算）
+	Completed  bool          `gorm:"column:had_done" json:"completed"`                // 前端: completed
+	Count      int           `gorm:"column:done_number" json:"count"`                 // 前端: count (已完成次数)
+	DailyTotal int           `gorm:"column:daily_total" json:"total"`                 // 前端: total (每日所需完成次数)
+	Points     int           `json:"points"`                                          // 前端: points (积分)
+	Likes      int           `gorm:"column:like" json:"likes"`                        // 前端: agreeNumber → likes
+	Comments   []FlagComment `gorm:"foreignKey:FlagID" json:"comments"`               // 评论列表
+	CreatedAt  time.Time     `json:"created_at"`                                      // 前端: createdAt
+	StartTime  time.Time     `gorm:"column:start_time" json:"start_time"`             // 前端: startTime
+	EndTime    time.Time     `gorm:"column:end_time" json:"end_time"`                 // 前端: endTime
 }
 
 // AfterFind - GORM钩子：查询后自动将 IsHidden 反转为 IsPublic，并转换label

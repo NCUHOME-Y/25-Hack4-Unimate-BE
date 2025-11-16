@@ -106,16 +106,16 @@ func PostUserFlags() gin.HandlerFunc {
 		}
 
 		flag_model := model.Flag{
-			Title:     flag.Title,
-			Detail:    flag.Detail,
-			IsPublic:  flag.IsPublic,
-			Label:     flag.Label,
-			Priority:  flag.Priority,
-			Total:     flag.Total,
-			Points:    flag.Points, // 添加积分字段
-			CreatedAt: time.Now(),
-			StartTime: startTime,
-			EndTime:   endTime,
+			Title:      flag.Title,
+			Detail:     flag.Detail,
+			IsPublic:   flag.IsPublic,
+			Label:      flag.Label,
+			Priority:   flag.Priority,
+			DailyTotal: flag.Total, // 每日所需完成次数
+			Points:     flag.Points,
+			CreatedAt:  time.Now(),
+			StartTime:  startTime,
+			EndTime:    endTime,
 		}
 		id, ok := getCurrentUserID(c)
 		if !ok {
@@ -205,7 +205,7 @@ func DoneUserFlags() gin.HandlerFunc {
 		}
 
 		// 检查Flag是否完成
-		if flag.Count >= flag.Total && !flag.Completed {
+		if flag.Count >= flag.DailyTotal && !flag.Completed {
 			// 标记Flag为已完成
 			err = repository.UpdateFlagHadDone(req.ID, true)
 			if err != nil {
@@ -235,9 +235,9 @@ func DoneUserFlags() gin.HandlerFunc {
 			}
 		}
 
-		utils.LogInfo("用户打卡成功", logrus.Fields{"user_id": id, "flag_id": req.ID, "count": flag.Count, "total": flag.Total})
+		utils.LogInfo("用户打卡成功", logrus.Fields{"user_id": id, "flag_id": req.ID, "count": flag.Count, "total": flag.DailyTotal})
 		c.JSON(200, gin.H{"success": true,
-			"count": flag.Count, "completed": flag.Count >= flag.Total})
+			"count": flag.Count, "completed": flag.Count >= flag.DailyTotal})
 	}
 }
 
@@ -419,12 +419,12 @@ func UpdateFlagInfo() gin.HandlerFunc {
 
 		// 构建更新数据
 		updates := map[string]interface{}{
-			"title":     req.Title,
-			"detail":    req.Detail,
-			"label":     req.Label,
-			"priority":  req.Priority,
-			"total":     req.Total,
-			"is_public": req.IsPublic,
+			"title":       req.Title,
+			"detail":      req.Detail,
+			"label":       req.Label,
+			"priority":    req.Priority,
+			"daily_total": req.Total, // 每日所需完成次数
+			"is_public":   req.IsPublic,
 		}
 
 		err = repository.UpdateFlag(req.ID, updates)
