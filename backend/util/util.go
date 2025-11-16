@@ -47,7 +47,7 @@ type Claims struct {
 // GenerateToken 生成 JWT Token
 func GenerateToken(userID uint, username, email string) (string, error) {
 	now := time.Now()
-	expireTime := now.Add(24 * time.Hour) // Token 有效期 24 小时
+	expireTime := now.Add(30 * 24 * time.Hour) // Token 有效期 7 天
 
 	claims := Claims{
 		UserID:   userID,
