@@ -23,7 +23,7 @@ func SearchUser() gin.HandlerFunc {
 			return
 		}
 		repository.AddTrackPointToDB(0, "搜索用户")
-		c.JSON(200, gin.H{"message": "搜索用户成功", "data": users})
+		c.JSON(200, gin.H{"message": "搜索用户成功", "users": users})
 	}
 }
 

@@ -23,11 +23,11 @@ type User struct {
 	FlagNumber     int           `json:"flag_number"`                     //完成flag数量
 	Count          int           `json:"count"`                           //积分
 	Labels         Label         `json:"labels" gorm:"foreignKey:UserID"` //完成flag的标签数
-	DaKaNumber     []Daka_number `grom:"foreignKey" `
-	LearnTimes     []LearnTime   `gorm:"foreignKey:UserID"`  //外键绑定learn_time表
-	Flags          []Flag        `gorm:"foreignKey:UserID"`  //外键绑定flag表
-	Posts          []Post        `gorm:"foreignKey:UserID"`  //外键绑定post表
-	Achievements   []Achievement `gorm:"foreignKey:UserID;"` //多对多绑定achievement表
+	DaKaNumber     []Daka_number `gorm:"foreignKey:UserID"`
+	LearnTimes     []LearnTime   `gorm:"foreignKey:UserID"` //外键绑定learn_time表
+	Flags          []Flag        `gorm:"foreignKey:UserID"` //外键绑定flag表
+	Posts          []Post        `gorm:"foreignKey:UserID"` //外键绑定post表
+	Achievements   []Achievement `gorm:"foreignKey:UserID"` //一对多绑定achievement表
 }
 
 // Flag - 前端字段为主
@@ -118,10 +118,31 @@ type Post struct {
 func (p *Post) AfterFind(tx *gorm.DB) error {
 	if p.User != nil {
 		p.UserName = p.User.Name
-		if p.User.HeadShow > 0 && p.User.HeadShow <= 6 {
-			// 映射到前端 assets 的图片路径
-			avatarFiles := []string{"131601", "131629", "131937", "131951", "132014", "133459"}
-			p.UserAvatar = "/src/assets/images/screenshot_20251114_" + avatarFiles[p.User.HeadShow-1] + ".png"
+		avatarFiles := []string{
+			"/src/assets/head/screenshot_20251114_131601.png",
+			"/src/assets/head/screenshot_20251114_131629.png",
+			"/src/assets/head/screenshot_20251114_131937.png",
+			"/src/assets/head/screenshot_20251114_131951.png",
+			"/src/assets/head/screenshot_20251114_132014.png",
+			"/src/assets/head/screenshot_20251114_133459.png",
+			"/src/assets/head/微信图片_20251115203432_32_227.jpg",
+			"/src/assets/head/微信图片_20251115203433_33_227.jpg",
+			"/src/assets/head/微信图片_20251115203434_34_227.jpg",
+			"/src/assets/head/微信图片_20251115203434_35_227.jpg",
+			"/src/assets/head/微信图片_20251115203435_36_227.jpg",
+			"/src/assets/head/微信图片_20251115203436_37_227.jpg",
+			"/src/assets/head/微信图片_20251116131024_45_227.jpg",
+			"/src/assets/head/微信图片_20251116131024_46_227.jpg",
+			"/src/assets/head/微信图片_20251116131025_47_227.jpg",
+			"/src/assets/head/微信图片_20251116131026_48_227.jpg",
+			"/src/assets/head/微信图片_20251116131027_49_227.jpg",
+			"/src/assets/head/微信图片_20251116131028_50_227.jpg",
+			"/src/assets/head/微信图片_20251116131029_51_227.jpg",
+			"/src/assets/head/微信图片_20251116131030_52_227.jpg",
+			"/src/assets/head/微信图片_20251116131031_53_227.jpg",
+		}
+		if p.User.HeadShow > 0 && p.User.HeadShow <= len(avatarFiles) {
+			p.UserAvatar = avatarFiles[p.User.HeadShow-1]
 		} else {
 			p.UserAvatar = ""
 		}
@@ -146,14 +167,44 @@ type PostComment struct {
 func (c *PostComment) AfterFind(tx *gorm.DB) error {
 	if c.User != nil {
 		c.UserName = c.User.Name
-		if c.User.HeadShow > 0 && c.User.HeadShow <= 6 {
-			avatarFiles := []string{"131601", "131629", "131937", "131951", "132014", "133459"}
-			c.UserAvatar = "/src/assets/images/screenshot_20251114_" + avatarFiles[c.User.HeadShow-1] + ".png"
+		avatarFiles := []string{
+			"/src/assets/head/screenshot_20251114_131601.png",
+			"/src/assets/head/screenshot_20251114_131629.png",
+			"/src/assets/head/screenshot_20251114_131937.png",
+			"/src/assets/head/screenshot_20251114_131951.png",
+			"/src/assets/head/screenshot_20251114_132014.png",
+			"/src/assets/head/screenshot_20251114_133459.png",
+			"/src/assets/head/微信图片_20251115203432_32_227.jpg",
+			"/src/assets/head/微信图片_20251115203433_33_227.jpg",
+			"/src/assets/head/微信图片_20251115203434_34_227.jpg",
+			"/src/assets/head/微信图片_20251115203434_35_227.jpg",
+			"/src/assets/head/微信图片_20251115203435_36_227.jpg",
+			"/src/assets/head/微信图片_20251115203436_37_227.jpg",
+			"/src/assets/head/微信图片_20251116131024_45_227.jpg",
+			"/src/assets/head/微信图片_20251116131024_46_227.jpg",
+			"/src/assets/head/微信图片_20251116131025_47_227.jpg",
+			"/src/assets/head/微信图片_20251116131026_48_227.jpg",
+			"/src/assets/head/微信图片_20251116131027_49_227.jpg",
+			"/src/assets/head/微信图片_20251116131028_50_227.jpg",
+			"/src/assets/head/微信图片_20251116131029_51_227.jpg",
+			"/src/assets/head/微信图片_20251116131030_52_227.jpg",
+			"/src/assets/head/微信图片_20251116131031_53_227.jpg",
+		}
+		if c.User.HeadShow > 0 && c.User.HeadShow <= len(avatarFiles) {
+			c.UserAvatar = avatarFiles[c.User.HeadShow-1]
 		} else {
 			c.UserAvatar = ""
 		}
 	}
 	return nil
+}
+
+// 用户-帖子点赞关系表
+type UserPostLike struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"index" json:"user_id"`
+	PostID    uint      `gorm:"index" json:"post_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // flag评论
@@ -168,10 +219,11 @@ type FlagComment struct {
 type Achievement struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	Name        string    `json:"name"`
-	UserID      uint      `json:"user_id"`
+	UserID      uint      `gorm:"index;not null" json:"user_id"`
 	Description string    `json:"description"`
 	HadDone     bool      `json:"had_done"`
 	GotTime     time.Time `json:"got_time"`
+	User        *User     `gorm:"foreignKey:UserID;references:ID" json:"-"` // 补充关联声明
 }
 
 type LearnTime struct {
@@ -235,10 +287,40 @@ type ChatMessage struct {
 func (m *ChatMessage) AfterFind(tx *gorm.DB) error {
 	if m.User != nil {
 		m.UserName = m.User.Name
-		if m.User.HeadShow > 0 && m.User.HeadShow <= 6 {
-			avatarFiles := []string{"131601", "131629", "131937", "131951", "132014", "133459"}
-			m.UserAvatar = "/src/assets/images/screenshot_20251114_" + avatarFiles[m.User.HeadShow-1] + ".png"
+		avatarFiles := []string{
+			"/src/assets/head/screenshot_20251114_131601.png",
+			"/src/assets/head/screenshot_20251114_131629.png",
+			"/src/assets/head/screenshot_20251114_131937.png",
+			"/src/assets/head/screenshot_20251114_131951.png",
+			"/src/assets/head/screenshot_20251114_132014.png",
+			"/src/assets/head/screenshot_20251114_133459.png",
+			"/src/assets/head/微信图片_20251115203432_32_227.jpg",
+			"/src/assets/head/微信图片_20251115203433_33_227.jpg",
+			"/src/assets/head/微信图片_20251115203434_34_227.jpg",
+			"/src/assets/head/微信图片_20251115203434_35_227.jpg",
+			"/src/assets/head/微信图片_20251115203435_36_227.jpg",
+			"/src/assets/head/微信图片_20251115203436_37_227.jpg",
+			"/src/assets/head/微信图片_20251116131024_45_227.jpg",
+			"/src/assets/head/微信图片_20251116131024_46_227.jpg",
+			"/src/assets/head/微信图片_20251116131025_47_227.jpg",
+			"/src/assets/head/微信图片_20251116131026_48_227.jpg",
+			"/src/assets/head/微信图片_20251116131027_49_227.jpg",
+			"/src/assets/head/微信图片_20251116131028_50_227.jpg",
+			"/src/assets/head/微信图片_20251116131029_51_227.jpg",
+			"/src/assets/head/微信图片_20251116131030_52_227.jpg",
+			"/src/assets/head/微信图片_20251116131031_53_227.jpg",
+		}
+		if m.User.HeadShow > 0 && m.User.HeadShow <= len(avatarFiles) {
+			m.UserAvatar = avatarFiles[m.User.HeadShow-1]
 		}
 	}
 	return nil
+}
+
+// 积分日志（记录每次积分变动，用于统计“今日获得积分”）
+type PointsLog struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"index" json:"user_id"`
+	Amount    int       `json:"amount"`
+	CreatedAt time.Time `json:"created_at"`
 }

@@ -97,7 +97,7 @@ func Init() {
 	}
 
 	// 验证码清理任务 - 每5分钟执行一次
-	_, err = cronScheduler.AddFunc("*/5 * * * *", func() {
+	_, err = cronScheduler.AddFunc("0 */5 * * * *", func() {
 		err := repository.DeleteExpiredEmailCodes()
 		if err != nil {
 			utils.LogError("清理过期验证码失败", logrus.Fields{"error": err.Error()})

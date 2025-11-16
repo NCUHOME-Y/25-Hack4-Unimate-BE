@@ -358,3 +358,21 @@ func GetPostLikes() gin.HandlerFunc {
 		c.JSON(200, gin.H{"like": like})
 	}
 }
+
+// 获取当前用户点过赞的帖子ID
+func GetUserLikedPosts() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(401, gin.H{"error": "未授权"})
+			return
+		}
+		ids, err := repository.GetLikedPostIDsByUser(userID)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取已点赞帖子失败"})
+			utils.LogError("获取已点赞帖子失败", nil)
+			return
+		}
+		c.JSON(200, gin.H{"liked_post_ids": ids})
+	}
+}

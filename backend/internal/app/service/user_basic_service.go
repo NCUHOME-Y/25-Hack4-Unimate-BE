@@ -325,6 +325,25 @@ func GetUser() gin.HandlerFunc {
 	}
 }
 
+// 获取今日获得积分
+func GetTodayPoints() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(400, gin.H{"error": "获取用户ID失败"})
+			return
+		}
+		total, err := repository.GetTodayPoints(id)
+		if err != nil {
+			utils.LogError("获取今日积分失败", logrus.Fields{"user_id": id, "error": err.Error()})
+			c.JSON(500, gin.H{"today_points": 0})
+			return
+		}
+		utils.LogInfo("获取今日积分成功", logrus.Fields{"user_id": id, "today_points": total})
+		c.JSON(200, gin.H{"today_points": total})
+	}
+}
+
 // 打卡
 func DoDaKa() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -436,9 +455,9 @@ func SwithHead() gin.HandlerFunc {
 			return
 		}
 
-		// 验证头像编号必须在1-12之间（现在支持12个头像）
-		if req.Number < 1 || req.Number > 12 {
-			c.JSON(400, gin.H{"error": "头像编号必须在1-12之间"})
+		// 验证头像编号必须在1-21之间（支持全部头像）
+		if req.Number < 1 || req.Number > 21 {
+			c.JSON(400, gin.H{"error": "头像编号必须在1-21之间"})
 			log.Printf("Invalid avatar number: %d", req.Number)
 			return
 		}

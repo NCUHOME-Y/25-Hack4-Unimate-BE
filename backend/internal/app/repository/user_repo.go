@@ -1,11 +1,12 @@
 package repository
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
 
-	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model" // 你的自定义包
+	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
 	"github.com/sirupsen/logrus"
 
 	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
@@ -26,7 +27,7 @@ func DBconnect() {
 		return
 	}
 	DB = db
-	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{}, &model.EmailCode{}, &model.FlagComment{}, &model.TrackPoint{}, &model.ChatMessage{})
+	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{}, &model.EmailCode{}, &model.FlagComment{}, &model.TrackPoint{}, &model.ChatMessage{}, &model.UserPostLike{}, &model.PointsLog{})
 }
 
 // user添加到数据库
@@ -129,10 +130,10 @@ func GetUserByID(userID uint) (model.User, error) {
 func SearchUsers(keyword string) ([]model.User, error) {
 	var users []model.User
 	like := "%" + keyword + "%"
-	err := DB.Preload("Achievement").
+	err := DB.Preload("Achievements").
 		Preload("Flags").
 		Preload("Posts").
-		Where("user_name=like AND user_email=like", like, like).Find(&users).Error // 把 Flags 一起查出来
+		Where("name LIKE ? OR email LIKE ?", like, like).Find(&users).Error // 把 Flags 一起查出来
 	return users, err
 }
 
@@ -292,8 +293,44 @@ func InsertAchievement(userID uint, name string, description string) error {
 
 // 用户积分增加（原子操作，避免并发问题）
 func CountAddDB(userID uint, count int) error {
-	result := DB.Model(&model.User{}).Where("id = ?", userID).Update("count", gorm.Expr("count + ?", count))
-	return result.Error
+	// 原子更新用户总积分
+	tx := DB.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	if err := tx.Model(&model.User{}).Where("id = ?", userID).Update("count", gorm.Expr("count + ?", count)).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// 记录积分变动日志，便于统计“今日获得积分”
+	pl := model.PointsLog{
+		UserID:    userID,
+		Amount:    count,
+		CreatedAt: time.Now(),
+	}
+	if err := tx.Create(&pl).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+// 获取今日获得的积分（按积分日志求和）
+func GetTodayPoints(user_id uint) (int, error) {
+	today := time.Now()
+	start := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
+	end := start.Add(24 * time.Hour)
+
+	var total struct{ Sum int }
+	// 使用原生 SQL 聚合
+	row := DB.Model(&model.PointsLog{}).Select("COALESCE(SUM(amount),0) as sum").Where("user_id = ? AND created_at >= ? AND created_at < ?", user_id, start, end).Scan(&total)
+	if row.Error != nil {
+		return 0, row.Error
+	}
+	return total.Sum, nil
 }
 
 // 用户flaga完成数量增加
@@ -865,36 +902,53 @@ func TogglePostLike(postID uint, userID uint) (int, error) {
 		"current_like": post.Like,
 	})
 
-	// TODO: 实现用户点赞关系表来记录谁点赞了哪些帖子
-	// 目前简化实现：直接增加点赞数
-	// 生产环境应该：
-	// 1. 检查 user_post_likes 表是否存在该用户对该帖子的点赞记录
-	// 2. 如果存在则删除记录并减少点赞数
-	// 3. 如果不存在则创建记录并增加点赞数
-
-	// 简化实现：每次调用都增加点赞数（前端控制）
-	newLikeCount := post.Like + 1
-
-	utils.LogInfo("准备更新点赞数", map[string]interface{}{
-		"post_id":  postID,
-		"old_like": post.Like,
-		"new_like": newLikeCount,
-	})
-
-	if err := DB.Model(&model.Post{}).Where("id = ?", postID).Update("like", newLikeCount).Error; err != nil {
-		utils.LogError("更新点赞数失败", map[string]interface{}{
-			"post_id": postID,
-			"error":   err.Error(),
-		})
-		return 0, err
+	// 1. 检查是否已点赞
+	var like model.UserPostLike
+	err := DB.Where("user_id = ? AND post_id = ?", userID, postID).First(&like).Error
+	if err == nil {
+		// 已点赞，取消点赞
+		if err := DB.Delete(&like).Error; err != nil {
+			utils.LogError("取消点赞失败", map[string]interface{}{
+				"post_id": postID,
+				"user_id": userID,
+				"error":   err.Error(),
+			})
+			return post.Like, err
+		}
+		// 点赞数-1
+		newLikeCount := post.Like - 1
+		if newLikeCount < 0 {
+			newLikeCount = 0
+		}
+		if err := DB.Model(&model.Post{}).Where("id = ?", postID).Update("like", newLikeCount).Error; err != nil {
+			return post.Like, err
+		}
+		return newLikeCount, nil
+	} else if errors.Is(err, gorm.ErrRecordNotFound) {
+		// 未点赞，添加点赞
+		newLike := model.UserPostLike{
+			UserID:    userID,
+			PostID:    postID,
+			CreatedAt: time.Now(),
+		}
+		if err := DB.Create(&newLike).Error; err != nil {
+			utils.LogError("点赞失败", map[string]interface{}{
+				"post_id": postID,
+				"user_id": userID,
+				"error":   err.Error(),
+			})
+			return post.Like, err
+		}
+		// 点赞数+1
+		newLikeCount := post.Like + 1
+		if err := DB.Model(&model.Post{}).Where("id = ?", postID).Update("like", newLikeCount).Error; err != nil {
+			return post.Like, err
+		}
+		return newLikeCount, nil
+	} else {
+		// 其他错误
+		return post.Like, err
 	}
-
-	utils.LogInfo("点赞数更新成功", map[string]interface{}{
-		"post_id":  postID,
-		"new_like": newLikeCount,
-	})
-
-	return newLikeCount, nil
 }
 
 func UpdatePostLikes(postID uint, like int) error {
@@ -914,6 +968,19 @@ func GetPostLikes(flagID uint) (int, error) {
 	var post model.Post
 	result := DB.Where("id = ?", flagID).First(&post)
 	return post.Like, result.Error
+}
+
+// 获取用户点过赞的帖子ID列表
+func GetLikedPostIDsByUser(userID uint) ([]uint, error) {
+	var likes []model.UserPostLike
+	if err := DB.Where("user_id = ?", userID).Find(&likes).Error; err != nil {
+		return nil, err
+	}
+	ids := make([]uint, 0, len(likes))
+	for _, l := range likes {
+		ids = append(ids, l.PostID)
+	}
+	return ids, nil
 }
 
 // 储存标签
@@ -1058,8 +1125,13 @@ func GetPrivateConversations(userID uint) ([]Conversation, error) {
 
 		// 构建头像路径
 		var avatar string
-		if user.HeadShow > 0 && user.HeadShow <= 6 {
-			avatarFiles := []string{"131601", "131629", "131937", "131951", "132014", "133459"}
+		avatarFiles := []string{
+			"131601", "131629", "131937", "131951", "132014", "133459",
+			"133460", "133461", "133462", "133463", "133464", "133465",
+			"133466", "133467", "133468", "133469", "133470", "133471",
+			"133472", "133473", "133474",
+		}
+		if user.HeadShow > 0 && user.HeadShow <= len(avatarFiles) {
 			avatar = "/src/assets/images/screenshot_20251114_" + avatarFiles[user.HeadShow-1] + ".png"
 		}
 
