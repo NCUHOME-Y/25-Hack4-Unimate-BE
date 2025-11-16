@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -376,10 +377,25 @@ func AddNewLearnTimeToDB(user_id uint) error {
 // 更新学习时长
 func UpdateLearnTimeDuration(user_id uint, duration int) error {
 	var learnTime model.LearnTime
-	err := DB.Where("user_id = ?", user_id).Order("created_at desc").First(&learnTime).Error
+	// 🔧 修复：按当天日期查找/创建记录
+	today := time.Now()
+	todayStart := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
+	todayEnd := todayStart.Add(24 * time.Hour)
+
+	err := DB.Where("user_id = ? AND created_at >= ? AND created_at < ?", user_id, todayStart, todayEnd).First(&learnTime).Error
 	if err != nil {
+		// 如果今天没有记录，创建新记录
+		if err.Error() == "record not found" {
+			learnTime = model.LearnTime{
+				UserID:    user_id,
+				Duration:  duration,
+				CreatedAt: today,
+			}
+			return DB.Create(&learnTime).Error
+		}
 		return err
 	}
+	// 今天已有记录，累加时长
 	learnTime.Duration += duration
 	err = DB.Save(&learnTime).Error
 	return err
@@ -388,7 +404,12 @@ func UpdateLearnTimeDuration(user_id uint, duration int) error {
 // 获取今天的学习时长记录
 func GetTodayLearnTime(user_id uint) (model.LearnTime, error) {
 	var learnTime model.LearnTime
-	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Limit(1).First(&learnTime).Error
+	// 🔧 修复：只查询当天的记录
+	today := time.Now()
+	todayStart := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
+	todayEnd := todayStart.Add(24 * time.Hour)
+
+	err := DB.Where("user_id = ? AND created_at >= ? AND created_at < ?", user_id, todayStart, todayEnd).First(&learnTime).Error
 	return learnTime, err
 }
 
@@ -504,6 +525,105 @@ func GetRecent180LearnTime(user_id uint) ([]model.LearnTime, error) {
 			CreatedAt: date,
 			Duration:  totalDuration,
 		}
+	}
+	return result, nil
+}
+
+// 获取当前月份的学习时长记录（补全缺失日期）
+func GetCurrentMonthLearnTime(user_id uint) ([]model.LearnTime, error) {
+	var learnTime []model.LearnTime
+	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Find(&learnTime).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 创建日期映射（只保存非负值）
+	dataMap := make(map[string]int)
+	for _, record := range learnTime {
+		dateStr := record.CreatedAt.Format("2006-01-02")
+		if record.Duration >= 0 {
+			dataMap[dateStr] = record.Duration
+		}
+	}
+
+	// 获取当前月份的天数
+	now := time.Now()
+	year, month, _ := now.Date()
+	firstDay := time.Date(year, month, 1, 0, 0, 0, 0, now.Location())
+	daysInMonth := now.Day() // 从1号到今天
+
+	// 补全当前月份的数据
+	result := make([]model.LearnTime, daysInMonth)
+	for i := 0; i < daysInMonth; i++ {
+		date := firstDay.AddDate(0, 0, i)
+		dateStr := date.Format("2006-01-02")
+		duration := 0
+		if val, ok := dataMap[dateStr]; ok {
+			duration = val
+		}
+		result[i] = model.LearnTime{
+			UserID:    user_id,
+			CreatedAt: date,
+			Duration:  duration,
+		}
+	}
+	return result, nil
+}
+
+// 获取最近6个月的学习时长记录（每月一个数据点）
+func GetRecent6MonthsLearnTime(user_id uint) ([]model.LearnTime, error) {
+	var learnTime []model.LearnTime
+	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Find(&learnTime).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 创建日期映射（只保存非负值）
+	dataMap := make(map[string]int)
+	for _, record := range learnTime {
+		dateStr := record.CreatedAt.Format("2006-01-02")
+		if record.Duration >= 0 {
+			dataMap[dateStr] = record.Duration
+		}
+	}
+
+	// 生成6个月的数据点
+	result := make([]model.LearnTime, 6)
+	now := time.Now()
+
+	for i := 0; i < 6; i++ {
+		// 从5个月前到当前月
+		targetMonth := now.AddDate(0, -5+i, 0)
+		year, month, _ := targetMonth.Date()
+
+		// 获取该月的第一天和最后一天
+		firstDay := time.Date(year, month, 1, 0, 0, 0, 0, now.Location())
+		lastDay := firstDay.AddDate(0, 1, -1)
+
+		// 如果是当前月，只统计到今天
+		if year == now.Year() && month == now.Month() {
+			lastDay = now
+		}
+
+		// 聚合该月所有天的数据
+		totalDuration := 0
+		for d := firstDay; !d.After(lastDay); d = d.AddDate(0, 0, 1) {
+			dateStr := d.Format("2006-01-02")
+			if val, ok := dataMap[dateStr]; ok {
+				if val >= 0 {
+					totalDuration += val
+				}
+			}
+		}
+
+		// 代表日期始终为该月1号
+		repDate := firstDay
+		result[i] = model.LearnTime{
+			UserID:    user_id,
+			CreatedAt: repDate,
+			Duration:  totalDuration,
+		}
+		fmt.Printf("6月聚合[%d]: %s, 时长: %d\n", i, repDate.Format("2006-01-02"), totalDuration)
 	}
 	return result, nil
 }

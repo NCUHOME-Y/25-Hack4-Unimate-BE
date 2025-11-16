@@ -117,6 +117,11 @@ func LearnTime(r *gin.Engine) {
 	e.GET("/api/get7daylearntime", service.GetLearnTimeLast7Days())
 	e.GET("/api/getLearnTime180days", service.GetLearnTimeLast180Days())
 	e.GET("/api/getLearnTimemonly", service.GetLearnTimeRecordsMonth())
+	// 新增接口
+	e.GET("/api/getCurrentMonthLearnTime", service.GetCurrentMonthLearnTime())
+	e.GET("/api/getRecent6MonthsLearnTime", service.GetRecent6MonthsLearnTime())
+	// 🔧 新增：获取今日学习时长
+	e.GET("/api/getTodayLearnTime", service.GetTodayLearnTime())
 }
 
 func Achievement(r *gin.Engine) {

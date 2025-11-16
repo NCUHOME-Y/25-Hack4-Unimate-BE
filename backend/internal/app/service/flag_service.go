@@ -222,6 +222,16 @@ func DoneUserFlags() gin.HandlerFunc {
 				} else {
 					utils.LogInfo("用户完成Flag，计数已更新", logrus.Fields{"user_id": id, "flag_id": req.ID, "new_count": newFlagNumber})
 				}
+
+				// 🔧 新增：自动增加积分（根据Flag积分字段）
+				if flag.Points > 0 {
+					err = repository.CountAddDB(id, flag.Points)
+					if err != nil {
+						utils.LogError("更新用户积分失败", logrus.Fields{"user_id": id, "error": err.Error()})
+					} else {
+						utils.LogInfo("用户完成Flag，积分已增加", logrus.Fields{"user_id": id, "flag_id": req.ID, "points": flag.Points})
+					}
+				}
 			}
 		}
 

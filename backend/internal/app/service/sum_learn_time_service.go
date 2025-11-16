@@ -96,6 +96,40 @@ func GetLearnTimeLast180Days() gin.HandlerFunc {
 	}
 }
 
+// 获取当前月份的学习时长记录
+func GetCurrentMonthLearnTime() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := getCurrentUserID(c)
+		learnTimes, err := repository.GetCurrentMonthLearnTime(id)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取当前月份学习时长记录失败,请重新再试..."})
+			utils.LogError("获取当前月份学习时长记录失败", logrus.Fields{"user_id": id})
+			return
+		}
+		utils.LogInfo("获取当前月份学习时长记录成功", logrus.Fields{"user_id": id})
+		c.JSON(200, gin.H{
+			"learn_times": learnTimes,
+		})
+	}
+}
+
+// 获取最近6个月的数据
+func GetRecent6MonthsLearnTime() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := getCurrentUserID(c)
+		learnTimes, err := repository.GetRecent6MonthsLearnTime(id)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取最近6个月学习时长记录失败,请重新再试..."})
+			utils.LogError("获取最近6个月学习时长记录失败", logrus.Fields{"user_id": id})
+			return
+		}
+		utils.LogInfo("获取最近6个月学习时长记录成功", logrus.Fields{"user_id": id})
+		c.JSON(200, gin.H{
+			"learn_times": learnTimes,
+		})
+	}
+}
+
 // 获取打卡总数
 func GetUserDakaTotal() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -142,6 +176,24 @@ func GetLabelByUserID() gin.HandlerFunc {
 		utils.LogInfo("获取用户标签成功", logrus.Fields{"user_id": id})
 		c.JSON(200, gin.H{
 			"label": labal,
+		})
+	}
+}
+
+// 🔧 新增：获取今日学习时长
+func GetTodayLearnTime() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := getCurrentUserID(c)
+		learnTime, err := repository.GetTodayLearnTime(id)
+		if err != nil {
+			c.JSON(200, gin.H{
+				"today_learn_time": 0,
+			})
+			return
+		}
+		utils.LogInfo("获取今日学习时长成功", logrus.Fields{"user_id": id, "duration": learnTime.Duration})
+		c.JSON(200, gin.H{
+			"today_learn_time": learnTime.Duration,
 		})
 	}
 }
