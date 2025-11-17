@@ -1043,7 +1043,7 @@ func SaveChatMessage(message *model.ChatMessage) error {
 	return result.Error
 }
 
-// 获取聊天室历史消息（最近30条）
+// 获取谈玄斋历史消息（最近30条）
 func GetChatHistory(roomID string, limit int) ([]model.ChatMessage, error) {
 	var messages []model.ChatMessage
 	err := DB.Preload("User").Where("room_id = ?", roomID).Order("created_at desc").Limit(limit).Find(&messages).Error
@@ -1124,16 +1124,10 @@ func GetPrivateConversations(userID uint) ([]Conversation, error) {
 			continue
 		}
 
-		// 构建头像路径
+		// 构建头像路径（使用 utils.GetAvatarPath 统一返回 /api/avatar/:id）
 		var avatar string
-		avatarFiles := []string{
-			"131601", "131629", "131937", "131951", "132014", "133459",
-			"133460", "133461", "133462", "133463", "133464", "133465",
-			"133466", "133467", "133468", "133469", "133470", "133471",
-			"133472", "133473", "133474",
-		}
-		if user.HeadShow > 0 && user.HeadShow <= len(avatarFiles) {
-			avatar = "/src/assets/images/screenshot_20251114_" + avatarFiles[user.HeadShow-1] + ".png"
+		if user.HeadShow > 0 {
+			avatar = utils.GetAvatarPath(user.HeadShow)
 		}
 
 		conversationMap[otherUserID] = &Conversation{

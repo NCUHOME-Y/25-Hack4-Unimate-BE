@@ -89,7 +89,7 @@ func ChatWebSocket(r *gin.Engine) {
 	e.Use(service.JWTAuth())
 	e.GET("/ws/chat", service.WsHandler())
 
-	// 聊天室管理接口（修复：添加认证）
+	// 谈玄斋管理接口（修复：添加认证）
 	e.GET("/api/chat/rooms", service.GetChatRooms())
 	e.POST("/api/chat/rooms", service.CreateChatRoom())
 	e.DELETE("/api/chat/rooms/:room_id", service.DeleteChatRoom())
@@ -101,7 +101,7 @@ func ChatWebSocket(r *gin.Engine) {
 }
 
 func Ranking(r *gin.Engine) {
-	// 排行榜应该是公开的，所有人都能看
+	// 封神榜应该是公开的，所有人都能看
 	r.GET("/api/getUseflagrRank", service.GetUserByFlagNumber())
 	r.GET("/api/countranking", service.GetUserCount())
 	r.GET("/api/learnTimeRanking", service.GetUserMonthLearnTime())
@@ -150,11 +150,11 @@ func AI(r *gin.Engine) {
 	e.POST("/api/ai/generate-plan", service.GenerateLearningPlan)
 }
 
-// P1修复：聊天历史和聊天室管理路由
+// P1修复：聊天历史和谈玄斋管理路由
 // TODO: 实现这些函数
 // func ChatHistory(r *gin.Engine) {
 // 	e := r.Use(service.JWTAuth())
-// 	// 公共聊天室
+// 	// 公共谈玄斋
 // 	e.GET("/api/chat/rooms", service.GetChatRooms())
 // 	e.GET("/api/chat/history/:roomId", service.GetChatHistory())
 // 	e.DELETE("/api/chat/messages/:messageId", service.DeleteChatMessage())

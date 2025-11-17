@@ -21,42 +21,42 @@ func AddUserCount(count string, id uint) {
 	log.Printf("[info] 积分增加成功 - 用户ID: %d, 增加积分: %d", id, countInt)
 }
 
-// 积分排行榜
+// 积分封神榜
 func GetUserCount() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		users, err := repository.GetUserByCount()
 		if err != nil {
-			c.JSON(500, gin.H{"error": "获取排行榜失败,请重新再试..."})
+			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试..."})
 			return
 		}
 		//埋点
-		repository.AddTrackPointToDB(0, "查看积分排行榜")
-		c.JSON(200, gin.H{"message": "获取排行榜成功", "data": users})
+		repository.AddTrackPointToDB(0, "查看积分封神榜")
+		c.JSON(200, gin.H{"message": "获取封神榜成功", "data": users})
 	}
 }
 
-// 月学习时间排行榜
+// 月学习时间封神榜
 func GetUserMonthLearnTime() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		users, err := repository.GetUserByMonthLearnTime()
 		if err != nil {
-			c.JSON(500, gin.H{"error": "获取排行榜失败,请重新再试..."})
+			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试..."})
 			return
 		}
-		repository.AddTrackPointToDB(0, "查看月学习时间排行榜")
-		c.JSON(200, gin.H{"message": "获取排行榜成功", "data": users})
+		repository.AddTrackPointToDB(0, "查看月学习时间封神榜")
+		c.JSON(200, gin.H{"message": "获取封神榜成功", "data": users})
 	}
 }
 
-// 总打卡数排行榜
+// 总打卡数封神榜
 func GetUserTotalDaka() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		users, err := repository.GetUserByDaka()
 		if err != nil {
-			c.JSON(500, gin.H{"error": "获取排行榜失败,请重新再试..."})
+			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试..."})
 		}
-		repository.AddTrackPointToDB(0, "查看总打卡数排行榜")
-		c.JSON(200, gin.H{"message": "获取排行榜成功", "data": users})
+		repository.AddTrackPointToDB(0, "查看总打卡数封神榜")
+		c.JSON(200, gin.H{"message": "获取封神榜成功", "data": users})
 	}
 }
 
@@ -65,9 +65,9 @@ func GetUserByFlagNumber() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		users, err := repository.GetUserByFlagNumber()
 		if err != nil {
-			c.JSON(500, gin.H{"error": "获取排行榜失败,请重新再试..."})
+			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试..."})
 		}
-		repository.AddTrackPointToDB(0, "查看flag数量排行榜")
-		c.JSON(200, gin.H{"message": "获取排行榜成功", "data": users})
+		repository.AddTrackPointToDB(0, "查看flag数量封神榜")
+		c.JSON(200, gin.H{"message": "获取封神榜成功", "data": users})
 	}
 }

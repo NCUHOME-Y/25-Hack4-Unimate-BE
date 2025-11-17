@@ -61,7 +61,7 @@ type Manager struct {
 var manager = NewManager()
 
 func init() {
-	// 创建默认的3个聊天室
+	// 创建默认的3个谈玄斋
 	defaultRooms := []struct {
 		id   string
 		name string
@@ -270,7 +270,7 @@ func (manager *Manager) CleanupEmptyRooms() {
 			// 如果房间为空且超过10小时无活动，删除房间
 			if len(room.Clients) == 0 && now.Sub(room.LastActive) > 10*time.Hour {
 				delete(manager.Rooms, roomID)
-				utils.LogInfo("删除空闲聊天室", logrus.Fields{"room_id": roomID, "room_name": room.Name})
+				utils.LogInfo("删除空闲谈玄斋", logrus.Fields{"room_id": roomID, "room_name": room.Name})
 			}
 		}
 		manager.mu.Unlock()
@@ -303,9 +303,9 @@ func ReadPump(client *Client) {
 		user, err := repository.GetUserByID(client.ID)
 		if err == nil {
 			message.UserName = user.Name
-			if user.HeadShow > 0 && user.HeadShow <= 6 {
-				avatarFiles := []string{"131601", "131629", "131937", "131951", "132014", "133459"}
-				message.UserAvatar = "/src/assets/images/screenshot_20251114_" + avatarFiles[user.HeadShow-1] + ".png"
+			// 使用 util 中的 GetAvatarPath 生成统一的 /api/avatar/:id 路径，前端统一通过 getAvatarUrl 解析
+			if user.HeadShow > 0 {
+				message.UserAvatar = utils.GetAvatarPath(user.HeadShow)
 			}
 		}
 
@@ -338,7 +338,7 @@ func WritePump(client *Client) {
 	}
 }
 
-// 获取聊天室列表
+// 获取谈玄斋列表
 func GetChatRooms() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		manager.mu.RLock()
@@ -369,7 +369,7 @@ func GetChatRooms() gin.HandlerFunc {
 	}
 }
 
-// 创建聊天室
+// 创建谈玄斋
 func CreateChatRoom() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
@@ -386,9 +386,9 @@ func CreateChatRoom() gin.HandlerFunc {
 		manager.mu.Lock()
 		defer manager.mu.Unlock()
 
-		// 检查聊天室数量限制
+		// 检查谈玄斋数量限制
 		if len(manager.Rooms) >= 10 {
-			c.JSON(http.StatusForbidden, gin.H{"error": "聊天室数量已达上限（最多10个）"})
+			c.JSON(http.StatusForbidden, gin.H{"error": "谈玄斋数量已达上限（最多10个）"})
 			return
 		}
 
@@ -406,7 +406,7 @@ func CreateChatRoom() gin.HandlerFunc {
 		}
 
 		manager.Rooms[roomID] = room
-		utils.LogInfo("创建聊天室成功", logrus.Fields{"room_id": roomID, "name": req.Name, "creator_id": userID})
+		utils.LogInfo("创建谈玄斋成功", logrus.Fields{"room_id": roomID, "name": req.Name, "creator_id": userID})
 
 		c.JSON(http.StatusOK, gin.H{
 			"id":         room.ID,
@@ -418,7 +418,7 @@ func CreateChatRoom() gin.HandlerFunc {
 	}
 }
 
-// 删除聊天室（仅创建者或系统可删除）
+// 删除谈玄斋（仅创建者或系统可删除）
 func DeleteChatRoom() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		roomID := c.Param("room_id")
@@ -426,7 +426,7 @@ func DeleteChatRoom() gin.HandlerFunc {
 
 		// 不能删除默认房间
 		if roomID == "room-1" || roomID == "room-2" || roomID == "room-3" {
-			c.JSON(http.StatusForbidden, gin.H{"error": "不能删除默认聊天室"})
+			c.JSON(http.StatusForbidden, gin.H{"error": "不能删除默认谈玄斋"})
 			return
 		}
 
@@ -435,13 +435,13 @@ func DeleteChatRoom() gin.HandlerFunc {
 
 		room, exists := manager.Rooms[roomID]
 		if !exists {
-			c.JSON(http.StatusNotFound, gin.H{"error": "聊天室不存在"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "谈玄斋不存在"})
 			return
 		}
 
 		// 检查权限
 		if room.CreatorID != userID {
-			c.JSON(http.StatusForbidden, gin.H{"error": "只有创建者可以删除聊天室"})
+			c.JSON(http.StatusForbidden, gin.H{"error": "只有创建者可以删除谈玄斋"})
 			return
 		}
 
@@ -452,13 +452,13 @@ func DeleteChatRoom() gin.HandlerFunc {
 		}
 
 		delete(manager.Rooms, roomID)
-		utils.LogInfo("删除聊天室", logrus.Fields{"room_id": roomID, "name": room.Name})
+		utils.LogInfo("删除谈玄斋", logrus.Fields{"room_id": roomID, "name": room.Name})
 
 		c.JSON(http.StatusOK, gin.H{"message": "删除成功"})
 	}
 }
 
-// 获取聊天室历史消息
+// 获取谈玄斋历史消息
 func GetChatHistory() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		roomID := c.Param("room_id")
