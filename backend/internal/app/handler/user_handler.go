@@ -9,6 +9,7 @@ import (
 func BasicUser(r *gin.Engine) {
 	// 公开接口：不需要认证
 	r.POST("/api/register", service.RegisterUser())
+	r.GET("/api/avatar/:id", service.ServeAvatar())
 	r.POST("/api/login", service.LoginUser())
 	r.POST("/api/sendEmailCode", service.SendEmailCode()) // 修复：发送验证码
 	r.POST("/api/verifyEmail", service.VerifyEmail())     // 新增：验证邮箱验证码

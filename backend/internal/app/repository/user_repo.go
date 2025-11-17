@@ -184,7 +184,8 @@ func UpdatePasswordByEmail(email string, newPassword string) error {
 
 // 更新用户名
 func UpdateUserName(id uint, newName string) error {
-	result := DB.Model(&model.User{}).Where("id=?", id).Update("Name", newName)
+	// 使用 map 更新确保列名和大小写问题不会导致 SQL 错误
+	result := DB.Model(&model.User{}).Where("id = ?", id).Updates(map[string]interface{}{"name": newName})
 	return result.Error
 }
 

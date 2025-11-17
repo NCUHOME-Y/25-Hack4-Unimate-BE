@@ -238,28 +238,33 @@ func UpdateUserName() gin.HandlerFunc {
 		}
 		id, _ := getCurrentUserID(c)
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(501, gin.H{"error": "请求失败,请重新再试..."})
+			log.Printf("UpdateUserName: 请求绑定失败: %v", err)
+			c.JSON(400, gin.H{"error": "请求体格式错误, 请以 {new_name: string} 提交"})
 			return
 		}
+		log.Printf("UpdateUserName: user_id=%d 请求新用户名=%q", id, req.NewName)
 		user, _ := repository.GetUserByID(id)
 		if req.NewName == user.Name {
+			log.Printf("UpdateUserName: 新用户名与原用户名相同 (user_id=%d)", id)
 			c.JSON(400, gin.H{"error": "新用户名与原用户名相同,请重新再试..."})
 			return
 		}
-		if req.NewName == "" {
-			c.JSON(500, gin.H{"error": "用户名不能为空,请重新再试..."})
+		if strings.TrimSpace(req.NewName) == "" {
+			log.Printf("UpdateUserName: 新用户名为空 (user_id=%d)", id)
+			c.JSON(400, gin.H{"error": "用户名不能为空,请重新再试..."})
 			return
 		}
 		// 检查新用户名是否已被其他用户使用
 		name_exist, _ := repository.GetUserByName(req.NewName)
 		if name_exist.ID != 0 && name_exist.ID != id {
+			log.Printf("UpdateUserName: 新用户名已被占用 (user_id=%d new_name=%s taken_by=%d)", id, req.NewName, name_exist.ID)
 			c.JSON(400, gin.H{"error": "该用户名已被使用,请更换用户名..."})
 			return
 		}
-		err := repository.UpdateUserName(id, req.NewName)
-		if err != nil {
-			c.JSON(401, gin.H{"message": "用户名更新失败，请重新再试!"})
-			utils.LogError("数据库更新用户数据失败", logrus.Fields{})
+		if err := repository.UpdateUserName(id, req.NewName); err != nil {
+			utils.LogError("数据库更新用户名失败", logrus.Fields{"user_id": id, "new_name": req.NewName, "error": err.Error()})
+			log.Printf("UpdateUserName: repository.UpdateUserName 返回错误: %v", err)
+			c.JSON(500, gin.H{"message": "用户名更新失败，请稍后重试"})
 			return
 		}
 		utils.LogInfo("用户用户名更新成功", logrus.Fields{"user_id": id, "new_name": req.NewName})
