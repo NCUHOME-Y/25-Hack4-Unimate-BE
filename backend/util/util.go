@@ -143,7 +143,7 @@ func GenerateCode() string {
 }
 
 // GetAvatarPath 根据用户的 HeadShow 字段获取头像路径
-// headShow: 用户选择的头像编号（1-21）
+// headShow: 用户选择的头像编号（1-32）
 // 返回: 头像的API路径，用于前端访问
 func GetAvatarPath(headShow int) string {
 	if headShow > 0 && headShow <= 21 {

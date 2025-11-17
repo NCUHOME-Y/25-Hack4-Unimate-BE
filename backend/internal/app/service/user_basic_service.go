@@ -460,9 +460,9 @@ func SwithHead() gin.HandlerFunc {
 			return
 		}
 
-		// 验证头像编号必须在1-21之间（支持全部头像）
-		if req.Number < 1 || req.Number > 21 {
-			c.JSON(400, gin.H{"error": "头像编号必须在1-21之间"})
+		// 验证头像编号必须在1-32之间（支持全部头像）
+		if req.Number < 1 || req.Number > 32 {
+			c.JSON(400, gin.H{"error": "头像编号必须在1-32之间"})
 			log.Printf("Invalid avatar number: %d", req.Number)
 			return
 		}
