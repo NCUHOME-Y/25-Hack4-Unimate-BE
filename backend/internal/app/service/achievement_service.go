@@ -22,6 +22,10 @@ func InitAchievementTable(user model.User) model.User {
 		{UserID: user.ID, Name: "夜猫子", Description: "晚上10点后打卡5次", HadDone: false},
 		{UserID: user.ID, Name: "完美主义", Description: "连续10次满分完成flag", HadDone: false},
 		{UserID: user.ID, Name: "全能选手", Description: "完成5种不同标签的flag", HadDone: false},
+		{UserID: user.ID, Name: "学习狂人", Description: "累计学习时间超过5000分钟", HadDone: false},
+		{UserID: user.ID, Name: "社交达人", Description: "发布10条动态", HadDone: false},
+		{UserID: user.ID, Name: "时间管理者", Description: "连续30天完成至少1个flag", HadDone: false},
+		{UserID: user.ID, Name: "成就收集者", Description: "解锁10个徽章", HadDone: false},
 	}
 	user.Achievements = achievements
 	utils.LogInfo("初始化用户成就表成功", nil)
@@ -54,6 +58,10 @@ func GetUserAchievement() gin.HandlerFunc {
 			{"夜猫子", "晚上10点后打卡5次"},
 			{"完美主义", "连续10次满分完成flag"},
 			{"全能选手", "完成5种不同标签的flag"},
+			{"学习狂人", "累计学习时间超过5000分钟"},
+			{"社交达人", "发布10条动态"},
+			{"时间管理者", "连续30天完成至少1个flag"},
+			{"成就收集者", "解锁10个徽章"},
 		}
 		existMap := make(map[string]bool)
 		for _, a := range achievements {
@@ -76,14 +84,24 @@ func GetUserAchievement() gin.HandlerFunc {
 			IsUnlocked  bool   `json:"isUnlocked"`
 		}
 
-		result := make([]AchievementResponse, len(achievements))
-		for i, a := range achievements {
-			result[i] = AchievementResponse{
+		// 去重：使用map确保成就名称唯一
+		uniqueAchievements := make(map[string]model.Achievement)
+		for _, a := range achievements {
+			// 如果成就名称已存在，保留ID较小的记录（通常是较早创建的）
+			if existing, exists := uniqueAchievements[a.Name]; !exists || a.ID < existing.ID {
+				uniqueAchievements[a.Name] = a
+			}
+		}
+
+		// 转换为切片
+		result := make([]AchievementResponse, 0, len(uniqueAchievements))
+		for _, a := range uniqueAchievements {
+			result = append(result, AchievementResponse{
 				ID:          a.ID,
 				Name:        a.Name,
 				Description: a.Description,
 				IsUnlocked:  a.HadDone,
-			}
+			})
 		}
 
 		utils.LogInfo("获取用户成就成功", nil)
@@ -105,6 +123,10 @@ func AchievementCheckAll(userID uint) {
 	AchievementCheckNightOwl(userID)             // 夜猫子
 	AchievementCheckPerfectStreak(userID)        // 完美主义
 	AchievementCheckAllRounder(userID)           // 全能选手
+	AchievementCheckLearn5000Min(userID)         // 学习狂人
+	AchievementCheckPost10Times(userID)          // 社交达人
+	AchievementCheckDailyFlag30Days(userID)      // 时间管理者
+	AchievementCheckUnlock10Badges(userID)       // 成就收集者
 }
 
 // 成就检测：首次完成
@@ -311,6 +333,84 @@ func AchievementCheckAllRounder(userID uint) {
 		err := repository.UpdateAchievementHadDone(userID, "全能选手")
 		if err != nil {
 			utils.LogError("更新成就状态失败", logrus.Fields{"user_id": userID, "achievement": "全能选手"})
+			return
+		}
+	}
+}
+
+// 成就检测：学习狂人（累计学习时间超过5000分钟）
+func AchievementCheckLearn5000Min(userID uint) {
+	user, err := repository.GetUserByID(userID)
+	if err != nil {
+		utils.LogError("获取用户信息失败", logrus.Fields{"user_id": userID})
+		return
+	}
+	var totalLearnTime int
+	for _, learnTime := range user.LearnTimes {
+		totalLearnTime += learnTime.Duration
+	}
+	if totalLearnTime >= 5000 {
+		err := repository.UpdateAchievementHadDone(userID, "学习狂人")
+		if err != nil {
+			utils.LogError("更新成就状态失败", logrus.Fields{"user_id": userID, "achievement": "学习狂人"})
+			return
+		}
+	}
+}
+
+// 成就检测：社交达人（发布10条动态）
+func AchievementCheckPost10Times(userID uint) {
+	user, err := repository.GetUserByID(userID)
+	if err != nil {
+		utils.LogError("获取用户信息失败", logrus.Fields{"user_id": userID})
+		return
+	}
+	// TODO: 实现动态发布次数统计
+	// 暂时使用flag总数作为判断条件
+	if user.FlagNumber >= 10 {
+		err := repository.UpdateAchievementHadDone(userID, "社交达人")
+		if err != nil {
+			utils.LogError("更新成就状态失败", logrus.Fields{"user_id": userID, "achievement": "社交达人"})
+			return
+		}
+	}
+}
+
+// 成就检测：时间管理者（连续30天完成至少1个flag）
+func AchievementCheckDailyFlag30Days(userID uint) {
+	user, err := repository.GetUserByID(userID)
+	if err != nil {
+		utils.LogError("获取用户信息失败", logrus.Fields{"user_id": userID})
+		return
+	}
+	// TODO: 实现连续30天完成flag的检测逻辑
+	// 暂时使用打卡总次数作为判断条件
+	if user.Daka >= 30 {
+		err := repository.UpdateAchievementHadDone(userID, "时间管理者")
+		if err != nil {
+			utils.LogError("更新成就状态失败", logrus.Fields{"user_id": userID, "achievement": "时间管理者"})
+			return
+		}
+	}
+}
+
+// 成就检测：成就收集者（解锁10个徽章）
+func AchievementCheckUnlock10Badges(userID uint) {
+	achievements, err := repository.GetAchievementsByUserID(userID)
+	if err != nil {
+		utils.LogError("获取用户成就失败", logrus.Fields{"user_id": userID})
+		return
+	}
+	unlockedCount := 0
+	for _, achievement := range achievements {
+		if achievement.HadDone {
+			unlockedCount++
+		}
+	}
+	if unlockedCount >= 10 {
+		err := repository.UpdateAchievementHadDone(userID, "成就收集者")
+		if err != nil {
+			utils.LogError("更新成就状态失败", logrus.Fields{"user_id": userID, "achievement": "成就收集者"})
 			return
 		}
 	}
