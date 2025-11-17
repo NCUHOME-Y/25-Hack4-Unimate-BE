@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
 	"gorm.io/gorm"
 )
 
@@ -118,34 +119,7 @@ type Post struct {
 func (p *Post) AfterFind(tx *gorm.DB) error {
 	if p.User != nil {
 		p.UserName = p.User.Name
-		avatarFiles := []string{
-			"/src/assets/head/screenshot_20251114_131601.png",
-			"/src/assets/head/screenshot_20251114_131629.png",
-			"/src/assets/head/screenshot_20251114_131937.png",
-			"/src/assets/head/screenshot_20251114_131951.png",
-			"/src/assets/head/screenshot_20251114_132014.png",
-			"/src/assets/head/screenshot_20251114_133459.png",
-			"/src/assets/head/微信图片_20251115203432_32_227.jpg",
-			"/src/assets/head/微信图片_20251115203433_33_227.jpg",
-			"/src/assets/head/微信图片_20251115203434_34_227.jpg",
-			"/src/assets/head/微信图片_20251115203434_35_227.jpg",
-			"/src/assets/head/微信图片_20251115203435_36_227.jpg",
-			"/src/assets/head/微信图片_20251115203436_37_227.jpg",
-			"/src/assets/head/微信图片_20251116131024_45_227.jpg",
-			"/src/assets/head/微信图片_20251116131024_46_227.jpg",
-			"/src/assets/head/微信图片_20251116131025_47_227.jpg",
-			"/src/assets/head/微信图片_20251116131026_48_227.jpg",
-			"/src/assets/head/微信图片_20251116131027_49_227.jpg",
-			"/src/assets/head/微信图片_20251116131028_50_227.jpg",
-			"/src/assets/head/微信图片_20251116131029_51_227.jpg",
-			"/src/assets/head/微信图片_20251116131030_52_227.jpg",
-			"/src/assets/head/微信图片_20251116131031_53_227.jpg",
-		}
-		if p.User.HeadShow > 0 && p.User.HeadShow <= len(avatarFiles) {
-			p.UserAvatar = avatarFiles[p.User.HeadShow-1]
-		} else {
-			p.UserAvatar = ""
-		}
+		p.UserAvatar = utils.GetAvatarPath(p.User.HeadShow)
 	}
 	return nil
 }
@@ -167,34 +141,7 @@ type PostComment struct {
 func (c *PostComment) AfterFind(tx *gorm.DB) error {
 	if c.User != nil {
 		c.UserName = c.User.Name
-		avatarFiles := []string{
-			"/src/assets/head/screenshot_20251114_131601.png",
-			"/src/assets/head/screenshot_20251114_131629.png",
-			"/src/assets/head/screenshot_20251114_131937.png",
-			"/src/assets/head/screenshot_20251114_131951.png",
-			"/src/assets/head/screenshot_20251114_132014.png",
-			"/src/assets/head/screenshot_20251114_133459.png",
-			"/src/assets/head/微信图片_20251115203432_32_227.jpg",
-			"/src/assets/head/微信图片_20251115203433_33_227.jpg",
-			"/src/assets/head/微信图片_20251115203434_34_227.jpg",
-			"/src/assets/head/微信图片_20251115203434_35_227.jpg",
-			"/src/assets/head/微信图片_20251115203435_36_227.jpg",
-			"/src/assets/head/微信图片_20251115203436_37_227.jpg",
-			"/src/assets/head/微信图片_20251116131024_45_227.jpg",
-			"/src/assets/head/微信图片_20251116131024_46_227.jpg",
-			"/src/assets/head/微信图片_20251116131025_47_227.jpg",
-			"/src/assets/head/微信图片_20251116131026_48_227.jpg",
-			"/src/assets/head/微信图片_20251116131027_49_227.jpg",
-			"/src/assets/head/微信图片_20251116131028_50_227.jpg",
-			"/src/assets/head/微信图片_20251116131029_51_227.jpg",
-			"/src/assets/head/微信图片_20251116131030_52_227.jpg",
-			"/src/assets/head/微信图片_20251116131031_53_227.jpg",
-		}
-		if c.User.HeadShow > 0 && c.User.HeadShow <= len(avatarFiles) {
-			c.UserAvatar = avatarFiles[c.User.HeadShow-1]
-		} else {
-			c.UserAvatar = ""
-		}
+		c.UserAvatar = utils.GetAvatarPath(c.User.HeadShow)
 	}
 	return nil
 }
@@ -287,32 +234,7 @@ type ChatMessage struct {
 func (m *ChatMessage) AfterFind(tx *gorm.DB) error {
 	if m.User != nil {
 		m.UserName = m.User.Name
-		avatarFiles := []string{
-			"/src/assets/head/screenshot_20251114_131601.png",
-			"/src/assets/head/screenshot_20251114_131629.png",
-			"/src/assets/head/screenshot_20251114_131937.png",
-			"/src/assets/head/screenshot_20251114_131951.png",
-			"/src/assets/head/screenshot_20251114_132014.png",
-			"/src/assets/head/screenshot_20251114_133459.png",
-			"/src/assets/head/微信图片_20251115203432_32_227.jpg",
-			"/src/assets/head/微信图片_20251115203433_33_227.jpg",
-			"/src/assets/head/微信图片_20251115203434_34_227.jpg",
-			"/src/assets/head/微信图片_20251115203434_35_227.jpg",
-			"/src/assets/head/微信图片_20251115203435_36_227.jpg",
-			"/src/assets/head/微信图片_20251115203436_37_227.jpg",
-			"/src/assets/head/微信图片_20251116131024_45_227.jpg",
-			"/src/assets/head/微信图片_20251116131024_46_227.jpg",
-			"/src/assets/head/微信图片_20251116131025_47_227.jpg",
-			"/src/assets/head/微信图片_20251116131026_48_227.jpg",
-			"/src/assets/head/微信图片_20251116131027_49_227.jpg",
-			"/src/assets/head/微信图片_20251116131028_50_227.jpg",
-			"/src/assets/head/微信图片_20251116131029_51_227.jpg",
-			"/src/assets/head/微信图片_20251116131030_52_227.jpg",
-			"/src/assets/head/微信图片_20251116131031_53_227.jpg",
-		}
-		if m.User.HeadShow > 0 && m.User.HeadShow <= len(avatarFiles) {
-			m.UserAvatar = avatarFiles[m.User.HeadShow-1]
-		}
+		m.UserAvatar = utils.GetAvatarPath(m.User.HeadShow)
 	}
 	return nil
 }

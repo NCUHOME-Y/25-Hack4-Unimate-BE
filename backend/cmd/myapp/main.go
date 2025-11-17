@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/handler"
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
@@ -34,6 +36,24 @@ func main() {
 		}
 
 		c.Next()
+	})
+
+	// 静态文件服务 - 提供前端头像访问
+	// 优先检查本地开发环境路径，然后是生产环境路径
+	assetsPath := "../frontend/src/assets"
+	if _, err := os.Stat(assetsPath); os.IsNotExist(err) {
+		// 如果本地路径不存在，尝试使用生产环境路径
+		assetsPath = "./assets"
+		if _, err := os.Stat(assetsPath); os.IsNotExist(err) {
+			// 如果都不存在，使用相对于可执行文件的路径
+			execPath, _ := os.Executable()
+			assetsPath = filepath.Join(filepath.Dir(execPath), "assets")
+		}
+	}
+	r.Static("/assets", assetsPath)
+	utils.LogInfo("静态文件服务启动成功", map[string]interface{}{
+		"route": "/assets",
+		"path":  assetsPath,
 	})
 
 	handler.BasicUser(r) //用户相关

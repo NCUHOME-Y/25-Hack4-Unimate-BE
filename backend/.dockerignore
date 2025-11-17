@@ -1,0 +1,15 @@
+# 忽略不必要的文件，但保留 assets 目录
+*.exe
+*.log
+.env
+.git
+.gitignore
+README*.md
+AVATAR_*.md
+QUICK_*.md
+deploy-*.sh
+deploy-*.ps1
+test-*.ps1
+*.yaml
+# 不要忽略 assets 目录
+!assets/
