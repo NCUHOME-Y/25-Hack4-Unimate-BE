@@ -13,11 +13,22 @@ import (
 func PostUserPost() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _ := getCurrentUserID(c)
-		var post model.Post
-		if err := c.ShouldBindJSON(&post); err != nil {
+		var req struct {
+			Title   string `json:"title"`
+			Content string `json:"content"`
+			FlagID  *uint  `json:"flag_id"` // 关联的Flag ID（可选）
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": "Invalid input"})
 			return
 		}
+
+		post := model.Post{
+			Title:   req.Title,
+			Content: req.Content,
+			FlagID:  req.FlagID,
+		}
+
 		err := repository.AddPostToDB(id, post)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to add post"})

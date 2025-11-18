@@ -139,7 +139,7 @@ func SearchUsers(keyword string) ([]model.User, error) {
 
 // 更新flag的可见性
 func UpdateFlagVisibility(flagID uint, isHidden bool) error {
-	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("is_hiden", isHidden)
+	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("is_public", !isHidden)
 	return result.Error
 }
 
@@ -229,6 +229,12 @@ func AddPostToDB(Id uint, post model.Post) error {
 // 删除帖子
 func DeletePostFromDB(postID uint) error {
 	result := DB.Delete(&model.Post{}, postID)
+	return result.Error
+}
+
+// 根据FlagID删除关联的帖子
+func DeletePostsByFlagID(flagID uint) error {
+	result := DB.Where("flag_id = ?", flagID).Delete(&model.Post{})
 	return result.Error
 }
 
@@ -399,7 +405,7 @@ func GetCommentByID(commentID uint) (model.PostComment, error) {
 // 获取所有可见的flag
 func GetVisibleFlags() ([]model.Flag, error) {
 	var flags []model.Flag
-	result := DB.Preload("FlagComment").Where("is_hiden = ?", false).Find(&flags)
+	result := DB.Preload("FlagComment").Where("is_public = ?", true).Find(&flags)
 	return flags, result.Error
 }
 

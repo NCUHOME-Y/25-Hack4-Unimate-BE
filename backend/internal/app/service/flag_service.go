@@ -381,7 +381,7 @@ func UpdateFlagHide() gin.HandlerFunc {
 			return
 		}
 		flag.IsPublic = !flag.IsPublic
-		err = repository.UpdateFlagVisibility(req.ID, flag.IsHidden)
+		err = repository.UpdateFlagVisibility(req.ID, !flag.IsPublic)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
 			utils.LogError("数据库更新flag公开状态失败", logrus.Fields{})
@@ -396,45 +396,88 @@ func UpdateFlagHide() gin.HandlerFunc {
 func UpdateFlagInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID       uint   `json:"id"`
-			Title    string `json:"title"`
-			Detail   string `json:"detail"`
-			Label    int    `json:"label"`
-			Priority int    `json:"priority"`
-			Total    int    `json:"total"`
-			IsPublic bool   `json:"is_public"`
+			ID        uint   `json:"id"`
+			Title     string `json:"title"`
+			Detail    string `json:"detail"`
+			Label     int    `json:"label"`
+			Priority  int    `json:"priority"`
+			Total     int    `json:"total"`
+			IsPublic  bool   `json:"is_public"`
+			StartDate string `json:"start_date"`
+			EndDate   string `json:"end_date"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(500, gin.H{"err": "更新flag失败,请重新再试..."})
-			log.Print("Binding error")
+			c.JSON(400, gin.H{"error": "参数解析失败"})
+			utils.LogError("更新Flag参数绑定失败", logrus.Fields{"error": err.Error()})
 			return
 		}
+
+		utils.LogInfo("收到更新Flag请求", logrus.Fields{
+			"flag_id":   req.ID,
+			"title":     req.Title,
+			"is_public": req.IsPublic,
+		})
 
 		// 验证flag是否存在
 		_, err := repository.GetFlagByID(req.ID)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "Flag不存在"})
+			utils.LogError("Flag不存在", logrus.Fields{"flag_id": req.ID})
 			return
 		}
 
 		// 构建更新数据
 		updates := map[string]interface{}{
-			"title":       req.Title,
-			"detail":      req.Detail,
-			"label":       req.Label,
-			"priority":    req.Priority,
-			"daily_total": req.Total, // 每日所需完成次数
-			"is_public":   req.IsPublic,
+			"flag":         req.Title,
+			"plan_content": req.Detail,
+			"label":        req.Label,
+			"priority":     req.Priority,
+			"daily_total":  req.Total,
+			"is_public":    req.IsPublic,
 		}
+
+		// 添加可选的起始/结束时间
+		if req.StartDate != "" {
+			if startTime, err := time.Parse("2006-01-02", req.StartDate); err == nil {
+				updates["start_time"] = startTime
+			}
+		}
+		if req.EndDate != "" {
+			if endTime, err := time.Parse("2006-01-02", req.EndDate); err == nil {
+				updates["end_time"] = endTime
+			}
+		}
+
+		// 检查is_public状态是否发生变化（用于决定是否需要删除帖子）
+		flag, _ := repository.GetFlagByID(req.ID)
+		oldIsPublic := flag.IsPublic
+
+		utils.LogInfo("准备更新Flag", logrus.Fields{
+			"flag_id":       req.ID,
+			"updates":       updates,
+			"old_is_public": oldIsPublic,
+			"new_is_public": req.IsPublic,
+		})
 
 		err = repository.UpdateFlag(req.ID, updates)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
-			utils.LogError("数据库更新flag失败", logrus.Fields{"flag_id": req.ID})
+			utils.LogError("数据库更新flag失败", logrus.Fields{"flag_id": req.ID, "error": err.Error()})
 			return
 		}
 
-		utils.LogInfo("flag更新成功", logrus.Fields{"flag_id": req.ID})
+		// 如果is_public从true变为false,删除关联的帖子
+		if oldIsPublic && !req.IsPublic {
+			err = repository.DeletePostsByFlagID(req.ID)
+			if err != nil {
+				utils.LogError("删除关联帖子失败", logrus.Fields{"flag_id": req.ID, "error": err.Error()})
+				// 不影响主流程,继续返回成功
+			} else {
+				utils.LogInfo("已删除Flag的关联帖子", logrus.Fields{"flag_id": req.ID})
+			}
+		}
+
+		utils.LogInfo("flag更新成功", logrus.Fields{"flag_id": req.ID, "is_public": req.IsPublic})
 		c.JSON(200, gin.H{"success": true, "message": "Flag更新成功"})
 	}
 }
