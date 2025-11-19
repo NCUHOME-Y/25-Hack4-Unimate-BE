@@ -681,7 +681,13 @@ func SaveUserToDB(user model.User) error {
 // 获取所有用户
 func GetAllUser() ([]model.User, error) {
 	var users []model.User
-	result := DB.Find(&users)
+	// 只取每个邮箱最新一条（假设id自增，取最大id）
+	result := DB.Raw(`
+		   SELECT * FROM users u
+		   WHERE u.id = (
+			   SELECT MAX(id) FROM users WHERE email = u.email
+		   )
+	   `).Scan(&users)
 	return users, result.Error
 }
 
