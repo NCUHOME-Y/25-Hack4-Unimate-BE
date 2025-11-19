@@ -309,39 +309,44 @@ func GetUserStats() gin.HandlerFunc {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
 			return
 		}
+
 		// 目标用户ID，可选，默认查看自己
 		var targetID uint
 		if q := c.Query("user_id"); q != "" {
 			var parsed uint
-			_, err := fmt.Sscanf(q, "%d", &parsed)
-			if err == nil {
+			if _, err := fmt.Sscanf(q, "%d", &parsed); err == nil {
 				targetID = parsed
 			}
 		}
 		if targetID == 0 {
-			// 如果没传或解析失败则使用当前用户
 			if id, exists := c.Get("user_id"); exists {
 				if vid, ok2 := id.(uint); ok2 {
 					targetID = vid
 				}
 			}
 		}
+
 		user, err := repository.GetUserByID(targetID)
 		if err != nil || user.ID == 0 {
 			c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
 			return
 		}
-		// 完成flag数量
+
+		// 已完成 flag 数量（可能与用户表中 flag_number 含义不同，这里返回两者）
 		doneFlags, _ := repository.GetDoneFlagsByUserID(targetID)
-		// 打卡天数直接使用 user.Daka 字段（假设含总打卡次数）
+		// 打卡天数使用 user.Daka
 		dakaDays := user.Daka
+
 		c.JSON(http.StatusOK, gin.H{
-			"user_id":         user.ID,
-			"name":            user.Name,
-			"avatar_index":    user.HeadShow,
-			"total_points":    user.Count,
-			"completed_flags": len(doneFlags),
-			"daka_days":       dakaDays,
+			"user_id":          user.ID,
+			"name":             user.Name,
+			"head_show":        user.HeadShow,
+			"avatar_index":     user.HeadShow,
+			"total_points":     user.Count,
+			"month_learn_time": user.MonthLearntime,
+			"completed_flags":  len(doneFlags),
+			"flag_number":      user.FlagNumber,
+			"daka_days":        dakaDays,
 		})
 	}
 }
