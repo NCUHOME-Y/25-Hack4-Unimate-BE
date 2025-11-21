@@ -940,10 +940,11 @@ func TogglePostLike(postID uint, userID uint) (int, error) {
 			return 0, err
 		}
 
-		// 使用原子更新减少点赞数，确保不会小于0
-		if err := tx.Model(&model.Post{}).Where("id = ?", postID).Update("like", gorm.Expr("GREATEST(like - 1, 0)")).Error; err != nil {
+		// 获取当前点赞数并减少1，确保不会小于0
+		var post model.Post
+		if err := tx.Where("id = ?", postID).First(&post).Error; err != nil {
 			tx.Rollback()
-			utils.LogError("更新点赞数失败", map[string]interface{}{
+			utils.LogError("获取帖子点赞数失败", map[string]interface{}{
 				"post_id": postID,
 				"user_id": userID,
 				"error":   err.Error(),
@@ -951,11 +952,14 @@ func TogglePostLike(postID uint, userID uint) (int, error) {
 			return 0, err
 		}
 
-		// 获取更新后的点赞数
-		var post model.Post
-		if err := tx.Where("id = ?", postID).First(&post).Error; err != nil {
+		newLikeCount := post.Like - 1
+		if newLikeCount < 0 {
+			newLikeCount = 0
+		}
+
+		if err := tx.Model(&model.Post{}).Where("id = ?", postID).Update("like", newLikeCount).Error; err != nil {
 			tx.Rollback()
-			utils.LogError("获取更新后点赞数失败", map[string]interface{}{
+			utils.LogError("更新点赞数失败", map[string]interface{}{
 				"post_id": postID,
 				"user_id": userID,
 				"error":   err.Error(),
@@ -976,9 +980,9 @@ func TogglePostLike(postID uint, userID uint) (int, error) {
 		utils.LogInfo("取消点赞成功", map[string]interface{}{
 			"post_id":   postID,
 			"user_id":   userID,
-			"new_likes": post.Like,
+			"new_likes": newLikeCount,
 		})
-		return post.Like, nil
+		return newLikeCount, nil
 
 	} else if errors.Is(err, gorm.ErrRecordNotFound) {
 		// 未点赞，添加点赞
@@ -997,10 +1001,11 @@ func TogglePostLike(postID uint, userID uint) (int, error) {
 			return 0, err
 		}
 
-		// 原子更新增加点赞数
-		if err := tx.Model(&model.Post{}).Where("id = ?", postID).Update("like", gorm.Expr("like + 1")).Error; err != nil {
+		// 获取当前点赞数并增加1
+		var post model.Post
+		if err := tx.Where("id = ?", postID).First(&post).Error; err != nil {
 			tx.Rollback()
-			utils.LogError("更新点赞数失败", map[string]interface{}{
+			utils.LogError("获取帖子点赞数失败", map[string]interface{}{
 				"post_id": postID,
 				"user_id": userID,
 				"error":   err.Error(),
@@ -1008,11 +1013,11 @@ func TogglePostLike(postID uint, userID uint) (int, error) {
 			return 0, err
 		}
 
-		// 获取更新后的点赞数
-		var post model.Post
-		if err := tx.Where("id = ?", postID).First(&post).Error; err != nil {
+		newLikeCount := post.Like + 1
+
+		if err := tx.Model(&model.Post{}).Where("id = ?", postID).Update("like", newLikeCount).Error; err != nil {
 			tx.Rollback()
-			utils.LogError("获取更新后点赞数失败", map[string]interface{}{
+			utils.LogError("更新点赞数失败", map[string]interface{}{
 				"post_id": postID,
 				"user_id": userID,
 				"error":   err.Error(),
@@ -1033,9 +1038,9 @@ func TogglePostLike(postID uint, userID uint) (int, error) {
 		utils.LogInfo("点赞成功", map[string]interface{}{
 			"post_id":   postID,
 			"user_id":   userID,
-			"new_likes": post.Like,
+			"new_likes": newLikeCount,
 		})
-		return post.Like, nil
+		return newLikeCount, nil
 
 	} else {
 		// 其他数据库错误
