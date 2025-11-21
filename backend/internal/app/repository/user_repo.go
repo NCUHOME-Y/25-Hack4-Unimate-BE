@@ -680,6 +680,9 @@ func SaveUserToDB(user model.User) error {
 
 // 获取所有用户
 func GetAllUser() ([]model.User, error) {
+	if DB == nil {
+		return nil, fmt.Errorf("数据库连接未初始化")
+	}
 	var users []model.User
 	// 只取每个邮箱最新一条（假设id自增，取最大id）
 	result := DB.Raw(`
@@ -1167,4 +1170,16 @@ func GetPrivateConversations(userID uint) ([]Conversation, error) {
 	}
 
 	return conversations, nil
+}
+
+// 每天凌晨4点：将所有用户当天的学习计时置为无效（不计入学习时长）
+func InvalidateAllTodayLearnTime() error {
+	today := time.Now()
+	todayStart := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
+	todayEnd := todayStart.Add(24 * time.Hour)
+	// 批量更新：将今天所有学习时长置为-1（或可加 is_valid 字段，现用-1表示无效）
+	err := DB.Model(&model.LearnTime{}).
+		Where("created_at >= ? AND created_at < ? AND duration > 0", todayStart, todayEnd).
+		Update("duration", -1).Error
+	return err
 }
