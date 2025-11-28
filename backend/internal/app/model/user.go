@@ -11,7 +11,6 @@ type User struct {
 	ID             uint          `gorm:"primaryKey" json:"user_id"`       //用户ID
 	Name           string        `json:"name"`                            //用户名
 	Email          string        `json:"email"`                           //邮箱
-	Exist          bool          `json:"exist"`                           //邮箱是否验证
 	Password       string        `json:"password"`                        //密码
 	Status         string        `json:"status"`                          //用户状态
 	IsRemind       bool          `json:"is_remind" gorm:"default:true"`   //是否开启提醒

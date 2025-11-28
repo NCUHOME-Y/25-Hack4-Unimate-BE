@@ -40,12 +40,10 @@ func VerifyEmail() gin.HandlerFunc {
 			utils.LogError("邮箱验证码已过期", nil)
 			return
 		}
-
-		// 更新用户验证状态
-		repository.UpdateUserExistStatus(req.Email)
-
-		// 获取用户信息并生成 token
-		user, err := repository.GetUserByEmail(req.Email)
+		password, _ := c.Get("user_password")
+		user, _ := repository.GetUserByEmail(req.Email)
+		user.Password = password.(string)
+		err = repository.SaveUserToDB(user)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "获取用户信息失败"})
 			utils.LogError("验证邮箱后获取用户信息失败", logrus.Fields{"user_email": req.Email})

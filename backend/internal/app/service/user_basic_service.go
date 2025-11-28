@@ -124,8 +124,10 @@ func RegisterUser() gin.HandlerFunc {
 			utils.LogError("验证码发送失败", logrus.Fields{"user_email": user.Email})
 			return
 		}
+
 		repository.SaveEmailCodeToDB(code, user.Email)
-		user.Exist = false
+		c.Set("user_password", password)
+		c.Next()
 		// 初始化用户成就表
 		user = InitAchievementTable(user)
 		AddUserCronJob(user)
@@ -154,15 +156,6 @@ func LoginUser() gin.HandlerFunc {
 		// 检查用户是否存在
 		if err != nil || user.ID == 0 {
 			c.JSON(401, gin.H{"error": "用户名或密码错误,请重新再试..."})
-			return
-		}
-		// 检查邮箱是否已验证
-		if !user.Exist {
-			err := repository.DeleteUserByEmail(user_login.Email)
-			if err != nil {
-				utils.LogError("删除未验证用户失败", logrus.Fields{"user_email": user_login.Email})
-			}
-			c.JSON(403, gin.H{"error": "邮箱未验证,请前往验证..."})
 			return
 		}
 		// 检查密码是否正确
