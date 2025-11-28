@@ -680,8 +680,17 @@ func SaveUserToDB(user model.User) error {
 
 // 获取所有用户
 func GetAllUser() ([]model.User, error) {
+	if DB == nil {
+		return nil, fmt.Errorf("数据库连接未初始化")
+	}
 	var users []model.User
-	result := DB.Find(&users)
+	// 只取每个邮箱最新一条（假设id自增，取最大id）
+	result := DB.Raw(`
+		   SELECT * FROM users u
+		   WHERE u.id = (
+			   SELECT MAX(id) FROM users WHERE email = u.email
+		   )
+	   `).Scan(&users)
 	return users, result.Error
 }
 
@@ -886,51 +895,91 @@ func UpdateFlagLikes(flagID uint, like int) error {
 }
 
 // post点赞
-// 切换帖子点赞状态（自动判断点赞/取消点赞）
+// 切换帖子点赞状态（自动判断点赞/取消点赞）- 使用事务确保原子性
 func TogglePostLike(postID uint, userID uint) (int, error) {
 	utils.LogInfo("TogglePostLike 函数被调用", map[string]interface{}{
 		"post_id": postID,
 		"user_id": userID,
 	})
 
-	var post model.Post
-
-	// 获取帖子当前点赞数
-	if err := DB.Where("id = ?", postID).First(&post).Error; err != nil {
-		utils.LogError("查询帖子失败", map[string]interface{}{
+	// 使用事务确保原子性
+	tx := DB.Begin()
+	if tx.Error != nil {
+		utils.LogError("开启事务失败", map[string]interface{}{
 			"post_id": postID,
-			"error":   err.Error(),
+			"user_id": userID,
+			"error":   tx.Error.Error(),
 		})
-		return 0, err
+		return 0, tx.Error
 	}
 
-	utils.LogInfo("查询到帖子", map[string]interface{}{
-		"post_id":      postID,
-		"current_like": post.Like,
-	})
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			utils.LogError("事务执行中发生panic", map[string]interface{}{
+				"post_id": postID,
+				"user_id": userID,
+				"panic":   r,
+			})
+		}
+	}()
 
 	// 1. 检查是否已点赞
 	var like model.UserPostLike
-	err := DB.Where("user_id = ? AND post_id = ?", userID, postID).First(&like).Error
+	err := tx.Where("user_id = ? AND post_id = ?", userID, postID).First(&like).Error
+
 	if err == nil {
 		// 已点赞，取消点赞
-		if err := DB.Delete(&like).Error; err != nil {
+		if err := tx.Delete(&like).Error; err != nil {
+			tx.Rollback()
 			utils.LogError("取消点赞失败", map[string]interface{}{
 				"post_id": postID,
 				"user_id": userID,
 				"error":   err.Error(),
 			})
-			return post.Like, err
+			return 0, err
 		}
-		// 点赞数-1
-		newLikeCount := post.Like - 1
-		if newLikeCount < 0 {
-			newLikeCount = 0
+
+		// 减少点赞数，确保不会小于0
+		if err := tx.Model(&model.Post{}).Where("id = ?", postID).Update("like", gorm.Expr("CASE WHEN `like` > 0 THEN `like` - 1 ELSE 0 END")).Error; err != nil {
+			tx.Rollback()
+			utils.LogError("更新点赞数失败", map[string]interface{}{
+				"post_id": postID,
+				"user_id": userID,
+				"error":   err.Error(),
+			})
+			return 0, err
 		}
-		if err := DB.Model(&model.Post{}).Where("id = ?", postID).Update("like", newLikeCount).Error; err != nil {
-			return post.Like, err
+
+		// 获取更新后的点赞数
+		var post model.Post
+		if err := tx.Where("id = ?", postID).First(&post).Error; err != nil {
+			tx.Rollback()
+			utils.LogError("获取更新后点赞数失败", map[string]interface{}{
+				"post_id": postID,
+				"user_id": userID,
+				"error":   err.Error(),
+			})
+			return 0, err
 		}
-		return newLikeCount, nil
+
+		// 提交事务
+		if err := tx.Commit().Error; err != nil {
+			utils.LogError("提交事务失败", map[string]interface{}{
+				"post_id": postID,
+				"user_id": userID,
+				"error":   err.Error(),
+			})
+			return 0, err
+		}
+
+		utils.LogInfo("取消点赞成功", map[string]interface{}{
+			"post_id":   postID,
+			"user_id":   userID,
+			"new_likes": post.Like,
+		})
+		return post.Like, nil
+
 	} else if errors.Is(err, gorm.ErrRecordNotFound) {
 		// 未点赞，添加点赞
 		newLike := model.UserPostLike{
@@ -938,23 +987,65 @@ func TogglePostLike(postID uint, userID uint) (int, error) {
 			PostID:    postID,
 			CreatedAt: time.Now(),
 		}
-		if err := DB.Create(&newLike).Error; err != nil {
+		if err := tx.Create(&newLike).Error; err != nil {
+			tx.Rollback()
 			utils.LogError("点赞失败", map[string]interface{}{
 				"post_id": postID,
 				"user_id": userID,
 				"error":   err.Error(),
 			})
-			return post.Like, err
+			return 0, err
 		}
-		// 点赞数+1
-		newLikeCount := post.Like + 1
-		if err := DB.Model(&model.Post{}).Where("id = ?", postID).Update("like", newLikeCount).Error; err != nil {
-			return post.Like, err
+
+		// 增加点赞数
+		if err := tx.Model(&model.Post{}).Where("id = ?", postID).Update("like", gorm.Expr("`like` + 1")).Error; err != nil {
+			tx.Rollback()
+			utils.LogError("更新点赞数失败", map[string]interface{}{
+				"post_id": postID,
+				"user_id": userID,
+				"error":   err.Error(),
+			})
+			return 0, err
 		}
-		return newLikeCount, nil
+
+		// 获取更新后的点赞数
+		var post model.Post
+		if err := tx.Where("id = ?", postID).First(&post).Error; err != nil {
+			tx.Rollback()
+			utils.LogError("获取更新后点赞数失败", map[string]interface{}{
+				"post_id": postID,
+				"user_id": userID,
+				"error":   err.Error(),
+			})
+			return 0, err
+		}
+
+		// 提交事务
+		if err := tx.Commit().Error; err != nil {
+			utils.LogError("提交事务失败", map[string]interface{}{
+				"post_id": postID,
+				"user_id": userID,
+				"error":   err.Error(),
+			})
+			return 0, err
+		}
+
+		utils.LogInfo("点赞成功", map[string]interface{}{
+			"post_id":   postID,
+			"user_id":   userID,
+			"new_likes": post.Like,
+		})
+		return post.Like, nil
+
 	} else {
-		// 其他错误
-		return post.Like, err
+		// 其他数据库错误
+		tx.Rollback()
+		utils.LogError("查询点赞状态失败", map[string]interface{}{
+			"post_id": postID,
+			"user_id": userID,
+			"error":   err.Error(),
+		})
+		return 0, err
 	}
 }
 
@@ -1161,4 +1252,16 @@ func GetPrivateConversations(userID uint) ([]Conversation, error) {
 	}
 
 	return conversations, nil
+}
+
+// 每天凌晨4点：将所有用户当天的学习计时置为无效（不计入学习时长）
+func InvalidateAllTodayLearnTime() error {
+	today := time.Now()
+	todayStart := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
+	todayEnd := todayStart.Add(24 * time.Hour)
+	// 批量更新：将今天所有学习时长置为-1（或可加 is_valid 字段，现用-1表示无效）
+	err := DB.Model(&model.LearnTime{}).
+		Where("created_at >= ? AND created_at < ? AND duration > 0", todayStart, todayEnd).
+		Update("duration", -1).Error
+	return err
 }

@@ -19,8 +19,9 @@ func BasicUser(r *gin.Engine) {
 	// 需要认证的接口：创建路由组而不是污染全局路由器
 	e := r.Group("/")
 	e.Use(service.JWTAuth())
-	e.PUT("/updatePassword", service.UpdateUserPassword())
-	e.PUT("/updateUsername", service.UpdateUserName())
+	e.PUT("/api/updatePassword", service.UpdateUserPassword())
+	// 统一加上 /api 前缀，方便前端与 Nginx 代理规则一致
+	e.PUT("/api/updateUsername", service.UpdateUserName())
 	e.PUT("/api/UpdateStatus", service.UpdateStatus())
 	e.GET("/api/getUser", service.GetUser())
 	e.GET("/api/getTodayPoints", service.GetTodayPoints())
@@ -30,6 +31,7 @@ func BasicUser(r *gin.Engine) {
 	e.PUT("/api/updateRemindStatus", service.UpdateUserRemind())
 	e.GET("/api/getDakaRecords", service.GetDaKaRecords())
 	e.PUT("/api/addPoints", service.AddPointsHandler())
+	e.GET("/api/getUserStats", service.GetUserStats())
 }
 
 func Flag(r *gin.Engine) {

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -288,6 +289,58 @@ func UpdateStatus() gin.HandlerFunc {
 		c.JSON(200, gin.H{
 			"message": "状态更新成功",
 			"状态":      req.Status})
+	}
+}
+
+// 新增：获取指定用户统计（支持查看他人）
+// 返回：打卡天数、完成flag数量、总积分、用户名、头像索引
+func GetUserStats() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 当前用户ID（用于鉴权，至少需要登录）
+		_, ok := getCurrentUserID(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
+			return
+		}
+
+		// 目标用户ID，可选，默认查看自己
+		var targetID uint
+		if q := c.Query("user_id"); q != "" {
+			var parsed uint
+			if _, err := fmt.Sscanf(q, "%d", &parsed); err == nil {
+				targetID = parsed
+			}
+		}
+		if targetID == 0 {
+			if id, exists := c.Get("user_id"); exists {
+				if vid, ok2 := id.(uint); ok2 {
+					targetID = vid
+				}
+			}
+		}
+
+		user, err := repository.GetUserByID(targetID)
+		if err != nil || user.ID == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
+			return
+		}
+
+		// 已完成 flag 数量（可能与用户表中 flag_number 含义不同，这里返回两者）
+		doneFlags, _ := repository.GetDoneFlagsByUserID(targetID)
+		// 打卡天数使用 user.Daka
+		dakaDays := user.Daka
+
+		c.JSON(http.StatusOK, gin.H{
+			"user_id":          user.ID,
+			"name":             user.Name,
+			"head_show":        user.HeadShow,
+			"avatar_index":     user.HeadShow,
+			"total_points":     user.Count,
+			"month_learn_time": user.MonthLearntime,
+			"completed_flags":  len(doneFlags),
+			"flag_number":      user.FlagNumber,
+			"daka_days":        dakaDays,
+		})
 	}
 }
 

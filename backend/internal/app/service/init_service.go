@@ -26,6 +26,19 @@ func Init() {
 		return
 	}
 
+	// 每天凌晨4点自动停止所有学习计时且本次不计入学习时长
+	_, err = cronScheduler.AddFunc("0 0 4 * * *", func() {
+		err := repository.InvalidateAllTodayLearnTime()
+		if err != nil {
+			utils.LogError("凌晨4点自动停止学习计时失败", logrus.Fields{"error": err.Error()})
+		} else {
+			utils.LogInfo("凌晨4点自动停止学习计时成功", nil)
+		}
+	})
+	if err != nil {
+		utils.LogError("添加凌晨4点自动停止学习计时任务失败", logrus.Fields{"error": err.Error()})
+	}
+
 	for _, u := range users {
 		user := u
 
