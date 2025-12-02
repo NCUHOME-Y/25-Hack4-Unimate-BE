@@ -1,0 +1,222 @@
+syntax = "v1"
+
+info (
+	title:   "Goal Service"
+	desc:    "目标服务，包括Flag管理、打卡、学习时长等"
+	author:  "Unimate"
+	version: "v1"
+)
+
+type (
+	// Flag 相关
+	FlagItem {
+		Id        uint   `json:"id"`
+		Title     string `json:"title"`
+		Detail    string `json:"detail"`
+		Label     int    `json:"label"`
+		Priority  int    `json:"priority"`
+		UserId    uint   `json:"user_id"`
+		IsPublic  bool   `json:"is_public"`
+		Completed bool   `json:"completed"`
+		Count     int    `json:"count"`
+		Total     int    `json:"total"`
+		Points    int    `json:"points"`
+		Likes     int    `json:"likes"`
+		StartTime string `json:"start_time"`
+		EndTime   string `json:"end_time"`
+	}
+	AddFlagReq {
+		Title       string `json:"title"`
+		Detail      string `json:"detail"`
+		IsPublic    bool   `json:"is_public"`
+		Label       int    `json:"label"`
+		Priority    int    `json:"priority"`
+		Total       int    `json:"total"`
+		Points      int    `json:"points"`
+		DailyLimit  int    `json:"daily_limit"`
+		IsRecurring bool   `json:"is_recurring"`
+		StartTime   string `json:"start_time"`
+		EndTime     string `json:"end_time"`
+	}
+	AddFlagResp {
+		Success bool     `json:"success"`
+		Message string   `json:"message"`
+		Flag    FlagItem `json:"flag"`
+	}
+	GetUserFlagsResp {
+		Flags []FlagItem `json:"flags"`
+	}
+	UpdateFlagHideReq {
+		Id uint `json:"id"`
+	}
+	UpdateFlagReq {
+		Id        uint   `json:"id"`
+		Title     string `json:"title"`
+		Detail    string `json:"detail"`
+		Label     int    `json:"label"`
+		Priority  int    `json:"priority"`
+		Total     int    `json:"total"`
+		IsPublic  bool   `json:"is_public"`
+		StartDate string `json:"start_date"`
+		EndDate   string `json:"end_date"`
+	}
+	DoneFlagReq {
+		Id uint `json:"id"`
+	}
+	DoneFlagResp {
+		Success   bool `json:"success"`
+		Count     int  `json:"count"`
+		Completed bool `json:"completed"`
+	}
+	FinishDoneFlagReq {
+		Id uint `json:"id"`
+	}
+	DeleteFlagReq {
+		Id uint `json:"id"`
+	}
+	// 打卡相关
+	DakaRecord {
+		Date string `json:"date"`
+	}
+	GetDakaRecordsResp {
+		Records []DakaRecord `json:"records"` // 实际上是数组，这里简化定义
+	}
+	// 学习时长
+	AddLearnTimeReq {
+		Duration int `json:"duration"` // 分钟
+	}
+	GetLabelResp {
+		Life  int `json:"life"`
+		Study int `json:"study"`
+		Work  int `json:"work"`
+		Like  int `json:"like"`
+		Sport int `json:"sport"`
+	}
+	LearnTimeRecord {
+		Date     string `json:"date"`
+		Duration int    `json:"duration"`
+	}
+	GetLearnTimeResp {
+		Records []LearnTimeRecord `json:"records"`
+	}
+	TodayLearnTimeResp {
+		Duration int `json:"duration"`
+	}
+	// AI 计划
+	GeneratePlanReq {
+		Goal        string `json:"goal"`
+		Days        int    `json:"days"`
+		DailyHours  int    `json:"daily_hours"`
+		Preferences string `json:"preferences"`
+	}
+	GeneratePlanResp {
+		Plan string `json:"plan"`
+	}
+	RecentDoFlagUser {
+		UserId   uint   `json:"user_id"`
+		Name     string `json:"name"`
+		HeadShow int    `json:"head_show"`
+		FlagName string `json:"flag_name"`
+		Time     string `json:"time"`
+	}
+	GetRecentDoFlagUsersResp {
+		Users []RecentDoFlagUser `json:"users"`
+	}
+)
+
+@server (
+	prefix: api
+)
+service goal-api {
+	@handler GetRecentDoFlagUsers
+	get /getRecentDoFlagUsers returns (GetRecentDoFlagUsersResp)
+}
+
+@server (
+	jwt:    Auth
+	prefix: api
+)
+service goal-api {
+	// Flag 管理
+	@handler AddFlag
+	post /addFlag (AddFlagReq) returns (AddFlagResp)
+
+	@handler GetUserFlags
+	get /getUserFlags returns (GetUserFlagsResp)
+
+	@handler UpdateFlagHide
+	put /updateFlagHide (UpdateFlagHideReq) returns (AddFlagResp)
+
+	@handler UpdateFlag
+	put /updateFlag (UpdateFlagReq) returns (AddFlagResp)
+
+	@handler DoneFlag
+	put /doneFlag (DoneFlagReq) returns (DoneFlagResp)
+
+	@handler FinishDoneFlag
+	post /finshDoneFlag (FinishDoneFlagReq) returns (AddFlagResp)
+
+	@handler DeleteFlag
+	delete /deleteFlag (DeleteFlagReq) returns (AddFlagResp)
+
+	@handler GetDoneFlags
+	get /getDoneFlags returns (GetUserFlagsResp)
+
+	@handler GetUnDoneFlags
+	get /getUnDoneFlags returns (GetUserFlagsResp)
+
+	@handler GetFlagsWithDates
+	get /flags/with-dates returns (GetUserFlagsResp)
+
+	@handler GetPresetFlags
+	get /flags/preset returns (GetUserFlagsResp)
+
+	@handler GetExpiredFlags
+	get /flags/expired returns (GetUserFlagsResp)
+
+	// 打卡
+	@handler UpdateDaka
+	put /updateDaka returns (AddFlagResp)
+
+	@handler GetDakaRecords
+	get /getDakaRecords returns ([]DakaRecord)
+
+	// 学习时长
+	@handler AddLearnTime
+	post /addLearnTime (AddLearnTimeReq) returns (AddFlagResp)
+
+	@handler GetLabel
+	get /getlabel returns (GetLabelResp)
+
+	@handler GetLearnTimeMonth
+	get /getLearnTimemonth returns (GetLearnTimeResp)
+
+	@handler GetDakaTotal
+	get /getdakatotal returns (AddFlagResp) // 简化复用
+
+	@handler GetMonthDaka
+	get /getmonthdaka returns (AddFlagResp)
+
+	@handler Get7DayLearnTime
+	get /get7daylearntime returns (GetLearnTimeResp)
+
+	@handler GetLearnTime180Days
+	get /getLearnTime180days returns (GetLearnTimeResp)
+
+	@handler GetLearnTimeMonthly
+	get /getLearnTimemonly returns (GetLearnTimeResp)
+
+	@handler GetCurrentMonthLearnTime
+	get /getCurrentMonthLearnTime returns (TodayLearnTimeResp)
+
+	@handler GetRecent6MonthsLearnTime
+	get /getRecent6MonthsLearnTime returns (GetLearnTimeResp)
+
+	@handler GetTodayLearnTime
+	get /getTodayLearnTime returns (TodayLearnTimeResp)
+
+	// AI
+	@handler GenerateLearningPlan
+	post /ai/generate-plan (GeneratePlanReq) returns (GeneratePlanResp)
+}
+

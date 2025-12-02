@@ -1,0 +1,205 @@
+syntax = "v1"
+
+info (
+	title:   "User Service"
+	desc:    "用户服务，包括注册登录、个人信息管理、积分成就等"
+	author:  "Unimate"
+	version: "v1"
+)
+
+type (
+	// 注册
+	RegisterReq {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	RegisterResp {
+		Message string `json:"message"`
+	}
+	// 登录
+	LoginReq {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	LoginResp {
+		Message        string `json:"message"`
+		UserId         uint   `json:"user_id"`
+		Name           string `json:"name"`
+		Email          string `json:"email"`
+		HeadShow       int    `json:"head_show"`
+		Daka           int    `json:"daka"`
+		FlagNumber     int    `json:"flag_number"`
+		Count          int    `json:"count"`
+		MonthLearnTime int    `json:"month_learn_time"`
+		Token          string `json:"token"`
+	}
+	// 验证码
+	SendEmailCodeReq {
+		Email string `json:"email"`
+	}
+	SendEmailCodeResp {
+		Message string `json:"message"`
+	}
+	VerifyEmailReq {
+		Email string `json:"email"`
+		Code  string `json:"code"`
+	}
+	VerifyEmailResp {
+		Success bool `json:"success"`
+	}
+	LoginWithOTPReq {
+		Email string `json:"email"`
+		Code  string `json:"code"`
+	}
+	ForgetPasswordReq {
+		Email       string `json:"email"`
+		Code        string `json:"code"`
+		NewPassword string `json:"new_password"`
+	}
+	// 用户信息更新
+	UpdatePasswordReq {
+		OldPassword string `json:"old_password"`
+		NewPassword string `json:"new_password"`
+	}
+	UpdatePasswordResp {
+		Success  bool   `json:"success"`
+		NewToken string `json:"new_token"`
+	}
+	UpdateUsernameReq {
+		NewName string `json:"new_name"`
+	}
+	UpdateStatusReq {
+		Status string `json:"status"`
+	}
+	SwitchHeadReq {
+		Number int `json:"number"`
+	}
+	UpdateRemindTimeReq {
+		TimeRemind int `json:"time_remind"`
+		MinRemind  int `json:"min_remind"`
+	}
+	// 用户信息获取
+	UserInfoResp {
+		Id             uint   `json:"id"`
+		UserId         uint   `json:"user_id"`
+		Username       string `json:"username"`
+		Name           string `json:"name"`
+		Email          string `json:"email"`
+		HeadShow       int    `json:"head_show"`
+		Daka           int    `json:"daka"`
+		FlagNumber     int    `json:"flag_number"`
+		Count          int    `json:"count"`
+		MonthLearnTime int    `json:"month_learn_time"`
+	// User object omitted for brevity, usually flattened or separate struct
+	}
+	TodayPointsResp {
+		TodayPoints int `json:"today_points"`
+	}
+	UserStatsReq {
+		UserId uint `form:"user_id,optional"`
+	}
+	UserStatsResp {
+		UserId         uint   `json:"user_id"`
+		Name           string `json:"name"`
+		HeadShow       int    `json:"head_show"`
+		AvatarIndex    int    `json:"avatar_index"`
+		TotalPoints    int    `json:"total_points"`
+		MonthLearnTime int    `json:"month_learn_time"`
+		CompletedFlags int    `json:"completed_flags"`
+		FlagNumber     int    `json:"flag_number"`
+		DakaDays       int    `json:"daka_days"`
+	}
+	// 积分
+	AddPointsReq {
+		Points int `json:"points"`
+	}
+	AddPointsResp {
+		Message string `json:"message"`
+		Count   int    `json:"count"`
+	}
+	// 搜索
+	SearchUserReq {
+		Keyword string `json:"keyword"`
+	}
+	SearchUserResp {
+		Users []UserInfoResp `json:"users"`
+	}
+	// 成就
+	GetUserAchievementResp {
+		Achievements []AchievementItem `json:"achievements"`
+	}
+	AchievementItem {
+		Id          uint   `json:"id"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		HadDone     bool   `json:"had_done"`
+		GotTime     string `json:"got_time"`
+	}
+)
+
+@server (
+	prefix: api
+)
+service user-api {
+	@handler Register
+	post /register (RegisterReq) returns (RegisterResp)
+
+	@handler Login
+	post /login (LoginReq) returns (LoginResp)
+
+	@handler SendEmailCode
+	post /sendEmailCode (SendEmailCodeReq) returns (SendEmailCodeResp)
+
+	@handler VerifyEmail
+	post /verifyEmail (VerifyEmailReq) returns (VerifyEmailResp)
+
+	@handler LoginWithOTP
+	post /loginWithOTP (LoginWithOTPReq) returns (LoginResp)
+
+	@handler ForgetPassword
+	post /forgetcode (ForgetPasswordReq) returns (VerifyEmailResp)
+}
+
+@server (
+	jwt:    Auth
+	prefix: api
+)
+service user-api {
+	@handler UpdatePassword
+	put /updatePassword (UpdatePasswordReq) returns (UpdatePasswordResp)
+
+	@handler UpdateUsername
+	put /updateUsername (UpdateUsernameReq) returns (VerifyEmailResp)
+
+	@handler UpdateStatus
+	put /UpdateStatus (UpdateStatusReq) returns (VerifyEmailResp)
+
+	@handler GetUser
+	get /getUser returns (UserInfoResp)
+
+	@handler GetTodayPoints
+	get /getTodayPoints returns (TodayPointsResp)
+
+	@handler SwitchHead
+	post /swithhead (SwitchHeadReq) returns (VerifyEmailResp)
+
+	@handler UpdateRemindTime
+	put /updateRemindTime (UpdateRemindTimeReq) returns (VerifyEmailResp)
+
+	@handler UpdateRemindStatus
+	put /updateRemindStatus returns (VerifyEmailResp)
+
+	@handler AddPoints
+	put /addPoints (AddPointsReq) returns (AddPointsResp)
+
+	@handler GetUserStats
+	get /getUserStats (UserStatsReq) returns (UserStatsResp)
+
+	@handler GetUserAchievement
+	get /getUserAchievement returns (GetUserAchievementResp)
+
+	@handler SearchUser
+	post /searchUser (SearchUserReq) returns (SearchUserResp)
+}
+
