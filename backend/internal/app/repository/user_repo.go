@@ -105,10 +105,17 @@ func GetExpiredFlagsByUserID(userID uint, today time.Time) ([]model.Flag, error)
 	return flags, result.Error
 }
 
-// 通过用户邮箱获取用户
+// 通过用户邮箱获取用户（完整版）
 func GetUserByEmail(Email string) (model.User, error) {
 	var user model.User
 	result := DB.Preload("Achievements").Preload("Flags").Preload("Posts").Where("email = ?", Email).First(&user)
+	return user, result.Error
+}
+
+// 🔧 性能优化：轻量级邮箱查询 - 用于登录验证
+func GetUserBasicByEmail(Email string) (model.User, error) {
+	var user model.User
+	result := DB.Where("email = ?", Email).First(&user)
 	return user, result.Error
 }
 
@@ -119,10 +126,17 @@ func GetUserByName(name string) (model.User, error) {
 	return user, result.Error
 }
 
-// 通过用户ID获取用户
+// 通过用户ID获取用户（完整版 - 包含所有关联数据）
 func GetUserByID(userID uint) (model.User, error) {
 	var user model.User
 	result := DB.Preload("Achievements").Preload("Flags").Preload("Posts").Where("id = ?", userID).First(&user)
+	return user, result.Error
+}
+
+// 🔧 性能优化：轻量级用户查询 - 不加载关联数据
+func GetUserBasicByID(userID uint) (model.User, error) {
+	var user model.User
+	result := DB.Where("id = ?", userID).First(&user)
 	return user, result.Error
 }
 

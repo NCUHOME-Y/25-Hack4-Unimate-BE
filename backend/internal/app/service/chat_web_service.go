@@ -1,4 +1,4 @@
-package service
+﻿package service
 
 import (
 	"encoding/json"
@@ -92,7 +92,7 @@ func WsHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		utils.LogInfo("WebSocket连接请求到达", nil)
 		// 从 JWT 中间件获取用户 ID
-		id, ok := getCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
 		if !ok || id == 0 {
 			utils.LogError("WebSocket用户ID验证失败", nil)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权或 token 无效"})
@@ -381,7 +381,7 @@ func CreateChatRoom() gin.HandlerFunc {
 			return
 		}
 
-		userID, _ := getCurrentUserID(c)
+		userID, _ := utils.GetCurrentUserID(c)
 
 		manager.mu.Lock()
 		defer manager.mu.Unlock()
@@ -422,7 +422,7 @@ func CreateChatRoom() gin.HandlerFunc {
 func DeleteChatRoom() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		roomID := c.Param("room_id")
-		userID, _ := getCurrentUserID(c)
+		userID, _ := utils.GetCurrentUserID(c)
 
 		// 不能删除默认房间
 		if roomID == "room-1" || roomID == "room-2" || roomID == "room-3" {
@@ -483,7 +483,7 @@ func GetChatHistory() gin.HandlerFunc {
 // 获取私聊历史消息
 func GetPrivateChatHistory() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, ok := getCurrentUserID(c)
+		userID, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
 			return
@@ -522,7 +522,7 @@ func GetPrivateChatHistory() gin.HandlerFunc {
 // 获取私聊会话列表（按对方用户分组，显示最新消息）
 func GetPrivateConversations() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, ok := getCurrentUserID(c)
+		userID, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
 			return

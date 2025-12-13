@@ -74,3 +74,19 @@ func HandleDatabaseError(c *gin.Context, err error, operation string, logFields 
 
 	RespondInternalError(c, "数据库操作失败，请稍后重试", logFields)
 }
+
+// GetCurrentUserID 从上下文中获取当前用户ID
+func GetCurrentUserID(c *gin.Context) (uint, bool) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		return 0, false
+	}
+
+	// 类型断言
+	id, ok := userID.(uint)
+	if !ok {
+		return 0, false
+	}
+
+	return id, true
+}

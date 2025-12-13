@@ -1,4 +1,4 @@
-package service
+﻿package service
 
 import (
 	"bytes"
@@ -19,7 +19,7 @@ import (
 // 获取用户flag
 func GetUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, ok := getCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
 		log.Printf("[debug] user_id = %d", id)
 		if !ok {
 			c.JSON(400, gin.H{"error": "获取用户信息失败,请重新再试..."})
@@ -117,7 +117,7 @@ func PostUserFlags() gin.HandlerFunc {
 			StartTime:  startTime,
 			EndTime:    endTime,
 		}
-		id, ok := getCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(402, gin.H{"error": "获取用户信息失败,请重新再试..."})
 			return
@@ -172,7 +172,7 @@ func DoneUserFlags() gin.HandlerFunc {
 		}
 
 		durtion := time.Now()
-		id, _ := getCurrentUserID(c)
+		id, _ := utils.GetCurrentUserID(c)
 		if err := repository.UpdateUserDoFlag(id, durtion); err != nil {
 			c.JSON(400, gin.H{"error": "打卡失败,请重新再试..."})
 			return
@@ -270,7 +270,7 @@ func FinshDoneFlag() gin.HandlerFunc {
 			ID uint `json:"id"`
 		}
 		level := c.Query("level")
-		id, _ := getCurrentUserID(c)
+		id, _ := utils.GetCurrentUserID(c)
 		log.Printf("[debug] user_id = %d", id)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "更新flag失败,请重新再试..."})
@@ -329,7 +329,7 @@ func GetRecentDoFlagUsers() gin.HandlerFunc {
 // 获取已完成flag
 func GetDoneFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, ok := getCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(400, gin.H{"error": "获取用户信息失败,请重新再试..."})
 			return
@@ -348,7 +348,7 @@ func GetDoneFlags() gin.HandlerFunc {
 // 获取未完成的完成flag
 func GetNotDoneFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, ok := getCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(400, gin.H{"error": "获取用户信息失败,请重新再试..."})
 			return
@@ -485,7 +485,7 @@ func UpdateFlagInfo() gin.HandlerFunc {
 // 获取有起始日期的flag（用于日历高亮）
 func GetFlagsWithDates() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, ok := getCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(400, gin.H{"error": "获取用户信息失败"})
 			return
@@ -505,7 +505,7 @@ func GetFlagsWithDates() gin.HandlerFunc {
 // 获取预设flag（未到起始日期的flag）
 func GetPresetFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, ok := getCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(400, gin.H{"error": "获取用户信息失败"})
 			return
@@ -525,7 +525,7 @@ func GetPresetFlags() gin.HandlerFunc {
 // 获取过期flag
 func GetExpiredFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, ok := getCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(400, gin.H{"error": "获取用户信息失败"})
 			return

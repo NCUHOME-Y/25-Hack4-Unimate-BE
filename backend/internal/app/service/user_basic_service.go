@@ -137,7 +137,7 @@ func RegisterUser() gin.HandlerFunc {
 		}
 
 		// 检查邮箱是否已注册
-		user_exist, _ := repository.GetUserByEmail(user.Email)
+		user_exist, _ := repository.GetUserBasicByEmail(user.Email) // 🔧 性能优化
 		if user_exist.ID != 0 {
 			c.JSON(409, gin.H{"error": "该邮箱已被注册，请直接登录或使用其他邮箱"})
 			utils.LogInfo("注册失败-邮箱已存在", logrus.Fields{"email": user.Email})
@@ -223,7 +223,7 @@ func CompleteRegistration() gin.HandlerFunc {
 		}
 
 		// 再次检查邮箱和用户名是否被占用（防止并发注册）
-		user_exist, _ := repository.GetUserByEmail(req.Email)
+		user_exist, _ := repository.GetUserBasicByEmail(req.Email) // 🔧 性能优化
 		if user_exist.ID != 0 {
 			c.JSON(409, gin.H{"error": "该邮箱已被注册"})
 			return
@@ -323,7 +323,7 @@ func LoginUser() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "登录失败,请重新再试..."})
 			return
 		}
-		user, err := repository.GetUserByEmail(user_login.Email)
+		user, err := repository.GetUserBasicByEmail(user_login.Email) // 🔧 性能优化：登录验证只需要基本信息
 		// 检查用户是否存在
 		if err != nil || user.ID == 0 {
 			c.JSON(401, gin.H{"error": "用户名或密码错误,请重新再试..."})
@@ -366,8 +366,8 @@ func UpdateUserPassword() gin.HandlerFunc {
 			Password    string `json:"old_password"`
 			NewPassword string `json:"new_password"`
 		}
-		id, _ := getCurrentUserID(c)
-		user, _ := repository.GetUserByID(id)
+		id, _ := utils.GetCurrentUserID(c)
+		user, _ := repository.GetUserBasicByID(id) // 🔧 性能优化：使用轻量级查询
 		new_token, _ := utils.GenerateToken(user.ID, user.Name, user.Email)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(401, gin.H{"error": "请求失败,请重新再试..."})
@@ -400,14 +400,14 @@ func UpdateUserName() gin.HandlerFunc {
 		var req struct {
 			NewName string `json:"new_name"`
 		}
-		id, _ := getCurrentUserID(c)
+		id, _ := utils.GetCurrentUserID(c)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			log.Printf("UpdateUserName: 请求绑定失败: %v", err)
 			c.JSON(400, gin.H{"error": "请求体格式错误, 请以 {new_name: string} 提交"})
 			return
 		}
 		log.Printf("UpdateUserName: user_id=%d 请求新用户名=%q", id, req.NewName)
-		user, _ := repository.GetUserByID(id)
+		user, _ := repository.GetUserBasicByID(id) // 🔧 性能优化
 		if req.NewName == user.Name {
 			log.Printf("UpdateUserName: 新用户名与原用户名相同 (user_id=%d)", id)
 			c.JSON(400, gin.H{"error": "新用户名与原用户名相同,请重新再试..."})
@@ -443,7 +443,7 @@ func UpdateStatus() gin.HandlerFunc {
 		var req struct {
 			Status string `json:"status"`
 		}
-		id, _ := getCurrentUserID(c)
+		id, _ := utils.GetCurrentUserID(c)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "更新状态失败,请重新再试..."})
 			log.Print("Binding error")
@@ -467,7 +467,7 @@ func UpdateStatus() gin.HandlerFunc {
 func GetUserStats() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 当前用户ID（用于鉴权，至少需要登录）
-		_, ok := getCurrentUserID(c)
+		_, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
 			return
@@ -517,7 +517,7 @@ func GetUserStats() gin.HandlerFunc {
 // 获取用户信息
 func GetUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, ok := getCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(400, gin.H{"error": "获取用户信息失败,请重新再试..."})
 			return
@@ -549,7 +549,7 @@ func GetUser() gin.HandlerFunc {
 // 获取今日获得积分
 func GetTodayPoints() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, ok := getCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(400, gin.H{"error": "获取用户ID失败"})
 			return
@@ -568,7 +568,7 @@ func GetTodayPoints() gin.HandlerFunc {
 // 打卡
 func DoDaKa() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, _ := getCurrentUserID(c)
+		id, _ := utils.GetCurrentUserID(c)
 		err := repository.DakaNumberToDB(id)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "打卡失败,请重新再试..."})
@@ -583,7 +583,7 @@ func DoDaKa() gin.HandlerFunc {
 // 获取打卡此月天的打卡记录
 func GetDaKaRecords() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, _ := getCurrentUserID(c)
+		id, _ := utils.GetCurrentUserID(c)
 		dakaRecords, err := repository.GetMonthDakaRecords(id)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "获取打卡记录失败,请重新再试..."})
@@ -616,7 +616,7 @@ func UpdateUserRemindTime() gin.HandlerFunc {
 			utils.LogError("获取用户提醒时间失败", logrus.Fields{})
 			return
 		}
-		id, _ := getCurrentUserID(c)
+		id, _ := utils.GetCurrentUserID(c)
 
 		// 先开启提醒状态（如果还未开启）
 		user, _ := repository.GetUserByID(id)
@@ -644,7 +644,7 @@ func UpdateUserRemindTime() gin.HandlerFunc {
 // 用户选择是否开启提醒
 func UpdateUserRemind() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, _ := getCurrentUserID(c)
+		id, _ := utils.GetCurrentUserID(c)
 		user, _ := repository.GetUserByID(id)
 		user.IsRemind = !user.IsRemind
 		err := repository.UpdateUserRemindStatus(id, user.IsRemind)
@@ -669,7 +669,7 @@ func SwithHead() gin.HandlerFunc {
 		var req struct {
 			Number int `json:"number"`
 		}
-		id, _ := getCurrentUserID(c)
+		id, _ := utils.GetCurrentUserID(c)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "头像切换失败,请重新再试..."})
 			log.Print("Binding error")
@@ -694,7 +694,7 @@ func SwithHead() gin.HandlerFunc {
 // 新增：添加积分接口
 func AddPointsHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, ok := getCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(400, gin.H{"error": "用户未登录"})
 			utils.LogError("添加积分失败：用户未登录", nil)

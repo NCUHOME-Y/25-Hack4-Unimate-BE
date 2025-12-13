@@ -1,9 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/handler"
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
@@ -17,6 +22,18 @@ func main() {
 	// 首先加载环境变量
 	if err := godotenv.Load(".env"); err != nil {
 		log.Printf("警告: 加载 .env 文件失败: %v", err)
+	}
+
+	// 🔧 阶段5：配置日志级别和模式
+	ginMode := os.Getenv("GIN_MODE")
+	if ginMode == "" {
+		ginMode = "debug" // 默认开发模式
+	}
+	gin.SetMode(ginMode)
+
+	if ginMode == "release" {
+		// 生产环境：关闭Gin的调试日志
+		gin.DisableConsoleColor()
 	}
 
 	repository.DBconnect() //数据库连接
@@ -74,6 +91,17 @@ func main() {
 		"path":  assetsPath,
 	})
 
+	// 健康检查端点
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":  "healthy",
+			"service": "unimate-backend",
+		})
+	})
+	r.GET("/ping", func(c *gin.Context) {
+		c.String(200, "pong")
+	})
+
 	handler.BasicUser(r) //用户相关
 	utils.LogInfo("服务器启动成功", nil)
 	handler.Flag(r) //签到相关
@@ -94,11 +122,46 @@ func main() {
 	utils.LogInfo("成就模块加载成功", nil)
 	handler.AI(r) //AI学习计划
 	utils.LogInfo("AI模块加载成功", nil)
-	// TODO: 实现这些函数后再启用
-	// handler.ChatHistory(r) //聊天历史 // P1修复：聊天历史和房间管理
-	// utils.LogInfo("聊天历史模块加载成功", nil)
-	// handler.PostRESTful(r) //RESTful帖子 // P1修复：RESTful风格帖子接口
-	// utils.LogInfo("RESTful帖子模块加载成功", nil)
-	r.Run("0.0.0.0:8080")
-	utils.LogInfo("服务器运行中，监听端口8080", nil)
+
+	// 🔧 阶段5：优雅关闭机制
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	srv := &http.Server{
+		Addr:         ":" + port,
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// 在goroutine中启动服务器
+	go func() {
+		utils.LogInfo("服务器启动", map[string]interface{}{
+			"port": port,
+			"env":  os.Getenv("GIN_MODE"),
+		})
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("服务器启动失败: %v", err)
+		}
+	}()
+
+	// 等待中断信号以优雅地关闭服务器
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	utils.LogInfo("服务器正在关闭...", nil)
+
+	// 给服务器5秒时间完成正在处理的请求
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("服务器强制关闭: %v", err)
+	}
+
+	utils.LogInfo("服务器已安全退出", nil)
 }

@@ -1,4 +1,4 @@
-package service
+﻿package service
 
 import (
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
@@ -12,7 +12,7 @@ import (
 // 发布帖子
 func PostUserPost() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, _ := getCurrentUserID(c)
+		id, _ := utils.GetCurrentUserID(c)
 		var req struct {
 			Title   string `json:"title"`
 			Content string `json:"content"`
@@ -53,7 +53,7 @@ func PostUserPost() gin.HandlerFunc {
 // 删除帖子
 func DeleteUserPost() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, ok := getCurrentUserID(c)
+		userID, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(401, gin.H{"error": "未授权"})
 			return
@@ -92,7 +92,7 @@ func DeleteUserPost() gin.HandlerFunc {
 // 发表帖子评论
 func CommentOnPost() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, ok := getCurrentUserID(c)
+		userID, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(401, gin.H{"error": "未授权"})
 			return
@@ -155,7 +155,7 @@ func CommentOnPost() gin.HandlerFunc {
 // 删除帖子评论
 func DeleteUserPostComment() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, ok := getCurrentUserID(c)
+		userID, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(401, gin.H{"error": "未授权"})
 			return
@@ -295,7 +295,7 @@ func LikePost() gin.HandlerFunc {
 		}
 
 		// 获取当前用户ID（用于记录点赞关系）
-		userID, ok := getCurrentUserID(c)
+		userID, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(401, gin.H{"error": "未授权"})
 			return
@@ -373,7 +373,7 @@ func GetPostLikes() gin.HandlerFunc {
 // 获取当前用户点过赞的帖子ID
 func GetUserLikedPosts() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, ok := getCurrentUserID(c)
+		userID, ok := utils.GetCurrentUserID(c)
 		if !ok {
 			c.JSON(401, gin.H{"error": "未授权"})
 			return
