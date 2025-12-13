@@ -1,7 +1,0 @@
-Name: goal-api
-Host: 0.0.0.0
-Port: 8889
-DataSource: root:007080@tcp(localhost:3306)/knowyourchoice?parseTime=true
-Auth:
-  AccessSecret: WWWCCCCOOOOOO
-  AccessExpire: 86400

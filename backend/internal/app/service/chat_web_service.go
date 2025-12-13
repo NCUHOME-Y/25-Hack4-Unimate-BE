@@ -546,3 +546,59 @@ func GetPrivateConversations() gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"conversations": conversations})
 	}
 }
+
+// 获取管理器实例
+func GetRoomManager() *Manager {
+	return manager
+}
+
+// 获取所有房间信息
+func (manager *Manager) GetAllRooms() []map[string]interface{} {
+	manager.mu.RLock()
+	defer manager.mu.RUnlock()
+
+	var rooms []map[string]interface{}
+	for _, room := range manager.Rooms {
+		rooms = append(rooms, map[string]interface{}{
+			"id":           room.ID,
+			"name":         room.Name,
+			"online_count": len(room.Clients),
+			"max_users":    room.MaxUsers,
+		})
+	}
+	return rooms
+}
+
+// 获取房间内用户列表
+func (manager *Manager) GetRoomUsers(roomID string) []map[string]interface{} {
+	manager.mu.RLock()
+	defer manager.mu.RUnlock()
+
+	room, ok := manager.Rooms[roomID]
+	if !ok {
+		return []map[string]interface{}{}
+	}
+
+	var users []map[string]interface{}
+	for _, client := range room.Clients {
+		// 这里需要获取用户信息，暂时只返回ID
+		// 实际项目中应该从缓存或数据库获取用户详情
+		user, err := repository.GetUserByID(client.ID)
+		name := "Unknown"
+		avatar := ""
+		if err == nil {
+			name = user.Name
+			if user.HeadShow > 0 && user.HeadShow <= 6 {
+				avatarFiles := []string{"131601", "131629", "131937", "131951", "132014", "133459"}
+				avatar = "/src/assets/images/screenshot_20251114_" + avatarFiles[user.HeadShow-1] + ".png"
+			}
+		}
+
+		users = append(users, map[string]interface{}{
+			"id":     client.ID,
+			"name":   name,
+			"avatar": avatar,
+		})
+	}
+	return users
+}
