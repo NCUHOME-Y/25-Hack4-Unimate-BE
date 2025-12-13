@@ -23,6 +23,24 @@ func main() {
 	service.Init()         //初始化每天学习时间记录
 	r := gin.Default()
 
+	// Panic Recovery 中间件（防止服务器崩溃）
+	r.Use(gin.Recovery())
+
+	// 请求记录中间件
+	r.Use(func(c *gin.Context) {
+		utils.LogInfo("请求开始", map[string]interface{}{
+			"method": c.Request.Method,
+			"path":   c.Request.URL.Path,
+			"ip":     c.ClientIP(),
+		})
+		c.Next()
+		utils.LogInfo("请求完成", map[string]interface{}{
+			"method": c.Request.Method,
+			"path":   c.Request.URL.Path,
+			"status": c.Writer.Status(),
+		})
+	})
+
 	// 添加全局 CORS 中间件
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")

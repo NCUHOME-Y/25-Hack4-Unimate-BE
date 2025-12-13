@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -78,52 +77,71 @@ func LoginWithOTP() gin.HandlerFunc {
 			Code  string `json:"code"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": "Invalid input"})
-			utils.LogError("绑定验证码登录请求参数错误!", nil)
+			c.JSON(400, gin.H{"error": "请求参数错误"})
+			utils.LogError("验证码登录参数绑定错误", logrus.Fields{"error": err.Error()})
+			return
+		}
+
+		// 验证邮箱格式
+		if !validateEmail(req.Email) {
+			c.JSON(400, gin.H{"error": "邮箱格式不正确"})
 			return
 		}
 
 		// 验证验证码
 		emailCode, err := repository.GetEmailCodeByEmail(req.Email)
 		if err != nil {
-			c.JSON(500, gin.H{"error": "获取验证码失败,请重新再试..."})
-			utils.LogError("获取邮箱验证码失败", nil)
+			c.JSON(400, gin.H{"error": "验证码不存在或已过期"})
+			utils.LogWarn("获取邮箱验证码失败", logrus.Fields{"email": req.Email})
 			return
 		}
-		if emailCode.Code != req.Code {
+		if !secureCompareCode(emailCode.Code, req.Code) {
 			c.JSON(400, gin.H{"error": "验证码错误"})
-			utils.LogError("邮箱验证码错误", nil)
+			utils.LogWarn("验证码错误", logrus.Fields{"email": req.Email})
 			return
 		}
 		if emailCode.Expires.Before(time.Now()) {
 			c.JSON(400, gin.H{"error": "验证码已过期"})
-			utils.LogError("邮箱验证码已过期", nil)
+			utils.LogWarn("验证码已过期", logrus.Fields{"email": req.Email})
 			return
 		}
 
 		// 验证码正确，查找用户
 		user, err := repository.GetUserByEmail(req.Email)
 		if err != nil || user.ID == 0 {
-			c.JSON(400, gin.H{"error": "该邮箱尚未注册,请先注册账号"})
-			utils.LogError("验证码登录失败-用户不存在", logrus.Fields{"user_email": req.Email})
+			c.JSON(400, gin.H{"error": "该邮箱尚未注册，请先注册账号"})
+			utils.LogInfo("验证码登录失败-用户不存在", logrus.Fields{"email": req.Email})
 			return
-		} // 生成JWT token
+		}
+
+		// 删除已使用的验证码
+		if err := repository.DeleteEmailCode(req.Email); err != nil {
+			utils.LogWarn("删除验证码失败", logrus.Fields{"email": req.Email, "error": err.Error()})
+		}
+
+		// 生成JWT token
 		token, err := utils.GenerateToken(user.ID, user.Name, user.Email)
 		if err != nil {
-			c.JSON(500, gin.H{"error": "生成token失败,请重新再试..."})
-			utils.LogError("生成token失败", logrus.Fields{})
+			c.JSON(500, gin.H{"error": "生成token失败"})
+			utils.LogError("生成token失败", logrus.Fields{"user_id": user.ID, "error": err.Error()})
 			return
 		}
 
 		// 更新用户邮箱验证状态
 		repository.UpdateUserExistStatus(req.Email)
 
-		utils.LogInfo("验证码登录成功", logrus.Fields{"user_email": req.Email})
+		utils.LogInfo("验证码登录成功", logrus.Fields{"email": req.Email, "user_id": user.ID})
 		c.JSON(http.StatusOK, gin.H{
-			"token":   token,
-			"user_id": user.ID,
-			"name":    user.Name,
-			"email":   user.Email,
+			"message":          "登录成功！",
+			"token":            token,
+			"user_id":          user.ID,
+			"name":             user.Name,
+			"email":            user.Email,
+			"head_show":        user.HeadShow,
+			"daka":             user.Daka,
+			"flag_number":      user.FlagNumber,
+			"count":            user.Count,
+			"month_learn_time": user.MonthLearntime,
 		})
 	}
 }
@@ -136,61 +154,70 @@ func ForgetPassword() gin.HandlerFunc {
 			NewPassword string `json:"new_password"`
 		}
 		if err := c.ShouldBindJSON(&requestData); err != nil {
-			c.JSON(400, gin.H{"error": "请求参数错误,请重新再试..."})
-			log.Print("Binding error")
+			c.JSON(400, gin.H{"error": "请求参数错误"})
+			utils.LogError("密码重置参数绑定错误", logrus.Fields{"error": err.Error()})
 			return
 		}
 
-		// 验证密码长度
-		if len(requestData.NewPassword) < 6 {
-			c.JSON(400, gin.H{"error": "密码长度至少6位"})
+		// 验证输入
+		if !validateEmail(requestData.Email) {
+			c.JSON(400, gin.H{"error": "邮箱格式不正确"})
+			return
+		}
+		if !validatePassword(requestData.NewPassword) {
+			c.JSON(400, gin.H{"error": "密码长度需在6-100个字符之间"})
 			return
 		}
 
 		// 验证用户是否存在
 		user_exist, _ := repository.GetUserByEmail(requestData.Email)
 		if user_exist.ID == 0 {
-			c.JSON(404, gin.H{"error": "用户不存在"})
-			log.Print("User not found")
+			c.JSON(400, gin.H{"error": "该邮箱尚未注册"})
+			utils.LogInfo("密码重置失败-用户不存在", logrus.Fields{"email": requestData.Email})
 			return
 		}
 
 		// 验证验证码
 		email, err := repository.GetEmailCodeByEmail(requestData.Email)
 		if err != nil {
-			c.JSON(400, gin.H{"error": "验证码错误或已过期"})
-			utils.LogError("获取验证码失败", logrus.Fields{"user_email": requestData.Email})
+			c.JSON(400, gin.H{"error": "验证码不存在或已过期"})
+			utils.LogWarn("获取验证码失败", logrus.Fields{"email": requestData.Email})
 			return
 		}
-		if email.Code != requestData.Code {
+		if !secureCompareCode(email.Code, requestData.Code) {
 			c.JSON(400, gin.H{"error": "验证码错误"})
-			utils.LogError("验证码错误", logrus.Fields{"user_email": requestData.Email})
+			utils.LogWarn("验证码错误", logrus.Fields{"email": requestData.Email})
 			return
 		}
 		if email.Expires.Before(time.Now()) {
 			c.JSON(400, gin.H{"error": "验证码已过期"})
-			utils.LogError("验证码已过期", logrus.Fields{"user_email": requestData.Email})
+			utils.LogWarn("验证码已过期", logrus.Fields{"email": requestData.Email})
 			return
+		}
+
+		// 删除已使用的验证码
+		if err := repository.DeleteEmailCode(requestData.Email); err != nil {
+			utils.LogWarn("删除验证码失败", logrus.Fields{"email": requestData.Email, "error": err.Error()})
 		}
 
 		// 加密新密码
 		hashedPassword, err := utils.HashPassword(requestData.NewPassword)
 		if err != nil {
-			c.JSON(500, gin.H{"error": "密码加密失败,请重新再试..."})
-			utils.LogError("密码加密失败", logrus.Fields{})
+			c.JSON(500, gin.H{"error": "密码加密失败"})
+			utils.LogError("密码加密失败", logrus.Fields{"error": err.Error()})
 			return
 		}
 
 		// 更新密码
 		err = repository.UpdatePasswordByEmail(requestData.Email, hashedPassword)
 		if err != nil {
-			c.JSON(500, gin.H{"error": "密码更新失败,请重新再试..."})
-			utils.LogError("数据库更新密码失败", logrus.Fields{})
+			c.JSON(500, gin.H{"error": "密码更新失败"})
+			utils.LogError("数据库更新密码失败", logrus.Fields{"error": err.Error()})
 			return
 		}
 
-		utils.LogInfo("用户密码重置成功", logrus.Fields{"user_email": requestData.Email})
-		c.JSON(http.StatusOK, gin.H{"message": "密码重置成功!"})
+		utils.LogInfo("用户密码重置成功", logrus.Fields{"email": requestData.Email, "user_id": user_exist.ID})
+		c.JSON(http.StatusOK, gin.H{"message": "密码重置成功！"})
 	}
 }
 

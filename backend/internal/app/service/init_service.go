@@ -78,7 +78,7 @@ func Init() {
 					"time":    fmt.Sprintf("%02d:%02d", user.RemindHour, user.RemindMin),
 				})
 
-				err := utils.SentEmail(user.Email, "知序：提醒您要好好自律哦", "温馨提示:灵魂的欲望是你命运的先知")
+				err := utils.SentEmail(user.Email, "知序提醒您：要好好自律哦", "温馨提示:灵魂的欲望是你命运的先知")
 				if err != nil {
 					utils.LogError("发送提醒邮件失败", logrus.Fields{
 						"user_id": user.ID,
@@ -154,7 +154,7 @@ func AddUserCronJob(user model.User) {
 	if user.IsRemind {
 		cronStr := fmt.Sprintf("0 %d %d * * *", user.RemindMin, user.RemindHour)
 		cronScheduler.AddFunc(cronStr, func() {
-			utils.SentEmail(user.Email, "知序：提醒您要好好自律哦", "灵魂的欲望是你命运的先知")
+			utils.SentEmail(user.Email, "知序提醒您：要好好自律哦", "灵魂的欲望是你命运的先知")
 		})
 		utils.LogInfo("为新用户添加提醒任务", logrus.Fields{
 			"user_id": user.ID,
@@ -199,7 +199,7 @@ func UpdateUserReminderJob(userID uint, hour, min int, isRemind bool) {
 				"time":    fmt.Sprintf("%02d:%02d", hour, min),
 			})
 
-			err := utils.SentEmail(user.Email, "知序：提醒您要好好自律哦", "灵魂的欲望是你命运的先知")
+			err := utils.SentEmail(user.Email, "知序提醒您：要好好自律哦", "灵魂的欲望是你命运的先知")
 			if err != nil {
 				utils.LogError("发送提醒邮件失败", logrus.Fields{
 					"user_id": userID,

@@ -1,10 +1,13 @@
 package service
 
 import (
+	"crypto/subtle"
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
@@ -13,6 +16,26 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
+
+// 输入验证辅助函数
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
+func validateEmail(email string) bool {
+	return len(email) <= 100 && emailRegex.MatchString(email)
+}
+
+func validateUsername(name string) bool {
+	return len(name) >= 2 && len(name) <= 20
+}
+
+func validatePassword(password string) bool {
+	return len(password) >= 6 && len(password) <= 100
+}
+
+// 安全比较验证码（防止时序攻击）
+func secureCompareCode(a, b string) bool {
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
+}
 
 func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -89,56 +112,203 @@ func getCurrentUserID(c *gin.Context) (uint, bool) {
 	return id, true
 }
 
-// 用户注册
+// 用户注册（第一步：发送验证码）
 func RegisterUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var user model.User
 		if err := c.ShouldBindJSON(&user); err != nil {
-			c.JSON(400, gin.H{"error": "注册失败,请重新再试..."})
-			log.Print("Binding error")
-			return
-		}
-		// 检查邮箱是否已注册
-		user_exist, _ := repository.GetUserByEmail(user.Email)
-		if user_exist.ID != 0 {
-			c.JSON(401, gin.H{"error": "该邮箱已被注册,请更换邮箱..."})
-			log.Print("Email already exists")
-			return
-		}
-		// 检查用户名是否已存在
-		name_exist, _ := repository.GetUserByName(user.Name)
-		if name_exist.ID != 0 {
-			c.JSON(401, gin.H{"error": "该用户名已被使用,请更换用户名..."})
-			log.Print("Username already exists")
-			return
-		}
-		password, err := utils.HashPassword(user.Password)
-		user.Password = password
-		if err != nil {
-			c.JSON(402, gin.H{"error": "注册失败,请重新再试..."})
-		}
-		//验证码机制
-		code := utils.GenerateCode()
-		err = utils.SentEmail(user.Email, "知序验证码", "您的验证码是："+code+"\n该验证码5分钟内有效,请尽快使用。")
-		if err != nil {
-			c.JSON(403, gin.H{"error": "验证码发送失败,请重新再试..."})
-			utils.LogError("验证码发送失败", logrus.Fields{"user_email": user.Email})
+			c.JSON(400, gin.H{"error": "请求参数错误"})
+			utils.LogError("注册参数绑定错误", logrus.Fields{"error": err.Error()})
 			return
 		}
 
-		repository.SaveEmailCodeToDB(code, user.Email)
-		c.Set("user_password", password)
-		c.Next()
-		// 初始化用户成就表
-		user = InitAchievementTable(user)
-		AddUserCronJob(user)
-		if err := repository.AddUserToDB(user); err != nil {
-			c.JSON(405, gin.H{"error": "注册失败,请重新再试..."})
-			utils.LogError("数据库添加用户失败", logrus.Fields{})
+		// 输入验证
+		if !validateEmail(user.Email) {
+			c.JSON(400, gin.H{"error": "邮箱格式不正确"})
 			return
 		}
-		utils.LogInfo("用户注册成功", logrus.Fields{"user_email": user.Email})
-		c.JSON(http.StatusOK, gin.H{"message": "注册成功!"})
+		if !validateUsername(user.Name) {
+			c.JSON(400, gin.H{"error": "用户名长度需在2-20个字符之间"})
+			return
+		}
+		if !validatePassword(user.Password) {
+			c.JSON(400, gin.H{"error": "密码长度需在6-100个字符之间"})
+			return
+		}
+
+		// 检查邮箱是否已注册
+		user_exist, _ := repository.GetUserByEmail(user.Email)
+		if user_exist.ID != 0 {
+			c.JSON(409, gin.H{"error": "该邮箱已被注册，请直接登录或使用其他邮箱"})
+			utils.LogInfo("注册失败-邮箱已存在", logrus.Fields{"email": user.Email})
+			return
+		}
+
+		// 检查用户名是否已存在
+		name_exist, _ := repository.GetUserByName(user.Name)
+		if name_exist.ID != 0 {
+			c.JSON(409, gin.H{"error": "该用户名已被使用，请更换用户名"})
+			utils.LogInfo("注册失败-用户名已存在", logrus.Fields{"name": user.Name})
+			return
+		}
+
+		// 生成并发送验证码
+		code := utils.GenerateCode()
+		err := utils.SentEmail(user.Email, "知序验证码", "您的验证码是："+code+"\n该验证码5分钟内有效，请尽快使用。")
+		if err != nil {
+			c.JSON(500, gin.H{"error": "验证码发送失败，请稍后重试"})
+			utils.LogError("验证码发送失败", logrus.Fields{"email": user.Email, "error": err.Error()})
+			return
+		}
+
+		// 保存验证码到数据库
+		repository.SaveEmailCodeToDB(code, user.Email)
+
+		utils.LogInfo("注册验证码已发送", logrus.Fields{"email": user.Email})
+		c.JSON(http.StatusOK, gin.H{
+			"message": "验证码已发送到您的邮箱，请查收并输入验证码完成注册",
+			"email":   user.Email,
+		})
+	}
+}
+
+// 完成注册（第二步：验证验证码并创建用户）
+func CompleteRegistration() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			Name     string `json:"name"`
+			Email    string `json:"email"`
+			Password string `json:"password"`
+			Code     string `json:"code"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "请求参数错误"})
+			utils.LogError("完成注册参数绑定错误", logrus.Fields{"error": err.Error()})
+			return
+		}
+
+		// 输入验证
+		if !validateEmail(req.Email) {
+			c.JSON(400, gin.H{"error": "邮箱格式不正确"})
+			return
+		}
+		if !validateUsername(req.Name) {
+			c.JSON(400, gin.H{"error": "用户名长度需在2-20个字符之间"})
+			return
+		}
+		if !validatePassword(req.Password) {
+			c.JSON(400, gin.H{"error": "密码长度需在6-100个字符之间"})
+			return
+		}
+
+		// 验证验证码
+		emailCode, err := repository.GetEmailCodeByEmail(req.Email)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "验证码不存在或已过期"})
+			utils.LogError("获取邮箱验证码失败", logrus.Fields{"email": req.Email, "error": err.Error()})
+			return
+		}
+
+		// 使用安全比较防止时序攻击
+		if !secureCompareCode(emailCode.Code, req.Code) {
+			c.JSON(400, gin.H{"error": "验证码错误"})
+			utils.LogWarn("验证码错误", logrus.Fields{"email": req.Email})
+			return
+		}
+
+		if emailCode.Expires.Before(time.Now()) {
+			c.JSON(400, gin.H{"error": "验证码已过期，请重新获取"})
+			utils.LogWarn("验证码已过期", logrus.Fields{"email": req.Email})
+			return
+		}
+
+		// 再次检查邮箱和用户名是否被占用（防止并发注册）
+		user_exist, _ := repository.GetUserByEmail(req.Email)
+		if user_exist.ID != 0 {
+			c.JSON(409, gin.H{"error": "该邮箱已被注册"})
+			return
+		}
+		name_exist, _ := repository.GetUserByName(req.Name)
+		if name_exist.ID != 0 {
+			c.JSON(409, gin.H{"error": "该用户名已被使用"})
+			return
+		}
+
+		// 创建用户对象并哈希密码
+		user := &model.User{
+			Name:  req.Name,
+			Email: req.Email,
+		}
+		user.Password, err = utils.HashPassword(req.Password)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "密码加密失败"})
+			utils.LogError("密码哈希失败", logrus.Fields{"email": req.Email, "error": err.Error()})
+			return
+		}
+
+		// 添加用户到数据库，获取自动生成的ID
+		if err := repository.AddUserToDB(user); err != nil {
+			c.JSON(500, gin.H{"error": "创建用户失败，请稍后重试"})
+			utils.LogError("数据库添加用户失败", logrus.Fields{"email": req.Email, "error": err.Error()})
+			return
+		}
+
+		// 删除已使用的验证码（防止重复使用）
+		if err := repository.DeleteEmailCode(req.Email); err != nil {
+			utils.LogWarn("删除验证码失败", logrus.Fields{"email": req.Email, "error": err.Error()})
+		}
+
+		// 初始化成就表
+		achievements := []model.Achievement{
+			{UserID: user.ID, Name: "首次完成", Description: "第一次设置flag", HadDone: false},
+			{UserID: user.ID, Name: "7天连卡", Description: "连续打卡7天", HadDone: false},
+			{UserID: user.ID, Name: "任务大师", Description: "完成50个flag", HadDone: false},
+			{UserID: user.ID, Name: "目标达成", Description: "积分超过1000", HadDone: false},
+			{UserID: user.ID, Name: "学习之星", Description: "累计学习时间超过1000分钟", HadDone: false},
+			{UserID: user.ID, Name: "坚持不懈", Description: "累计打卡30天", HadDone: false},
+			{UserID: user.ID, Name: "效率达人", Description: "单日完成5个flag", HadDone: false},
+			{UserID: user.ID, Name: "专注大师", Description: "单日学习时长超过4小时", HadDone: false},
+			{UserID: user.ID, Name: "早起鸟", Description: "早上6点前打卡5次", HadDone: false},
+			{UserID: user.ID, Name: "夜猫子", Description: "晚上10点后打卡5次", HadDone: false},
+			{UserID: user.ID, Name: "完美主义", Description: "连续10次满分完成flag", HadDone: false},
+			{UserID: user.ID, Name: "全能选手", Description: "完成5种不同标签的flag", HadDone: false},
+			{UserID: user.ID, Name: "学习狂人", Description: "累计学习时间超过5000分钟", HadDone: false},
+			{UserID: user.ID, Name: "社交达人", Description: "发布10条动态", HadDone: false},
+			{UserID: user.ID, Name: "时间管理者", Description: "连续30天完成至少1个flag", HadDone: false},
+			{UserID: user.ID, Name: "成就收集者", Description: "解锁10个徽章", HadDone: false},
+		}
+
+		// 批量插入成就记录
+		if err := repository.BatchCreateAchievements(achievements); err != nil {
+			utils.LogError("初始化成就表失败", logrus.Fields{"user_id": user.ID, "error": err.Error()})
+			// 不阻断注册流程，只记录错误
+		}
+
+		// 添加定时任务
+		AddUserCronJob(*user)
+
+		// 生成JWT token
+		token, err := utils.GenerateToken(user.ID, user.Name, user.Email)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "生成token失败"})
+			utils.LogError("生成token失败", logrus.Fields{"user_id": user.ID, "error": err.Error()})
+			return
+		}
+
+		utils.LogInfo("用户注册成功", logrus.Fields{"user_id": user.ID, "email": user.Email, "name": user.Name})
+
+		c.JSON(http.StatusOK, gin.H{
+			"message":          "注册成功！",
+			"token":            token,
+			"user_id":          user.ID,
+			"name":             user.Name,
+			"email":            user.Email,
+			"head_show":        user.HeadShow,
+			"daka":             user.Daka,
+			"flag_number":      user.FlagNumber,
+			"count":            user.Count,
+			"month_learn_time": user.MonthLearntime,
+		})
 	}
 }
 

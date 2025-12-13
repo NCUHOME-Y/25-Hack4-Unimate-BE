@@ -110,6 +110,9 @@ func CheckPasswordHash(password, hash string) bool {
 func LogInfo(message string, fields logrus.Fields) {
 	logger.WithFields(fields).Info(message)
 }
+func LogWarn(message string, fields logrus.Fields) {
+	logger.WithFields(fields).Warn(message)
+}
 func LogError(message string, fields logrus.Fields) {
 	logger.WithFields(fields).Error(message)
 }

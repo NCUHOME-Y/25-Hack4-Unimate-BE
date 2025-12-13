@@ -31,8 +31,8 @@ func DBconnect() {
 }
 
 // user添加到数据库
-func AddUserToDB(user model.User) error {
-	result := DB.Create(&user)
+func AddUserToDB(user *model.User) error {
+	result := DB.Create(user)
 	return result.Error
 }
 
@@ -296,6 +296,19 @@ func InsertAchievement(userID uint, name string, description string) error {
 		HadDone:     false,
 	}
 	return DB.Create(&achievement).Error
+}
+
+// 批量插入成就
+func BatchCreateAchievements(achievements []model.Achievement) error {
+	if len(achievements) == 0 {
+		return nil
+	}
+	return DB.Create(&achievements).Error
+}
+
+// 删除已使用的验证码（防止重复使用）
+func DeleteEmailCode(email string) error {
+	return DB.Where("email = ?", email).Delete(&model.EmailCode{}).Error
 }
 
 // 用户积分增加（原子操作，避免并发问题）

@@ -14,7 +14,7 @@ type User struct {
 	Password       string        `json:"password"`                        //密码
 	Status         string        `json:"status"`                          //用户状态
 	IsRemind       bool          `json:"is_remind" gorm:"default:true"`   //是否开启提醒
-	DoFlag         time.Time     `json:"do_flag"`                         //最后打卡时间
+	DoFlag         *time.Time    `json:"do_flag"`                         //最后打卡时间
 	HeadShow       int           `json:"head_show" gorm:"default:1"`      //头像显示
 	RemindHour     int           `json:"time_remind" default:"12"`        //提醒小时
 	RemindMin      int           `json:"min_remind" default:"0"`          //提醒分钟
