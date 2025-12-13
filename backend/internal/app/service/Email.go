@@ -79,7 +79,7 @@ func LoginWithOTP() gin.HandlerFunc {
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": "Invalid input"})
-			utils.LogError("绑定验证码登录请求参数错误", nil)
+			utils.LogError("绑定验证码登录请求参数错误!", nil)
 			return
 		}
 

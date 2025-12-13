@@ -228,6 +228,7 @@ type ChatMessage struct {
 // AfterFind - GORM钩子：查询后自动填充用户信息
 func (m *ChatMessage) AfterFind(tx *gorm.DB) error {
 	if m.User != nil {
+
 		m.UserName = m.User.Name
 		m.UserAvatar = utils.GetAvatarPath(m.User.HeadShow)
 	}
