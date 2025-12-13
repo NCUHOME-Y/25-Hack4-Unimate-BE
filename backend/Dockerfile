@@ -34,9 +34,8 @@ RUN addgroup -g 1000 appuser && \
 
 WORKDIR /app
 
-# 从构建阶段复制二进制文件和 assets 目录
+# 从构建阶段复制二进制文件
 COPY --from=builder /app/main .
-COPY --from=builder /app/assets /app/assets
 
 # 复制 .env 文件（如果需要）
 # COPY .env .
