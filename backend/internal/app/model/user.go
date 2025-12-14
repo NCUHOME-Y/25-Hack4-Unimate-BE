@@ -50,6 +50,7 @@ type Flag struct {
 	StartTime          *time.Time    `gorm:"column:start_time" json:"start_time"`                                 // 前端: startTime
 	EndTime            *time.Time    `gorm:"column:end_time" json:"end_time"`                                     // 前端: endTime
 	EnableNotification bool          `gorm:"column:enable_notification;default:false" json:"enable_notification"` // 是否启用该flag的消息提醒
+	ReminderTime       string        `gorm:"column:reminder_time;default:'12:00'" json:"reminder_time"`           // 该flag的提醒时间 (HH:MM 格式)
 }
 
 // AfterFind - GORM钩子：查询后转换label

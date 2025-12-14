@@ -70,7 +70,7 @@ func DeleteFlagFromDB(flagID uint) error {
 // 通过用户ID获取flag列表
 func GetFlagsByUserID(userID uint) ([]model.Flag, error) {
 	var flags []model.Flag
-	// 只返回当天可用的flag: 无限期 或 在起止日期范围内
+	// 只返回当天可用的flag: 每天 或 在起止日期范围内
 	today := time.Now()
 	result := DB.Where("user_id = ?", userID).
 		Where("(start_time IS NULL OR start_time <= ?) AND (end_time IS NULL OR end_time >= ?)", today, today).
