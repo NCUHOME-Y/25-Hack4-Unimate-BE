@@ -49,7 +49,11 @@ func RecordLearnTime() gin.HandlerFunc {
 // 获取最近一个月的学习时长记录
 func GetLearnTimeRecords() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, _ := utils.GetCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
+		if !ok || id == 0 {
+			c.JSON(401, gin.H{"error": "未授权，请先登录"})
+			return
+		}
 		learnTimes, err := repository.GetRecentLearnTime(id)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "获取学习时长记录失败,请重新再试..."})
@@ -66,11 +70,19 @@ func GetLearnTimeRecords() gin.HandlerFunc {
 // 获取最近7天的数据
 func GetLearnTimeLast7Days() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, _ := utils.GetCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
+		if !ok {
+			c.JSON(401, gin.H{"error": "未授权，请先登录"})
+			return
+		}
+		if id == 0 {
+			c.JSON(400, gin.H{"error": "无效的用户ID"})
+			return
+		}
 		learnTimes, err := repository.GetSevenDaysLearnTime(id)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "获取最近7天学习时长记录失败,请重新再试..."})
-			utils.LogError("获取最近7天学习时长记录失败", logrus.Fields{"user_id": id})
+			utils.LogError("获取最近7天学习时长记录失败", logrus.Fields{"user_id": id, "error": err.Error()})
 			return
 		}
 		utils.LogInfo("获取最近7天学习时长记录成功", logrus.Fields{"user_id": id})
@@ -99,7 +111,11 @@ func GetLearnTimeLast180Days() gin.HandlerFunc {
 // 获取当前月份的学习时长记录
 func GetCurrentMonthLearnTime() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, _ := utils.GetCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
+		if !ok || id == 0 {
+			c.JSON(401, gin.H{"error": "未授权，请先登录"})
+			return
+		}
 		learnTimes, err := repository.GetCurrentMonthLearnTime(id)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "获取当前月份学习时长记录失败,请重新再试..."})
@@ -116,7 +132,11 @@ func GetCurrentMonthLearnTime() gin.HandlerFunc {
 // 获取最近6个月的数据
 func GetRecent6MonthsLearnTime() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, _ := utils.GetCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
+		if !ok || id == 0 {
+			c.JSON(401, gin.H{"error": "未授权，请先登录"})
+			return
+		}
 		learnTimes, err := repository.GetRecent6MonthsLearnTime(id)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "获取最近6个月学习时长记录失败,请重新再试..."})

@@ -26,7 +26,8 @@ func GetUserCount() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		users, err := repository.GetUserByCount()
 		if err != nil {
-			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试..."})
+			log.Printf("[error] 获取积分封神榜失败: %v", err)
+			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试...", "data": []gin.H{}})
 			return
 		}
 		//埋点
@@ -40,7 +41,8 @@ func GetUserMonthLearnTime() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		users, err := repository.GetUserByMonthLearnTime()
 		if err != nil {
-			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试..."})
+			log.Printf("[error] 获取月学习时间封神榜失败: %v", err)
+			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试...", "data": []gin.H{}})
 			return
 		}
 		repository.AddTrackPointToDB(0, "查看月学习时间封神榜")
@@ -53,7 +55,9 @@ func GetUserTotalDaka() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		users, err := repository.GetUserByDaka()
 		if err != nil {
-			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试..."})
+			log.Printf("[error] 获取总打卡数封神榜失败: %v", err)
+			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试...", "data": []gin.H{}})
+			return
 		}
 		repository.AddTrackPointToDB(0, "查看总打卡数封神榜")
 		c.JSON(200, gin.H{"message": "获取封神榜成功", "data": users})
@@ -65,7 +69,9 @@ func GetUserByFlagNumber() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		users, err := repository.GetUserByFlagNumber()
 		if err != nil {
-			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试..."})
+			log.Printf("[error] 获取flag数量封神榜失败: %v", err)
+			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试...", "data": []gin.H{}})
+			return
 		}
 		repository.AddTrackPointToDB(0, "查看flag数量封神榜")
 		c.JSON(200, gin.H{"message": "获取封神榜成功", "data": users})

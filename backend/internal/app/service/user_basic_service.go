@@ -519,13 +519,17 @@ func GetUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, ok := utils.GetCurrentUserID(c)
 		if !ok {
-			c.JSON(400, gin.H{"error": "获取用户信息失败,请重新再试..."})
+			c.JSON(401, gin.H{"error": "未授权，请先登录"})
 			return
 		}
-		user, err := repository.GetUserByID(id)
+		if id == 0 {
+			c.JSON(400, gin.H{"error": "无效的用户ID"})
+			return
+		}
+		user, err := repository.GetUserBasicByID(id)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "获取用户状态失败,请重新再试..."})
-			utils.LogError("数据库获取用户数据失败", logrus.Fields{})
+			utils.LogError("数据库获取用户数据失败", logrus.Fields{"user_id": id, "error": err.Error()})
 			return
 		}
 		utils.LogInfo("获取用户信息成功", logrus.Fields{"user_id": id})
