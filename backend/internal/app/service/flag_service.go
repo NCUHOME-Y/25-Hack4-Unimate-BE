@@ -543,3 +543,50 @@ func GetExpiredFlags() gin.HandlerFunc {
 		c.JSON(200, gin.H{"flags": flags})
 	}
 }
+
+// 切换flag提醒状态（最多3个flag可以提醒）
+func ToggleFlagNotification() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			FlagID             uint `json:"flag_id"`
+			EnableNotification bool `json:"enable_notification"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "请求参数错误"})
+			utils.LogError("切换flag提醒参数绑定错误", logrus.Fields{"error": err.Error()})
+			return
+		}
+
+		userID, ok := utils.GetCurrentUserID(c)
+		if !ok {
+			c.JSON(400, gin.H{"error": "获取用户信息失败"})
+			return
+		}
+
+		// 如果要启用提醒，检查当前已启用提醒的flag数量
+		if req.EnableNotification {
+			count, err := repository.CountEnabledNotificationFlags(userID)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "检查提醒数量失败"})
+				utils.LogError("检查提醒数量失败", logrus.Fields{"user_id": userID, "error": err.Error()})
+				return
+			}
+			if count >= 3 {
+				c.JSON(400, gin.H{"error": "最多只能同时为3个flag启用提醒"})
+				utils.LogWarn("flag提醒数量已达上限", logrus.Fields{"user_id": userID, "count": count})
+				return
+			}
+		}
+
+		// 更新flag的提醒状态
+		err := repository.UpdateFlagNotification(req.FlagID, req.EnableNotification)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "更新flag提醒状态失败"})
+			utils.LogError("更新flag提醒状态失败", logrus.Fields{"flag_id": req.FlagID, "error": err.Error()})
+			return
+		}
+
+		utils.LogInfo("flag提醒状态更新成功", logrus.Fields{"user_id": userID, "flag_id": req.FlagID, "enabled": req.EnableNotification})
+		c.JSON(200, gin.H{"success": true, "enable_notification": req.EnableNotification})
+	}
+}

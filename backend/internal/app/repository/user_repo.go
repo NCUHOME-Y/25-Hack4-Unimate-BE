@@ -215,6 +215,19 @@ func UpdateFlagHadDone(flagID uint, isdo bool) error {
 	return result.Error
 }
 
+// 更新flag的提醒状态
+func UpdateFlagNotification(flagID uint, enabled bool) error {
+	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("enable_notification", enabled)
+	return result.Error
+}
+
+// 统计用户已启用提醒的flag数量
+func CountEnabledNotificationFlags(userID uint) (int64, error) {
+	var count int64
+	result := DB.Model(&model.Flag{}).Where("user_id = ? AND enable_notification = ?", userID, true).Count(&count)
+	return count, result.Error
+}
+
 // 打卡时间更新
 func UpdateUserDoFlag(id uint, doFlag time.Time) error {
 	result := DB.Model(&model.User{}).Where("id=?", id).Update("do_flag", doFlag)

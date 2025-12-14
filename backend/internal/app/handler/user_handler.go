@@ -67,6 +67,8 @@ func BasicFlag(r *gin.Engine) {
 	e.GET("/api/flags/preset", service.GetPresetFlags())
 	// 新增接口：获取过期flag
 	e.GET("/api/flags/expired", service.GetExpiredFlags())
+	// 新增接口：切换flag提醒状态
+	e.POST("/api/toggleFlagNotification", service.ToggleFlagNotification())
 }
 func BasicPost(r *gin.Engine) {
 	// 公开接口：不需要认证
