@@ -36,8 +36,9 @@ func main() {
 		gin.DisableConsoleColor()
 	}
 
-	repository.DBconnect() //数据库连接
-	service.Init()         //初始化每天学习时间记录
+	repository.DBconnect()           //数据库连接
+	service.Init()                   //初始化每天学习时间记录
+	service.StartHitokotoScheduler() //启动一言定时任务
 	r := gin.Default()
 
 	// Panic Recovery 中间件（防止服务器崩溃）

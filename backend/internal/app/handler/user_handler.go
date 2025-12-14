@@ -74,6 +74,7 @@ func BasicPost(r *gin.Engine) {
 	// 公开接口：不需要认证
 	r.GET("/api/getAllPosts", service.GetAllPosts())
 	r.GET("/api/getflag", service.GetVisibleFlags())
+	r.POST("/api/triggerHitokoto", service.TriggerHitokoto()) // 测试接口：手动触发一言发布
 
 	// 需要认证的接口：创建路由组
 	e := r.Group("/")
