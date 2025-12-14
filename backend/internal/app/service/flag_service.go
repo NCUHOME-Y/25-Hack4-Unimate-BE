@@ -82,13 +82,13 @@ func PostUserFlags() gin.HandlerFunc {
 		}
 
 		// 解析时间字符串，只保留年月日，时分秒设为00:00:00
-		// 如果前端不传日期（空字符串），则使用 nil（数据库存为 NULL）
+		// 如果前端不传日期（空字符串），则使用 nil（数据库存为 NULL，表示每天）
 		var startTime *time.Time
 		if flag.StartTime != "" {
 			parsedStart, parseErr := time.Parse(time.RFC3339, flag.StartTime)
 			if parseErr != nil {
-				log.Printf("⚠️ 解析起始日期失败: %v, 使用 NULL", parseErr)
-				startTime = nil // NULL，表示无限期
+				log.Printf("⚠️ 解析起始日期失败: %v, 使用 NULL（每天）", parseErr)
+				startTime = nil // NULL，表示每天
 			} else {
 				t := time.Date(parsedStart.Year(), parsedStart.Month(), parsedStart.Day(), 0, 0, 0, 0, parsedStart.Location())
 				startTime = &t
@@ -99,8 +99,8 @@ func PostUserFlags() gin.HandlerFunc {
 		if flag.EndTime != "" {
 			parsedEnd, parseErr := time.Parse(time.RFC3339, flag.EndTime)
 			if parseErr != nil {
-				log.Printf("⚠️ 解析结束日期失败: %v, 使用 NULL", parseErr)
-				endTime = nil // NULL，表示无限期
+				log.Printf("⚠️ 解析结束日期失败: %v, 使用 NULL（每天）", parseErr)
+				endTime = nil // NULL，表示每天
 			} else {
 				t := time.Date(parsedEnd.Year(), parsedEnd.Month(), parsedEnd.Day(), 23, 59, 59, 0, parsedEnd.Location())
 				endTime = &t

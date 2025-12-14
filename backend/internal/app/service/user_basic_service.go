@@ -154,7 +154,18 @@ func RegisterUser() gin.HandlerFunc {
 
 		// 生成并发送验证码
 		code := utils.GenerateCode()
-		err := utils.SentEmail(user.Email, "知序验证码", "您的验证码是："+code+"\n该验证码5分钟内有效，请尽快使用。")
+		emailBody := fmt.Sprintf(`尊敬的用户，您好！
+
+您正在注册知序学习平台账号，验证码为：
+
+    %s
+
+该验证码将在5分钟内有效，请及时使用。如非本人操作，请忽略此邮件。
+
+此邮件由系统自动发送，请勿直接回复。
+
+——知序学习平台`, code)
+		err := utils.SentEmail(user.Email, "【知序】账号注册验证码", emailBody)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "验证码发送失败，请稍后重试"})
 			utils.LogError("验证码发送失败", logrus.Fields{"email": user.Email, "error": err.Error()})

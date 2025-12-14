@@ -239,15 +239,23 @@ func InitDaliyLearnTimeRecord(id uint) {
 	utils.LogInfo("添加新的学习时间记录成功", logrus.Fields{"user_id": id})
 }
 
-// 初始化每天flag
+// 初始化每天flag（重置完成状态和计数）
 func InitDaliyFlag(flags []model.Flag) {
 	for _, flag := range flags {
+		// 重置完成状态
 		err := repository.UpdateFlagHadDone(flag.ID, false)
 		if err != nil {
-			utils.LogError("初始化每日签到状态失败", logrus.Fields{"flag_id": flag.ID})
-			return
+			utils.LogError("初始化每日flag完成状态失败", logrus.Fields{"flag_id": flag.ID})
+			continue
+		}
+		// 重置每日完成次数为0
+		err = repository.UpdateFlagDoneNumber(flag.ID, 0)
+		if err != nil {
+			utils.LogError("初始化每日flag计数失败", logrus.Fields{"flag_id": flag.ID})
+			continue
 		}
 	}
+	utils.LogInfo("每日flag初始化完成", logrus.Fields{"flag_count": len(flags)})
 }
 
 // 初始化打卡记录
