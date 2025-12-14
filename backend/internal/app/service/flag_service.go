@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
@@ -269,7 +268,8 @@ func DeleteUserFlags() gin.HandlerFunc {
 	}
 }
 
-// 完成flag
+// 完成flag（旧接口，已废弃 - 建议使用doneFlag）
+// ⚠️ 注意：此函数有bug，level参数用途不明，且积分计算错误
 func FinshDoneFlag() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
@@ -300,20 +300,29 @@ func FinshDoneFlag() gin.HandlerFunc {
 		repository.SaveLabelToDB(id, labelStr)
 		user.FlagNumber++
 		repository.SaveUserToDB(user)
-		count, _ := strconv.Atoi(level)
-		newcount := user.Count + count
-		repository.FlagNumberAddDB(id, user.FlagNumber+1)
-		err := repository.CountAddDB(id, newcount)
-		if err != nil {
-			log.Printf("[error] 积分更新失败: %v", err)
+
+		// 🔧 修复：应该使用Flag的Points字段而不是level参数
+		// level参数用途不明，改用flag.Points
+		pointsToAdd := flag.Points
+		if pointsToAdd > 0 {
+			err := repository.CountAddDB(id, pointsToAdd)
+			if err != nil {
+				log.Printf("[error] 积分更新失败: %v", err)
+			} else {
+				log.Printf("[info] 用户完成Flag，积分已增加 - 用户ID: %d, Flag ID: %d, 积分: %d", id, req.ID, pointsToAdd)
+			}
 		}
-		err = repository.UpdateFlagHadDone(req.ID, true)
+
+		// 更新Flag完成数
+		repository.FlagNumberAddDB(id, user.FlagNumber+1)
+
+		err := repository.UpdateFlagHadDone(req.ID, true)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
 			utils.LogError("数据库更新flag完成状态失败", logrus.Fields{})
 			return
 		}
-		utils.LogInfo("flag完成状态更新成功", logrus.Fields{"user_id": id, "flag_id": req.ID})
+		utils.LogInfo("flag完成状态更新成功（旧接口）", logrus.Fields{"user_id": id, "flag_id": req.ID, "level": level})
 		c.JSON(200, gin.H{"success": true})
 	}
 }

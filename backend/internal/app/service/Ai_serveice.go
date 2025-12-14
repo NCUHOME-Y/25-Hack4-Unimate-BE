@@ -137,22 +137,22 @@ func GenerateLearningPlan(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("📝 收到学习计划请求: %+v\n", req)
+	fmt.Printf("📝 收到计划生成请求: %+v\n", req)
 
-	// 生成学习计划
+	// 生成计划
 	flag, plan, difficulty, err := planner.GenerateLearningPlan(req)
 	if err != nil {
-		fmt.Printf("❌ 生成学习计划失败: %v\n", err)
+		fmt.Printf("❌ 生成计划失败: %v\n", err)
 		c.JSON(http.StatusInternalServerError, LearningPlanResponse{
 			Success: false,
-			Error:   fmt.Sprintf("生成学习计划失败: %v", err),
+			Error:   fmt.Sprintf("生成计划失败: %v", err),
 		})
 		return
 	}
 
-	// 埋点：生成学习计划（不添加Flag，让前端决定）
-	repository.AddTrackPointToDB(id, "生成学习计划")
-	fmt.Printf("✅ 成功生成学习计划，难度: %d，计划长度: %d\n", difficulty, len(plan))
+	// 埋点：生成计划（不添加Flag，让前端决定）
+	repository.AddTrackPointToDB(id, "生成AI计划")
+	fmt.Printf("✅ 成功生成计划，难度: %d，计划长度: %d\n", difficulty, len(plan))
 	c.JSON(http.StatusOK, LearningPlanResponse{
 		Success: true,
 		Flag:    flag,
@@ -180,7 +180,7 @@ func CORSMiddleware() gin.HandlerFunc {
 // 生成学习计划的核心方法
 func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (string, string, int, error) {
 	// 构建系统提示词
-	systemPrompt := `你是"太傅AI学习计划生成器"，专门为用户制定科学、合理、可执行的学习路径。
+	systemPrompt := `你是"太傅AI计划生成器"，专门为用户制定科学、合理、可执行的目标达成计划。你可以帮助用户规划学习、健康、习惯养成、兴趣培养、工作效率等各类目标。
 
 【核心要求】
 1. 必须返回标准JSON格式（不要包含markdown代码块标记）
@@ -196,11 +196,11 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 每个阶段必须包含完整的四个部分：
 - 阶段标题（如：阶段一：基础入门（预计1-3天））
 - 【阶段目标】说明核心能力和预期成果（2-3句话）
-- 【学习要点】列出3-5个关键知识点，每个用"-"开头，说明具体内容和应用
-- 【实践建议】给出具体的学习方法、资源推荐、时间安排（2-3句话）
+- 【行动要点】列出3-5个关键要点，每个用"-"开头，说明具体内容和应用
+- 【实践建议】给出具体的方法、资源推荐、时间安排（2-3句话）
 - 可执行任务列表：列出3个以上可执行任务，每个格式：序号. 任务描述（每日完成：X次）
 
-注意：每个阶段的四个部分【阶段目标】【学习要点】【实践建议】和任务列表都不能省略
+注意：每个阶段的四个部分【阶段目标】【行动要点】【实践建议】和任务列表都不能省略
 
 【每日完成次数】
 - 入门级：每任务1次
@@ -209,22 +209,22 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 
 【返回JSON格式】
 {
-    "flag": "学习计划标题（8-15字）",
+    "flag": "计划标题（8-15字）",
     "difficulty": 100或200或300,
-    "plan": "三阶段学习计划文本"
+    "plan": "三阶段计划文本"
 }
 
 【plan字段格式】
-第1行：【目标概述】学习目标和预期能力
+第1行：【目标概述】目标说明和预期成果
 
 然后包含3个阶段，每个阶段格式：
 - 阶段标题：阶段一/阶段二/阶段三（含时间）
-- 【阶段目标】核心能力说明
-- 【学习要点】关键知识点，用"-"标记
-- 【实践建议】学习方法和资源
+- 【阶段目标】核心能力或成果说明
+- 【行动要点】关键点，用"-"标记
+- 【实践建议】方法和资源
 - 可执行任务列表（不显示标题），格式：序号. 任务描述（每日完成：X次）
 
-【标准示例】
+【学习类示例】
 {
     "flag": "Python编程入门",
     "difficulty": 200,
@@ -232,7 +232,7 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 
 阶段一：基础入门（预计1-3天）
 【阶段目标】掌握Python基础语法，能编写简单程序，理解编程思维。
-【学习要点】
+【行动要点】
 - 变量与数据类型（整数、浮点数、字符串、布尔值），理解数据存储。
 - 条件语句（if-elif-else）和循环（for/while），掌握流程控制。
 - 函数定义、调用和参数传递，理解模块化编程。
@@ -244,7 +244,7 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 
 阶段二：进阶学习（预计1-2周）
 【阶段目标】掌握Python核心数据结构和面向对象编程，解决实际问题。
-【学习要点】
+【行动要点】
 - 列表、元组、字典、集合的使用，理解适用场景。
 - 字符串处理和正则表达式，提升文本处理能力。
 - 文件读写和数据持久化，掌握数据管理。
@@ -257,7 +257,7 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 
 阶段三：项目实战（预计1-2月）
 【阶段目标】独立完成完整项目，建立编程自信，具备团队协作能力。
-【学习要点】
+【行动要点】
 - 项目规划和模块化设计，合理分工与进度管理。
 - 代码规范和注释标准，提升团队协作效率。
 - 调试技巧和异常处理，减少bug提升稳定性。
@@ -269,26 +269,71 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 3. 参与开源项目贡献代码，记录成长历程（每日完成：1次）"
 }
 
+【健康类示例】
+{
+    "flag": "早睡早起养成计划",
+    "difficulty": 100,
+    "plan": "【目标概述】调整作息规律，建立健康睡眠习惯，提升精神状态和生活质量。
+
+阶段一：适应期（预计1-3天）
+【阶段目标】逐步调整生物钟，初步建立早睡早起意识，减轻身体不适感。
+【行动要点】
+- 固定睡眠时间窗口（23:00-7:00），保证8小时睡眠。
+- 睡前1小时避免电子设备，放松身心准备入睡。
+- 早晨使用闹钟并立即起床，避免赖床。
+【实践建议】
+可以设置多个闹钟，并把闹钟放在离床较远的位置。睡前可以读纸质书、听轻音乐放松，营造良好睡眠环境。
+1. 在23:00前洗漱完毕并上床（每日完成：1次）
+2. 7:00准时起床并开窗通风（每日完成：1次）
+3. 记录当天睡眠质量和精神状态（每日完成：1次）
+
+阶段二：巩固期（预计1-2周）
+【阶段目标】稳定作息习惯，身体适应新节奏，减少对意志力的依赖。
+【行动要点】
+- 培养睡前仪式感（洗澡、护肤、冥想等），形成条件反射。
+- 增加晨间活动（运动、早餐、晨读），强化早起动力。
+- 午睡控制在20-30分钟，避免影响夜间睡眠。
+【实践建议】
+可以加入早起打卡群互相监督，设计奖励机制激励自己。白天增加户外活动，帮助夜晚更好入睡。
+1. 完成睡前固定流程（洗澡-护肤-冥想）（每日完成：1次）
+2. 早起后完成30分钟晨间活动（运动/阅读）（每日完成：1次）
+3. 总结一天作息情况并调整计划（每日完成：1次）
+
+阶段三：习惯养成期（预计1-2月）
+【阶段目标】将早睡早起内化为生活方式，无需刻意坚持即可自然执行。
+【行动要点】
+- 根据季节调整作息时间，保持灵活性。
+- 建立应对特殊情况的补救措施（偶尔晚睡如何快速恢复）。
+- 扩展健康生活习惯（规律运动、健康饮食），形成良性循环。
+【实践建议】
+定期回顾身体变化和精神状态改善，强化习惯的正向反馈。可以记录睡眠日记，分析影响睡眠质量的因素。
+1. 持续保持固定作息，允许周末±30分钟弹性（每日完成：1次）
+2. 每周总结作息规律和健康改善情况（每日完成：1次）
+3. 分享早睡早起心得，帮助他人建立习惯（每日完成：1次）"
+}
+
 【错误示例】
 ❌ 不能有：count: 10, limit: 2, total: 5, daily: 1
 ❌ 不能有：[count:10] [limit:2] {total:5}
 ❌ plan开头不能直接是"阶段一"，必须先有【目标概述】
+❌ 不能把【学习要点】写成【行动要点】以外的名称
 
 【必须遵守】
 ✅ 必须是：（每日完成：X次）
 ✅ plan第一行必须是：【目标概述】...
 ✅ 任务列表直接跟在【实践建议】后面，绝对不能有"【具体任务】"标题
-✅ 严格按照标准示例格式`
+✅ 严格按照标准示例格式
+✅ 根据目标类型灵活调整内容，学习类用【学习要点】或【行动要点】都可以，健康/习惯类优先用【行动要点】`
 
 	// 构建用户提示词
-	userPrompt := fmt.Sprintf("学习目标: %s\n", req.Flag)
+	userPrompt := fmt.Sprintf("目标: %s\n", req.Flag)
 	if req.Background != "" {
 		userPrompt += fmt.Sprintf("个人背景: %s\n", req.Background)
 	}
 	if req.Difficulty != 0 {
 		userPrompt += fmt.Sprintf("期望难度分数: %d\n", req.Difficulty)
 	}
-	userPrompt += "\n请根据以上信息生成学习计划,返回标准JSON格式。"
+	userPrompt += "\n请根据以上信息生成计划,返回标准JSON格式。"
 
 	fmt.Printf("📋 系统提示: %s\n", systemPrompt)
 	fmt.Printf("📋 用户提示: %s\n", userPrompt)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 
@@ -353,7 +354,8 @@ func GetChatRooms() gin.HandlerFunc {
 			CreatorID uint      `json:"creator_id"`
 		}
 
-		rooms := make([]RoomInfo, 0)
+		// 🔧 修复：先收集所有房间，然后排序
+		rooms := make([]RoomInfo, 0, len(manager.Rooms))
 		for _, room := range manager.Rooms {
 			rooms = append(rooms, RoomInfo{
 				ID:        room.ID,
@@ -364,6 +366,28 @@ func GetChatRooms() gin.HandlerFunc {
 				CreatorID: room.CreatorID,
 			})
 		}
+
+		// 🔧 按固定顺序排序：默认房间(room-1, room-2, room-3)在前，其他按创建时间倒序
+		sort.Slice(rooms, func(i, j int) bool {
+			isDefaultI := rooms[i].ID == "room-1" || rooms[i].ID == "room-2" || rooms[i].ID == "room-3"
+			isDefaultJ := rooms[j].ID == "room-1" || rooms[j].ID == "room-2" || rooms[j].ID == "room-3"
+
+			// 默认房间排在前面
+			if isDefaultI && !isDefaultJ {
+				return true
+			}
+			if !isDefaultI && isDefaultJ {
+				return false
+			}
+
+			// 默认房间之间按ID排序
+			if isDefaultI && isDefaultJ {
+				return rooms[i].ID < rooms[j].ID
+			}
+
+			// 非默认房间按创建时间倒序（新的在前）
+			return rooms[i].CreatedAt.After(rooms[j].CreatedAt)
+		})
 
 		c.JSON(http.StatusOK, gin.H{"rooms": rooms})
 	}

@@ -754,6 +754,57 @@ func GetAchievementByName(usrID uint, name string) (model.Achievement, error) {
 	return achievement, result.Error
 }
 
+// 计算连续打卡天数（用于积分奖励计算）
+func calculateConsecutiveDays(userID uint) int {
+	var records []model.Daka_number
+	// 获取最近30天的打卡记录，按日期倒序
+	err := DB.Where("user_id = ? AND had_done = ?", userID, true).
+		Order("daka_date desc").
+		Limit(30).
+		Find(&records).Error
+
+	if err != nil || len(records) == 0 {
+		return 1 // 默认返回1（今天是第一天）
+	}
+
+	consecutive := 1
+	today := time.Now().Format("2006-01-02")
+
+	for i := 0; i < len(records); i++ {
+		recordDate := records[i].DaKaDate.Format("2006-01-02")
+
+		if i == 0 {
+			// 第一条记录应该是今天或昨天
+			if recordDate != today {
+				dayDiff := daysBetween(records[i].DaKaDate, time.Now())
+				if dayDiff > 1 {
+					return 1 // 中断了，重新开始计数
+				}
+			}
+			continue
+		}
+
+		// 检查与前一天的记录是否连续
+		prevDate := records[i-1].DaKaDate
+		dayDiff := daysBetween(records[i].DaKaDate, prevDate)
+
+		if dayDiff == 1 {
+			consecutive++
+		} else {
+			break // 不连续，停止计数
+		}
+	}
+
+	return consecutive
+}
+
+// 计算两个日期之间的天数差
+func daysBetween(date1, date2 time.Time) int {
+	d1 := time.Date(date1.Year(), date1.Month(), date1.Day(), 0, 0, 0, 0, time.UTC)
+	d2 := time.Date(date2.Year(), date2.Month(), date2.Day(), 0, 0, 0, 0, time.UTC)
+	return int(d2.Sub(d1).Hours() / 24)
+}
+
 // 添加打卡记录
 func DakaNumberToDB(user_id uint) error {
 	// 先查询是否存在打卡记录
@@ -772,7 +823,13 @@ func DakaNumberToDB(user_id uint) error {
 			return err
 		}
 		// 更新用户总打卡数
-		return DB.Model(&model.User{}).Where("id = ?", user_id).Update("daka", gorm.Expr("daka + ?", 1)).Error
+		err = DB.Model(&model.User{}).Where("id = ?", user_id).Update("daka", gorm.Expr("daka + ?", 1)).Error
+		if err != nil {
+			return err
+		}
+
+		// 🔧 添加打卡积分：基础20分（第一次打卡）
+		return CountAddDB(user_id, 20)
 	}
 
 	if err != nil {
@@ -792,8 +849,22 @@ func DakaNumberToDB(user_id uint) error {
 		}
 		// 更新用户总打卡数（取消打卡则-1，打卡则+1）
 		if newStatus {
-			return DB.Model(&model.User{}).Where("id = ?", user_id).Update("daka", gorm.Expr("daka + ?", 1)).Error
+			// 打卡：增加打卡数并添加积分
+			err = DB.Model(&model.User{}).Where("id = ?", user_id).Update("daka", gorm.Expr("daka + ?", 1)).Error
+			if err != nil {
+				return err
+			}
+			// 🔧 计算连续打卡积分：基础20分 + 连续奖励
+			consecutiveDays := calculateConsecutiveDays(user_id)
+			points := 20
+			if consecutiveDays >= 10 {
+				points += 10 // 连续10天奖励
+			} else if consecutiveDays >= 4 {
+				points += 5 // 连续4天奖励
+			}
+			return CountAddDB(user_id, points)
 		} else {
+			// 取消打卡：减少打卡数，不扣积分（已获得的积分保留）
 			return DB.Model(&model.User{}).Where("id = ?", user_id).Update("daka", gorm.Expr("daka - ?", 1)).Error
 		}
 	} else {
@@ -808,7 +879,20 @@ func DakaNumberToDB(user_id uint) error {
 			return err
 		}
 		// 更新用户总打卡数
-		return DB.Model(&model.User{}).Where("id = ?", user_id).Update("daka", gorm.Expr("daka + ?", 1)).Error
+		err = DB.Model(&model.User{}).Where("id = ?", user_id).Update("daka", gorm.Expr("daka + ?", 1)).Error
+		if err != nil {
+			return err
+		}
+
+		// 🔧 计算连续打卡积分：基础20分 + 连续奖励
+		consecutiveDays := calculateConsecutiveDays(user_id)
+		points := 20
+		if consecutiveDays >= 10 {
+			points += 10 // 连续10天奖励
+		} else if consecutiveDays >= 4 {
+			points += 5 // 连续4天奖励
+		}
+		return CountAddDB(user_id, points)
 	}
 }
 
