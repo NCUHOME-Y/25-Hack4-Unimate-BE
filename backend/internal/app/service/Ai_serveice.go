@@ -277,6 +277,7 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 【必须遵守】
 ✅ 必须是：（每日完成：X次）
 ✅ plan第一行必须是：【目标概述】...
+✅ 任务列表直接跟在【实践建议】后面，绝对不能有"【具体任务】"标题
 ✅ 严格按照标准示例格式`
 
 	// 构建用户提示词
