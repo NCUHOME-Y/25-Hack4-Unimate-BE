@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
@@ -78,7 +79,15 @@ func Init() {
 					"time":    fmt.Sprintf("%02d:%02d", user.RemindHour, user.RemindMin),
 				})
 
-				err := utils.SentEmail(user.Email, "知序提醒您：要好好自律哦", "温馨提示:灵魂的欲望是你命运的先知")
+				err := utils.SentEmail(user.Email, "知序 - 您的每日学习提醒", fmt.Sprintf(`尊敬的 %s 用户：您好！
+
+这是来自知序平台的每日学习提醒通知。
+
+提醒时间：%02d:%02d
+
+请记得保持良好的学习习惯，持续追求进步。自律是成功的基石，每一天的坚持都将成为您通往目标的阶梯。
+
+——知序平台`, user.Name, user.RemindHour, user.RemindMin))
 				if err != nil {
 					utils.LogError("发送提醒邮件失败", logrus.Fields{
 						"user_id": user.ID,
@@ -124,6 +133,16 @@ func Init() {
 		utils.LogInfo("✅ 验证码清理任务已启动(每5分钟执行)", nil)
 	}
 
+	// Flag提醒任务 - 每分钟检查一次
+	_, err = cronScheduler.AddFunc("0 * * * * *", func() {
+		sendFlagReminders()
+	})
+	if err != nil {
+		utils.LogError("添加Flag提醒任务失败", logrus.Fields{"error": err.Error()})
+	} else {
+		utils.LogInfo("✅ Flag提醒任务已启动(每分钟检查)", nil)
+	}
+
 	cronScheduler.Start()
 	utils.LogInfo("初始化定时任务成功", logrus.Fields{
 		"total_users": len(users),
@@ -154,7 +173,17 @@ func AddUserCronJob(user model.User) {
 	if user.IsRemind {
 		cronStr := fmt.Sprintf("0 %d %d * * *", user.RemindMin, user.RemindHour)
 		cronScheduler.AddFunc(cronStr, func() {
-			utils.SentEmail(user.Email, "知序提醒您：要好好自律哦", "灵魂的欲望是你命运的先知")
+			emailSubject := "知序 - 您的每日学习提醒"
+			emailBody := fmt.Sprintf(`尊敬的 %s 用户：您好！
+
+这是来自知序平台的每日学习提醒通知。
+
+提醒时间：%02d:%02d
+
+请记得保持良好的学习习惯，持续追求进步。自律是成功的基石，每一天的坚持都将成为您通往目标的阶梯。
+
+——知序平台`, user.Name, user.RemindHour, user.RemindMin)
+			utils.SentEmail(user.Email, emailSubject, emailBody)
 		})
 		utils.LogInfo("为新用户添加提醒任务", logrus.Fields{
 			"user_id": user.ID,
@@ -199,7 +228,22 @@ func UpdateUserReminderJob(userID uint, hour, min int, isRemind bool) {
 				"time":    fmt.Sprintf("%02d:%02d", hour, min),
 			})
 
-			err := utils.SentEmail(user.Email, "知序提醒您：要好好自律哦", "灵魂的欲望是你命运的先知")
+			// 构建正式的邮件内容
+			emailSubject := "知序 - 您的每日学习提醒"
+			emailBody := fmt.Sprintf(`尊敬的 %s 用户：您好！
+
+这是来自知序平台的每日学习提醒通知。
+
+提醒时间：%02d:%02d
+
+请记得保持良好的学习习惯，持续追求进步。自律是成功的基石，每一天的坚持都将成为您通往目标的阶梯。
+
+如有任何问题或建议，欢迎随时联系我们。
+
+——知序平台
+`, user.Name, hour, min)
+
+			err := utils.SentEmail(user.Email, emailSubject, emailBody)
 			if err != nil {
 				utils.LogError("发送提醒邮件失败", logrus.Fields{
 					"user_id": userID,
@@ -286,5 +330,96 @@ func InitMonthlyDakaRecord(id uint) {
 	if err != nil {
 		utils.LogError("添加新的打卡记录失败", logrus.Fields{"user_id": id})
 		return
+	}
+}
+
+// 发送Flag提醒邮件
+func sendFlagReminders() {
+	// 获取所有启用了提醒的Flag
+	var flags []model.Flag
+	err := repository.DB.Where("enable_notification = ?", true).Find(&flags).Error
+	if err != nil {
+		utils.LogError("获取启用提醒的Flag失败", logrus.Fields{"error": err.Error()})
+		return
+	}
+
+	if len(flags) == 0 {
+		return
+	}
+
+	// 获取当前时间（小时和分钟）
+	now := time.Now()
+	currentHour := now.Hour()
+	currentMinute := now.Minute()
+
+	for _, flag := range flags {
+		// 跳过已完成的flag
+		if flag.Completed {
+			continue
+		}
+
+		// 解析提醒时间
+		var reminderHour, reminderMinute int
+		if flag.ReminderTime == "" {
+			flag.ReminderTime = "12:00"
+		}
+		_, err := fmt.Sscanf(flag.ReminderTime, "%d:%d", &reminderHour, &reminderMinute)
+		if err != nil {
+			utils.LogError("解析Flag提醒时间失败", logrus.Fields{
+				"flag_id":       flag.ID,
+				"reminder_time": flag.ReminderTime,
+				"error":         err.Error(),
+			})
+			continue
+		}
+
+		// 检查是否到了提醒时间（精确到分钟）
+		if currentHour == reminderHour && currentMinute == reminderMinute {
+			// 获取用户信息
+			user, err := repository.GetUserByID(flag.UserID)
+			if err != nil {
+				utils.LogError("获取用户信息失败", logrus.Fields{
+					"user_id": flag.UserID,
+					"error":   err.Error(),
+				})
+				continue
+			}
+
+			// 构建正式的邮件内容
+			emailSubject := "知序 - Flag目标提醒通知"
+			emailBody := fmt.Sprintf(`尊敬的 %s 用户：您好！
+
+这是来自知序平台的Flag目标提醒通知。
+
+【Flag详情】
+标题：%s
+详细说明：%s
+提醒时间：%s
+优先级：%d
+
+请及时完成您设定的目标任务，保持良好的学习和生活习惯。持续的自律和坚持将帮助您实现更好的自己。
+
+——知序平台
+`, user.Name, flag.Title, flag.Detail, flag.ReminderTime, flag.Priority)
+
+			// 发送邮件
+			err = utils.SentEmail(user.Email, emailSubject, emailBody)
+			if err != nil {
+				utils.LogError("发送Flag提醒邮件失败", logrus.Fields{
+					"user_id": flag.UserID,
+					"flag_id": flag.ID,
+					"email":   user.Email,
+					"error":   err.Error(),
+				})
+			} else {
+				utils.LogInfo("✅ Flag提醒邮件发送成功", logrus.Fields{
+					"user_id":   flag.UserID,
+					"flag_id":   flag.ID,
+					"flag_name": flag.Title,
+					"email":     user.Email,
+					"time":      flag.ReminderTime,
+				})
+			}
+		}
 	}
 }

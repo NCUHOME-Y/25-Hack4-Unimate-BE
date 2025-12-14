@@ -41,18 +41,19 @@ func GetUserFlags() gin.HandlerFunc {
 func PostUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var flag struct {
-			Title        string `json:"title"`
-			Detail       string `json:"detail"`
-			IsPublic     bool   `json:"is_public"`
-			Label        int    `json:"label"`    // 前端发送数字1-5
-			Priority     int    `json:"priority"` // 前端发送数字1-4
-			Total        int    `json:"total"`
-			Points       int    `json:"points"`
-			DailyLimit   int    `json:"daily_limit"`   // 每日完成次数限制
-			IsRecurring  bool   `json:"is_recurring"`  // 是否循环任务
-			EndTime      string `json:"end_time"`      // 改为string，手动解析
-			StartTime    string `json:"start_time"`    // 改为string，手动解析
-			ReminderTime string `json:"reminder_time"` // 提醒时间 (HH:MM 格式)
+			Title              string `json:"title"`
+			Detail             string `json:"detail"`
+			IsPublic           bool   `json:"is_public"`
+			Label              int    `json:"label"`    // 前端发送数字1-5
+			Priority           int    `json:"priority"` // 前端发送数字1-4
+			Total              int    `json:"total"`
+			Points             int    `json:"points"`
+			DailyLimit         int    `json:"daily_limit"`         // 每日完成次数限制
+			IsRecurring        bool   `json:"is_recurring"`        // 是否循环任务
+			EndTime            string `json:"end_time"`            // 改为string，手动解析
+			StartTime          string `json:"start_time"`          // 改为string，手动解析
+			ReminderTime       string `json:"reminder_time"`       // 提醒时间 (HH:MM 格式)
+			EnableNotification bool   `json:"enable_notification"` // 是否启用提醒
 		}
 		if err := c.ShouldBindJSON(&flag); err != nil {
 			c.JSON(500, gin.H{"err": "添加flag失败,请重新再试..."})
@@ -109,17 +110,18 @@ func PostUserFlags() gin.HandlerFunc {
 		}
 
 		flag_model := model.Flag{
-			Title:        flag.Title,
-			Detail:       flag.Detail,
-			IsPublic:     flag.IsPublic,
-			Label:        flag.Label,
-			Priority:     flag.Priority,
-			DailyTotal:   flag.Total, // 每日所需完成次数
-			Points:       flag.Points,
-			CreatedAt:    time.Now(),
-			StartTime:    startTime,
-			EndTime:      endTime,
-			ReminderTime: flag.ReminderTime, // 提醒时间
+			Title:              flag.Title,
+			Detail:             flag.Detail,
+			IsPublic:           flag.IsPublic,
+			Label:              flag.Label,
+			Priority:           flag.Priority,
+			DailyTotal:         flag.Total, // 每日所需完成次数
+			Points:             flag.Points,
+			CreatedAt:          time.Now(),
+			StartTime:          startTime,
+			EndTime:            endTime,
+			ReminderTime:       flag.ReminderTime,       // 提醒时间
+			EnableNotification: flag.EnableNotification, // 是否启用提醒
 		}
 		id, ok := utils.GetCurrentUserID(c)
 		if !ok {
@@ -400,16 +402,17 @@ func UpdateFlagHide() gin.HandlerFunc {
 func UpdateFlagInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			ID           uint   `json:"id"`
-			Title        string `json:"title"`
-			Detail       string `json:"detail"`
-			Label        int    `json:"label"`
-			Priority     int    `json:"priority"`
-			Total        int    `json:"total"`
-			IsPublic     bool   `json:"is_public"`
-			StartDate    string `json:"start_date"`
-			EndDate      string `json:"end_date"`
-			ReminderTime string `json:"reminder_time"`
+			ID                 uint   `json:"id"`
+			Title              string `json:"title"`
+			Detail             string `json:"detail"`
+			Label              int    `json:"label"`
+			Priority           int    `json:"priority"`
+			Total              int    `json:"total"`
+			IsPublic           bool   `json:"is_public"`
+			StartDate          string `json:"start_date"`
+			EndDate            string `json:"end_date"`
+			ReminderTime       string `json:"reminder_time"`
+			EnableNotification bool   `json:"enable_notification"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": "参数解析失败"})
@@ -433,13 +436,14 @@ func UpdateFlagInfo() gin.HandlerFunc {
 
 		// 构建更新数据
 		updates := map[string]interface{}{
-			"flag":          req.Title,
-			"plan_content":  req.Detail,
-			"label":         req.Label,
-			"priority":      req.Priority,
-			"daily_total":   req.Total,
-			"is_public":     req.IsPublic,
-			"reminder_time": req.ReminderTime,
+			"flag":                req.Title,
+			"plan_content":        req.Detail,
+			"label":               req.Label,
+			"priority":            req.Priority,
+			"daily_total":         req.Total,
+			"is_public":           req.IsPublic,
+			"reminder_time":       req.ReminderTime,
+			"enable_notification": req.EnableNotification,
 		}
 
 		// 添加可选的起始/结束时间
@@ -575,8 +579,8 @@ func ToggleFlagNotification() gin.HandlerFunc {
 				utils.LogError("检查提醒数量失败", logrus.Fields{"user_id": userID, "error": err.Error()})
 				return
 			}
-			if count >= 3 {
-				c.JSON(400, gin.H{"error": "最多只能同时为3个flag启用提醒"})
+			if count >= 5 {
+				c.JSON(400, gin.H{"error": "最多只能同时为5个flag启用提醒"})
 				utils.LogWarn("flag提醒数量已达上限", logrus.Fields{"user_id": userID, "count": count})
 				return
 			}

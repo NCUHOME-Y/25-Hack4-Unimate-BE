@@ -160,11 +160,9 @@ func RegisterUser() gin.HandlerFunc {
 
     %s
 
-该验证码将在5分钟内有效，请及时使用。如非本人操作，请忽略此邮件。
+该验证码将在5分钟内有效，请及时使用。
 
-此邮件由系统自动发送，请勿直接回复。
-
-——知序学习平台`, code)
+——知序平台`, code)
 		err := utils.SentEmail(user.Email, "【知序】账号注册验证码", emailBody)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "验证码发送失败，请稍后重试"})
