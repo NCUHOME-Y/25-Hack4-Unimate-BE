@@ -21,6 +21,31 @@ var (
 // 链接数据库
 func DBconnect() {
 	dsn := os.Getenv("DB_DSN")
+
+	// 如果没有 DB_DSN，则从分散的环境变量构建
+	if dsn == "" {
+		host := os.Getenv("DB_HOST")
+		if host == "" {
+			host = "localhost"
+		}
+		port := os.Getenv("DB_PORT")
+		if port == "" {
+			port = "3306"
+		}
+		user := os.Getenv("DB_USER")
+		if user == "" {
+			user = "root"
+		}
+		password := os.Getenv("DB_PASSWORD")
+		dbname := os.Getenv("DB_NAME")
+		if dbname == "" {
+			dbname = "unimate"
+		}
+
+		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+			user, password, host, port, dbname)
+	}
+
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		utils.LogError("数据库连接失败", logrus.Fields{"error": err})
@@ -255,6 +280,17 @@ func AddPostToDB(Id uint, post model.Post) error {
 
 // 删除帖子
 func DeletePostFromDB(postID uint) error {
+	// 先删除帖子的所有评论
+	if err := DB.Where("post_id = ?", postID).Delete(&model.PostComment{}).Error; err != nil {
+		return err
+	}
+
+	// 删除帖子的所有点赞记录
+	if err := DB.Where("post_id = ?", postID).Delete(&model.UserPostLike{}).Error; err != nil {
+		return err
+	}
+
+	// 最后删除帖子本身
 	result := DB.Delete(&model.Post{}, postID)
 	return result.Error
 }
@@ -858,9 +894,9 @@ func DakaNumberToDB(user_id uint) error {
 			consecutiveDays := calculateConsecutiveDays(user_id)
 			points := 20
 			if consecutiveDays >= 10 {
-				points += 10 // 连续10天奖励
-			} else if consecutiveDays >= 4 {
-				points += 5 // 连续4天奖励
+				points += 20 // 连续10天：额外+10+10=20，总老40分/天
+			} else if consecutiveDays >= 5 {
+				points += 10 // 连续5天：额外+10，总老30分/天
 			}
 			return CountAddDB(user_id, points)
 		} else {
@@ -888,9 +924,9 @@ func DakaNumberToDB(user_id uint) error {
 		consecutiveDays := calculateConsecutiveDays(user_id)
 		points := 20
 		if consecutiveDays >= 10 {
-			points += 10 // 连续10天奖励
-		} else if consecutiveDays >= 4 {
-			points += 5 // 连续4天奖励
+			points += 20 // 连续10天：额外+10+10=20，总老40分/天
+		} else if consecutiveDays >= 5 {
+			points += 10 // 连续5天：额外+10，总老30分/天
 		}
 		return CountAddDB(user_id, points)
 	}
