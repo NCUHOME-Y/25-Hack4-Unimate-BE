@@ -27,18 +27,22 @@ func Init() {
 		return
 	}
 
-	// 每天凌晨4点自动停止所有学习计时且本次不计入学习时长
-	_, err = cronScheduler.AddFunc("0 0 4 * * *", func() {
-		err := repository.InvalidateAllTodayLearnTime()
+	// 🐛 修复：注释掉有问题的凌晨4点清零任务
+	// 这个任务会把前一天的学习时长也清零，导致数据丢失
+	// TODO: 如果需要限制通宵学习，应该只清空前端 localStorage，不应修改已保存的数据库记录
+	/*
+		_, err = cronScheduler.AddFunc("0 0 4 * * *", func() {
+			err := repository.InvalidateAllTodayLearnTime()
+			if err != nil {
+				utils.LogError("凌晨4点自动停止学习计时失败", logrus.Fields{"error": err.Error()})
+			} else {
+				utils.LogInfo("凌晨4点自动停止学习计时成功", nil)
+			}
+		})
 		if err != nil {
-			utils.LogError("凌晨4点自动停止学习计时失败", logrus.Fields{"error": err.Error()})
-		} else {
-			utils.LogInfo("凌晨4点自动停止学习计时成功", nil)
+			utils.LogError("添加凌晨4点自动停止学习计时任务失败", logrus.Fields{"error": err.Error()})
 		}
-	})
-	if err != nil {
-		utils.LogError("添加凌晨4点自动停止学习计时任务失败", logrus.Fields{"error": err.Error()})
-	}
+	*/
 
 	for _, u := range users {
 		user := u
@@ -272,7 +276,14 @@ func InitDaliyLearnTimeRecord(id uint) {
 	user, _ := repository.GetUserByID(id)
 	Time, _ := repository.GetTodayLearnTime(id)
 	user.MonthLearntime = user.MonthLearntime + Time.Duration
-	err := repository.AddNewLearnTimeToDB(id)
+
+	// 🐛 修复：保存 month_learntime 到数据库
+	err := repository.SaveUserToDB(user)
+	if err != nil {
+		utils.LogError("更新用户月学习时长失败", logrus.Fields{"user_id": id, "error": err.Error()})
+	}
+
+	err = repository.AddNewLearnTimeToDB(id)
 	if err != nil {
 		utils.LogError("添加新的学习时间记录失败", logrus.Fields{"user_id": id})
 		return
