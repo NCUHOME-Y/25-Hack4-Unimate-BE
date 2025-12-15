@@ -266,9 +266,7 @@ func SendEmailCode() gin.HandlerFunc {
 
 该验证码将在5分钟内有效，请及时使用。如非本人操作，请忽略此邮件。
 
-此邮件由系统自动发送，请勿直接回复。
-
-——知序学习平台`, code)
+——知序平台`, code)
 		sendErr := utils.SentEmail(req.Email, "【知序】身份验证码", emailBody)
 		if sendErr != nil {
 			c.JSON(500, gin.H{"error": "验证码发送失败,请重新再试..."})

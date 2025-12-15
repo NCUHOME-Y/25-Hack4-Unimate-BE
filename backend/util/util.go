@@ -122,19 +122,40 @@ func LogDebug(message string, fields logrus.Fields) {
 
 // 发送邮箱
 func SentEmail(to, subject, body string) error {
+	// 验证环境变量
+	smtpHost := os.Getenv("SMTP_HOST")
+	smtpPort := os.Getenv("SMTP_PORT")
+	smtpUser := os.Getenv("SMTP_USER")
+	smtpPass := os.Getenv("SMTP_PASS")
+	smtpFrom := os.Getenv("SMTP_FROM")
+
+	if smtpHost == "" || smtpPort == "" || smtpUser == "" || smtpPass == "" || smtpFrom == "" {
+		errMsg := fmt.Sprintf("❌ SMTP配置缺失: HOST=%s, PORT=%s, USER=%s, FROM=%s",
+			smtpHost, smtpPort, smtpUser, smtpFrom)
+		fmt.Println(errMsg)
+		return fmt.Errorf("SMTP配置不完整")
+	}
+
 	m := mail.NewMessage()
-	m.SetHeader("From", os.Getenv("SMTP_FROM"))
+	m.SetHeader("From", smtpFrom)
 	m.SetHeader("To", to)
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/plain", body)
 
-	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
-	d := mail.NewDialer(os.Getenv("SMTP_HOST"), port, os.Getenv("SMTP_USER"), os.Getenv("SMTP_PASS"))
+	port, err := strconv.Atoi(smtpPort)
+	if err != nil {
+		fmt.Printf("❌ SMTP端口号格式错误: %s\n", smtpPort)
+		return fmt.Errorf("SMTP端口配置错误")
+	}
+
+	fmt.Printf("📧 准备发送邮件: TO=%s, HOST=%s:%d, USER=%s\n", to, smtpHost, port, smtpUser)
+
+	d := mail.NewDialer(smtpHost, port, smtpUser, smtpPass)
 	if err := d.DialAndSend(m); err != nil {
-		fmt.Printf("❌ 发送失败详情: %+v\n", err)
+		fmt.Printf("❌ 发送邮件失败: %+v\n", err)
 		return err
 	}
-	fmt.Println("✅ 发送完成")
+	fmt.Printf("✅ 邮件发送成功: %s\n", to)
 	return nil
 }
 

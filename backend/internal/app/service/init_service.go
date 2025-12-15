@@ -79,9 +79,9 @@ func Init() {
 					"time":    fmt.Sprintf("%02d:%02d", user.RemindHour, user.RemindMin),
 				})
 
-				err := utils.SentEmail(user.Email, "知序 - 您的每日学习提醒", fmt.Sprintf(`尊敬的 %s 用户：您好！
+				err := utils.SentEmail(user.Email, "【知序】您的学习提醒", fmt.Sprintf(`尊敬的%s，您好！
 
-这是来自知序平台的每日学习提醒通知。
+这是您设定的每日学习提醒。
 
 提醒时间：%02d:%02d
 
@@ -173,14 +173,14 @@ func AddUserCronJob(user model.User) {
 	if user.IsRemind {
 		cronStr := fmt.Sprintf("0 %d %d * * *", user.RemindMin, user.RemindHour)
 		cronScheduler.AddFunc(cronStr, func() {
-			emailSubject := "知序 - 您的每日学习提醒"
-			emailBody := fmt.Sprintf(`尊敬的 %s 用户：您好！
+			emailSubject := "【知序】您的学习提醒"
+			emailBody := fmt.Sprintf(`尊敬的%s，您好！
 
-这是来自知序平台的每日学习提醒通知。
+这是您设定的每日学习提醒。
 
 提醒时间：%02d:%02d
 
-请记得保持良好的学习习惯，持续追求进步。自律是成功的基石，每一天的坚持都将成为您通往目标的阶梯。
+请记得保持良好的习惯，持续追求进步。自律是成功的基石，每一天的坚持都将成为您通往目标的阶梯。
 
 ——知序平台`, user.Name, user.RemindHour, user.RemindMin)
 			utils.SentEmail(user.Email, emailSubject, emailBody)
@@ -229,19 +229,16 @@ func UpdateUserReminderJob(userID uint, hour, min int, isRemind bool) {
 			})
 
 			// 构建正式的邮件内容
-			emailSubject := "知序 - 您的每日学习提醒"
-			emailBody := fmt.Sprintf(`尊敬的 %s 用户：您好！
+			emailSubject := "【知序】您的学习提醒"
+			emailBody := fmt.Sprintf(`尊敬的%s，您好！
 
-这是来自知序平台的每日学习提醒通知。
+这是您设定的每日学习提醒。
 
 提醒时间：%02d:%02d
 
-请记得保持良好的学习习惯，持续追求进步。自律是成功的基石，每一天的坚持都将成为您通往目标的阶梯。
+请记得保持良好的习惯，持续追求进步。自律是成功的基石，每一天的坚持都将成为您通往目标的阶梯。
 
-如有任何问题或建议，欢迎随时联系我们。
-
-——知序平台
-`, user.Name, hour, min)
+——知序平台`, user.Name, hour, min)
 
 			err := utils.SentEmail(user.Email, emailSubject, emailBody)
 			if err != nil {

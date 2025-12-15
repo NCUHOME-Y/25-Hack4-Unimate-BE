@@ -221,6 +221,52 @@ func (manager *Manager) Start() {
 					}
 				} else {
 					log.Printf("⚠️ Target user %d not online for private message", message.ToID)
+
+					// 目标用户不在线，发送邮件通知
+					go func() {
+						targetUser, err := repository.GetUserByID(message.ToID)
+						if err == nil && targetUser.Email != "" {
+							sender, _ := repository.GetUserByID(message.FromID)
+							senderName := message.UserName
+							if senderName == "" && sender.Name != "" {
+								senderName = sender.Name
+							}
+							if senderName == "" {
+								senderName = fmt.Sprintf("用户%d", message.FromID)
+							}
+
+							receiverName := "用户"
+							if targetUser.Name != "" {
+								receiverName = targetUser.Name
+							}
+
+							emailSubject := "【知序】您收到了新的消息"
+							emailBody := fmt.Sprintf(`尊敬的%s，您好！
+
+%s 给您发送了一条私聊消息：
+
+"%s"
+
+请登录知序平台查看详情。
+
+——知序平台`, receiverName, senderName, message.Content)
+
+							if err := utils.SentEmail(targetUser.Email, emailSubject, emailBody); err != nil {
+								utils.LogError("私聊通知邮件发送失败", logrus.Fields{
+									"from_id":  message.FromID,
+									"to_id":    message.ToID,
+									"to_email": targetUser.Email,
+									"error":    err.Error(),
+								})
+							} else {
+								utils.LogInfo("私聊通知邮件发送成功", logrus.Fields{
+									"from_id":  message.FromID,
+									"to_id":    message.ToID,
+									"to_email": targetUser.Email,
+								})
+							}
+						}
+					}()
 				}
 
 				// 也发回给发送者（让发送者看到确认，并且刷新后能看到历史）

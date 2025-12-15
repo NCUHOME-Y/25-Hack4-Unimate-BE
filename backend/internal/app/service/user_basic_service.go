@@ -156,7 +156,7 @@ func RegisterUser() gin.HandlerFunc {
 		code := utils.GenerateCode()
 		emailBody := fmt.Sprintf(`尊敬的用户，您好！
 
-您正在注册知序学习平台账号，验证码为：
+您正在注册知序平台账号，验证码为：
 
     %s
 

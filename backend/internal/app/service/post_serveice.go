@@ -1,6 +1,8 @@
 ﻿package service
 
 import (
+	"fmt"
+
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
 	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
@@ -129,6 +131,53 @@ func CommentOnPost() gin.HandlerFunc {
 			return
 		}
 
+		// 获取帖子信息以便通知作者
+		post, err := repository.GetPostByID(req.PostID)
+		if err == nil && post.UserID != userID {
+			// 不是自己的帖子才发通知
+			postAuthor, err := repository.GetUserByID(post.UserID)
+			if err == nil && postAuthor.Email != "" {
+				commenter, _ := repository.GetUserByID(userID)
+				commenterName := "用户"
+				if commenter.Name != "" {
+					commenterName = commenter.Name
+				}
+
+				receiverName := "用户"
+				if postAuthor.Name != "" {
+					receiverName = postAuthor.Name
+				}
+
+				emailSubject := "【知序】您收到了新的消息"
+				emailBody := fmt.Sprintf(`尊敬的%s，您好！
+
+您的帖子"%s"收到了新的评论：
+
+评论者：%s
+评论内容：%s
+
+请登录知序平台查看详情。
+
+——知序平台`, receiverName, post.Title, commenterName, req.Content)
+
+				// 异步发送邮件，不影响主流程
+				go func() {
+					if err := utils.SentEmail(postAuthor.Email, emailSubject, emailBody); err != nil {
+						utils.LogError("评论通知邮件发送失败", logrus.Fields{
+							"post_id":  req.PostID,
+							"to_email": postAuthor.Email,
+							"error":    err.Error(),
+						})
+					} else {
+						utils.LogInfo("评论通知邮件发送成功", logrus.Fields{
+							"post_id":  req.PostID,
+							"to_email": postAuthor.Email,
+						})
+					}
+				}()
+			}
+		}
+
 		// 重新查询评论以获取完整的用户信息
 		savedComment, err := repository.GetCommentByID(comment.ID)
 		if err != nil {
@@ -255,12 +304,69 @@ func CommentOnFlag() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "Invalid input"})
 			return
 		}
+
+		// 获取当前用户ID
+		userID, ok := utils.GetCurrentUserID(c)
+		if !ok {
+			c.JSON(401, gin.H{"error": "未授权"})
+			return
+		}
+
 		err := repository.UpdateFlagComment(comment.FlagID, comment.Content)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to add comment"})
 			utils.LogError("数据库添加flag评论失败", nil)
 			return
 		}
+
+		// 获取flag信息以便通知作者
+		flag, err := repository.GetFlagByID(comment.FlagID)
+		if err == nil && flag.UserID != userID {
+			// 不是自己的flag才发通知
+			flagOwner, err := repository.GetUserByID(flag.UserID)
+			if err == nil && flagOwner.Email != "" {
+				commenter, _ := repository.GetUserByID(userID)
+				commenterName := "用户"
+				if commenter.Name != "" {
+					commenterName = commenter.Name
+				}
+
+				receiverName := "用户"
+				if flagOwner.Name != "" {
+					receiverName = flagOwner.Name
+				}
+
+				emailSubject := "【知序】您收到了新的消息"
+				emailBody := fmt.Sprintf(`尊敬的%s，您好！
+
+您的目标"%s"收到了新的评论：
+
+评论者：%s
+评论内容：%s
+
+请登录知序平台查看详情。
+
+——知序平台`, receiverName, flag.Title, commenterName, comment.Content)
+
+				// 异步发送邮件，不影响主流程
+				go func() {
+					if err := utils.SentEmail(flagOwner.Email, emailSubject, emailBody); err != nil {
+						utils.LogError("目标评论通知邮件发送失败", logrus.Fields{
+							"flag_id":  comment.FlagID,
+							"to_email": flagOwner.Email,
+							"error":    err.Error(),
+						})
+					} else {
+						utils.LogInfo("目标评论通知邮件发送成功", logrus.Fields{
+							"flag_id":  comment.FlagID,
+							"to_email": flagOwner.Email,
+						})
+					}
+				}()
+			}
+		}
+
+		c.JSON(200, gin.H{"message": "Comment added successfully"})
 	}
 }
 
@@ -280,6 +386,7 @@ func DeleteFlagComment() gin.HandlerFunc {
 			utils.LogError("数据库删除flag评论失败", nil)
 			return
 		}
+		c.JSON(200, gin.H{"message": "Comment deleted successfully"})
 	}
 }
 
