@@ -247,7 +247,7 @@ func (manager *Manager) Start() {
 
 "%s"
 
-请登录知序平台查看详情。
+请登录知序平台（http://139.199.157.76）查看详情。
 
 ——知序平台`, receiverName, senderName, message.Content)
 

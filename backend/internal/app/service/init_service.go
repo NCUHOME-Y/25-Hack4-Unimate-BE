@@ -91,6 +91,8 @@ func Init() {
 
 请记得保持良好的学习习惯，持续追求进步。自律是成功的基石，每一天的坚持都将成为您通往目标的阶梯。
 
+请登录知序平台（http://139.199.157.76）查看详情。
+
 ——知序平台`, user.Name, user.RemindHour, user.RemindMin))
 				if err != nil {
 					utils.LogError("发送提醒邮件失败", logrus.Fields{
@@ -186,6 +188,8 @@ func AddUserCronJob(user model.User) {
 
 请记得保持良好的习惯，持续追求进步。自律是成功的基石，每一天的坚持都将成为您通往目标的阶梯。
 
+请登录知序平台（http://139.199.157.76）查看详情。
+
 ——知序平台`, user.Name, user.RemindHour, user.RemindMin)
 			utils.SentEmail(user.Email, emailSubject, emailBody)
 		})
@@ -241,6 +245,8 @@ func UpdateUserReminderJob(userID uint, hour, min int, isRemind bool) {
 提醒时间：%02d:%02d
 
 请记得保持良好的习惯，持续追求进步。自律是成功的基石，每一天的坚持都将成为您通往目标的阶梯。
+
+请登录知序平台（http://139.199.157.76）查看详情。
 
 ——知序平台`, user.Name, hour, min)
 
@@ -406,6 +412,8 @@ func sendFlagReminders() {
 优先级：%d
 
 请及时完成您设定的目标任务，保持良好的学习和生活习惯。持续的自律和坚持将帮助您实现更好的自己。
+
+请登录知序平台（http://139.199.157.76）查看详情。
 
 ——知序平台
 `, user.Name, flag.Title, flag.Detail, flag.ReminderTime, flag.Priority)

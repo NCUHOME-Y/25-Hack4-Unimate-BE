@@ -266,6 +266,8 @@ func SendEmailCode() gin.HandlerFunc {
 
 该验证码将在5分钟内有效，请及时使用。如非本人操作，请忽略此邮件。
 
+请登录知序平台（http://139.199.157.76）查看详情。
+
 ——知序平台`, code)
 		sendErr := utils.SentEmail(req.Email, "【知序】身份验证码", emailBody)
 		if sendErr != nil {

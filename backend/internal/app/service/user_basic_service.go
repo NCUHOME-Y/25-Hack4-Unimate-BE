@@ -162,6 +162,8 @@ func RegisterUser() gin.HandlerFunc {
 
 			该验证码将在5分钟内有效，请及时使用。
 
+			请登录知序平台（http://139.199.157.76）查看详情。
+
 				——知序平台`, code)
 		err := utils.SentEmail(user.Email, "【知序】账号注册验证码", emailBody)
 		if err != nil {
