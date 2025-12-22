@@ -19,7 +19,7 @@ var (
 )
 
 // 链接数据库
-func DBconnect() {
+func DBconnect() error {
 	dsn := os.Getenv("DB_DSN")
 
 	// 如果没有 DB_DSN，则从分散的环境变量构建
@@ -49,10 +49,18 @@ func DBconnect() {
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		utils.LogError("数据库连接失败", logrus.Fields{"error": err})
-		return
+		return fmt.Errorf("数据库连接失败: %v", err)
 	}
 	DB = db
-	DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{}, &model.EmailCode{}, &model.FlagComment{}, &model.TrackPoint{}, &model.ChatMessage{}, &model.UserPostLike{}, &model.PointsLog{})
+
+	// 自动迁移数据表
+	if err := DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{}, &model.EmailCode{}, &model.FlagComment{}, &model.TrackPoint{}, &model.ChatMessage{}, &model.UserPostLike{}, &model.PointsLog{}); err != nil {
+		utils.LogError("数据库表迁移失败", logrus.Fields{"error": err})
+		return fmt.Errorf("数据库表迁移失败: %v", err)
+	}
+
+	utils.LogInfo("数据库连接成功", nil)
+	return nil
 }
 
 // user添加到数据库
