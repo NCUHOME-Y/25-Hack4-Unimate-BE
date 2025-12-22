@@ -153,6 +153,9 @@ func AI(r *gin.Engine) {
 	e := r.Group("/")
 	e.Use(service.JWTAuth())
 	e.POST("/api/ai/generate-plan", service.GenerateLearningPlan)
+	e.POST("/api/ai/save-history", service.SaveAIHistory())
+	e.GET("/api/ai/get-history", service.GetAIHistory())
+	e.DELETE("/api/ai/delete-history", service.DeleteAIHistory())
 }
 
 // P1修复：聊天历史和谈玄斋管理路由

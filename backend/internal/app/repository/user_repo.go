@@ -54,7 +54,7 @@ func DBconnect() error {
 	DB = db
 
 	// 自动迁移数据表
-	if err := DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{}, &model.EmailCode{}, &model.FlagComment{}, &model.TrackPoint{}, &model.ChatMessage{}, &model.UserPostLike{}, &model.PointsLog{}); err != nil {
+	if err := DB.AutoMigrate(&model.User{}, &model.Flag{}, &model.Post{}, &model.PostComment{}, &model.Achievement{}, &model.LearnTime{}, &model.Daka_number{}, &model.EmailCode{}, &model.FlagComment{}, &model.TrackPoint{}, &model.ChatMessage{}, &model.UserPostLike{}, &model.PointsLog{}, &model.AIHistory{}); err != nil {
 		utils.LogError("数据库表迁移失败", logrus.Fields{"error": err})
 		return fmt.Errorf("数据库表迁移失败: %v", err)
 	}

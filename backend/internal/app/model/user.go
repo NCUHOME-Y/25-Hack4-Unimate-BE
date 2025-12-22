@@ -28,6 +28,7 @@ type User struct {
 	Flags          []Flag        `gorm:"foreignKey:UserID"` //外键绑定flag表
 	Posts          []Post        `gorm:"foreignKey:UserID"` //外键绑定post表
 	Achievements   []Achievement `gorm:"foreignKey:UserID"` //一对多绑定achievement表
+	AIHistories    []AIHistory   `gorm:"foreignKey:UserID"` //一对多绑定ai_history表
 }
 
 // Flag - 前端字段为主
@@ -243,4 +244,15 @@ type PointsLog struct {
 	UserID    uint      `gorm:"index" json:"user_id"`
 	Amount    int       `json:"amount"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// AI历史记录
+type AIHistory struct {
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	UserID        uint      `gorm:"index" json:"user_id"`
+	Background    string    `json:"background"`     // 个人背景
+	Goal          string    `json:"goal"`           // 目标
+	Difficulty    string    `json:"difficulty"`     // 难度
+	GeneratedPlan string    `json:"generated_plan"` // 生成的计划（JSON格式）
+	CreatedAt     time.Time `json:"created_at"`
 }
