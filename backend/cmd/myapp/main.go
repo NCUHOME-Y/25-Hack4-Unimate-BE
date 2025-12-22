@@ -36,7 +36,11 @@ func main() {
 		gin.DisableConsoleColor()
 	}
 
-	repository.DBconnect()           //数据库连接
+	// 数据库连接
+	if err := repository.DBconnect(); err != nil {
+		log.Fatalf("❌ 数据库连接失败，程序退出: %v", err)
+	}
+
 	service.Init()                   //初始化每天学习时间记录
 	service.StartHitokotoScheduler() //启动一言定时任务
 	r := gin.Default()

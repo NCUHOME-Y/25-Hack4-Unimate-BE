@@ -57,6 +57,11 @@ func fetchHitokoto() (*HitokotoResponse, error) {
 
 // 确保一言系统账户存在
 func ensureHitokotoUser() error {
+	// 检查数据库连接
+	if repository.DB == nil {
+		return fmt.Errorf("数据库连接未初始化")
+	}
+
 	// 检查是否已存在
 	var user model.User
 	result := repository.DB.Where("id = ?", HitokotoUserID).First(&user)
