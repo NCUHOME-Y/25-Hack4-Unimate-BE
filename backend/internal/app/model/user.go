@@ -174,7 +174,7 @@ type LearnTime struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UserID    uint      `json:"user_id"`
-	Duration  int       `json:"duration"` // 学习时长，单位为分钟
+	Duration  int       `json:"duration"` // 学习时长，单位为秒 (Duration in seconds)
 }
 
 type Daka_number struct {

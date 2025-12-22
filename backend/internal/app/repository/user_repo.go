@@ -549,12 +549,12 @@ func GetSevenDaysLearnTime(user_id uint) ([]model.LearnTime, error) {
 		return nil, err
 	}
 
-	// 创建日期映射（只保存非负值）
+	// 创建日期映射（累加同一天的时长）
 	dataMap := make(map[string]int)
 	for _, record := range learnTime {
 		dateStr := record.CreatedAt.Format("2006-01-02")
 		if record.Duration >= 0 {
-			dataMap[dateStr] = record.Duration
+			dataMap[dateStr] += record.Duration
 		}
 	}
 
