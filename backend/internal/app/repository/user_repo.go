@@ -754,6 +754,12 @@ func SaveUserToDB(user model.User) error {
 	return result.Error
 }
 
+// 更新用户头像
+func UpdateUserHeadShow(userID uint, headShow int) error {
+	result := DB.Model(&model.User{}).Where("id = ?", userID).Update("head_show", headShow)
+	return result.Error
+}
+
 // 获取所有用户
 func GetAllUser() ([]model.User, error) {
 	if DB == nil {

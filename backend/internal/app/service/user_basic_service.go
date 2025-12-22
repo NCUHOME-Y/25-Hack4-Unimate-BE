@@ -699,9 +699,12 @@ func SwithHead() gin.HandlerFunc {
 		}
 
 		log.Printf("切换头像 - 用户ID: %d, 头像编号: %d", id, req.Number)
-		user, _ := repository.GetUserByID(id)
-		user.HeadShow = req.Number
-		repository.SaveUserToDB(user)
+		err := repository.UpdateUserHeadShow(id, req.Number)
+		if err != nil {
+			log.Printf("更新头像失败: %v", err)
+			c.JSON(500, gin.H{"error": "更新头像失败"})
+			return
+		}
 		c.JSON(200, gin.H{"success": true})
 	}
 }
