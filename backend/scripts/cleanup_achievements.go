@@ -20,6 +20,11 @@ func main() {
 	// 连接数据库
 	repository.DBconnect()
 
+	// 清理已完成Flag的提醒数据
+	cleanupFlagNotifications()
+
+	// 继续清理成就数据...
+
 	// 定义正确的16个成就名称映射
 	// correctAchievements := map[string]string{
 	// 	// 旧名称 -> 新名称 的映射
@@ -156,4 +161,32 @@ func main() {
 			fmt.Printf("  ✅ 用户 %s 的成就数据正常，共 %d 个成就\n", user.Name, len(achievements))
 		}
 	}
+}
+
+// 清理已完成Flag的提醒数据
+func cleanupFlagNotifications() {
+	fmt.Println("\n=== 开始清理已完成Flag的提醒数据 ===")
+
+	// 查找所有已完成但仍启用提醒的flag
+	var completedFlagsWithNotifications []model.Flag
+	result := repository.DB.Model(&model.Flag{}).Where("had_done = ? AND enable_notification = ?", true, true).Find(&completedFlagsWithNotifications)
+	if result.Error != nil {
+		log.Fatalf("查询已完成Flag失败: %v", result.Error)
+	}
+
+	fmt.Printf("找到 %d 个已完成但仍启用提醒的Flag\n", len(completedFlagsWithNotifications))
+
+	// 禁用这些flag的提醒
+	disabledCount := 0
+	for _, flag := range completedFlagsWithNotifications {
+		err := repository.UpdateFlagNotification(flag.ID, false)
+		if err != nil {
+			log.Printf("禁用Flag %d 的提醒失败: %v", flag.ID, err)
+		} else {
+			disabledCount++
+			fmt.Printf("已禁用Flag %d (%s) 的提醒\n", flag.ID, flag.Title)
+		}
+	}
+
+	fmt.Printf("Flag提醒清理完成！共处理了 %d 个Flag\n", disabledCount)
 }

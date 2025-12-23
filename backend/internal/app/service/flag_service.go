@@ -217,6 +217,16 @@ func DoneUserFlags() gin.HandlerFunc {
 				utils.LogError("更新Flag完成状态失败", logrus.Fields{"flag_id": req.ID, "error": err.Error()})
 			}
 
+			// 🔧 新增：Flag完成时自动禁用提醒（避免已完成flag占用提醒上限）
+			if flag.EnableNotification {
+				err = repository.UpdateFlagNotification(req.ID, false)
+				if err != nil {
+					utils.LogError("自动禁用已完成Flag的提醒失败", logrus.Fields{"flag_id": req.ID, "error": err.Error()})
+				} else {
+					utils.LogInfo("已完成Flag的提醒已自动禁用", logrus.Fields{"flag_id": req.ID})
+				}
+			}
+
 			// 更新用户的完成Flag计数
 			user, err := repository.GetUserByID(id)
 			if err == nil {
@@ -592,6 +602,23 @@ func ToggleFlagNotification() gin.HandlerFunc {
 				c.JSON(400, gin.H{"error": "最多只能同时为5个flag启用提醒"})
 				utils.LogWarn("flag提醒数量已达上限", logrus.Fields{"user_id": userID, "count": count})
 				return
+			}
+
+			// 自动开启用户级Flag提醒总开关（如果还未开启）
+			user, err := repository.GetUserByID(userID)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "获取用户信息失败"})
+				utils.LogError("获取用户信息失败", logrus.Fields{"user_id": userID, "error": err.Error()})
+				return
+			}
+			if !user.IsFlagRemind {
+				err = repository.UpdateUserFlagRemindStatus(userID, true)
+				if err != nil {
+					c.JSON(500, gin.H{"error": "自动开启用户Flag提醒总开关失败"})
+					utils.LogError("自动开启用户Flag提醒总开关失败", logrus.Fields{"user_id": userID, "error": err.Error()})
+					return
+				}
+				utils.LogInfo("自动开启用户Flag提醒总开关", logrus.Fields{"user_id": userID})
 			}
 		}
 

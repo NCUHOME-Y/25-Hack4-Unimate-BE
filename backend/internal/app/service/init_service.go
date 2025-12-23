@@ -72,10 +72,10 @@ func Init() {
 			utils.LogError("添加每月任务失败", logrus.Fields{"user_id": user.ID, "error": err.Error()})
 		}
 
-		// 提醒任务
-		if user.IsRemind {
+		// 学习提醒任务（用户级学习提醒）
+		if user.IsStudyRemind {
 			// 修复：使用正确的 cron 格式（秒 分 时 日 月 周）
-			cronStr := fmt.Sprintf("0 %d %d * * *", user.RemindMin, user.RemindHour)
+			cronStr := fmt.Sprintf("0 %d %d * * *", user.StudyRemindMin, user.StudyRemindHour)
 			entryID, err := cronScheduler.AddFunc(cronStr, func() {
 				utils.LogInfo("发送定时提醒邮件", logrus.Fields{
 					"user_id": user.ID,
@@ -175,8 +175,8 @@ func AddUserCronJob(user model.User) {
 		InitMonthlyDakaRecord(user.ID)
 	})
 
-	// 提醒任务
-	if user.IsRemind {
+	// 学习提醒任务（用户级学习提醒）
+	if user.IsStudyRemind {
 		cronStr := fmt.Sprintf("0 %d %d * * *", user.RemindMin, user.RemindHour)
 		cronScheduler.AddFunc(cronStr, func() {
 			emailSubject := "【知序】您的学习提醒"
@@ -202,7 +202,7 @@ func AddUserCronJob(user model.User) {
 	utils.LogInfo("✅ 为新用户添加定时任务", logrus.Fields{"user_id": user.ID})
 }
 
-// 更新用户的提醒任务
+// 更新用户的学习提醒任务
 func UpdateUserReminderJob(userID uint, hour, min int, isRemind bool) {
 	if cronScheduler == nil {
 		utils.LogError("定时任务调度器未初始化", nil)
@@ -219,7 +219,7 @@ func UpdateUserReminderJob(userID uint, hour, min int, isRemind bool) {
 		utils.LogInfo("🗑️ 移除旧的提醒任务", logrus.Fields{"user_id": userID})
 	}
 
-	// 如果开启提醒，添加新的任务
+	// 如果开启学习提醒，添加新的任务
 	if isRemind {
 		// 获取用户信息
 		user, err := repository.GetUserByID(userID)
@@ -396,6 +396,12 @@ func sendFlagReminders() {
 					"user_id": flag.UserID,
 					"error":   err.Error(),
 				})
+				continue
+			}
+
+			// 检查用户是否开启了 Flag 级别的提醒（用户级总开关）
+			if !user.IsFlagRemind {
+				// 跳过发送flag提醒
 				continue
 			}
 

@@ -633,14 +633,14 @@ func UpdateUserRemindTime() gin.HandlerFunc {
 		}
 		id, _ := utils.GetCurrentUserID(c)
 
-		// 先开启提醒状态（如果还未开启）
+		// 先开启学习提醒状态（如果还未开启）
 		user, _ := repository.GetUserByID(id)
-		if !user.IsRemind {
-			repository.UpdateUserRemindStatus(id, true)
-			utils.LogInfo("自动开启提醒功能", logrus.Fields{"user_id": id})
+		if !user.IsStudyRemind {
+			repository.UpdateUserStudyRemindStatus(id, true)
+			utils.LogInfo("自动开启学习提醒功能", logrus.Fields{"user_id": id})
 		}
 
-		// 更新提醒时间
+		// 更新学习提醒时间（同时兼容旧字段）
 		err := repository.UpdateUserRemindTime(id, Remind.RemindHour, Remind.ReminMin)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "更新用户提醒时间失败,请重新再试..."})
@@ -648,7 +648,7 @@ func UpdateUserRemindTime() gin.HandlerFunc {
 			return
 		}
 
-		// 更新定时任务（提醒状态为 true）
+		// 更新学习提醒定时任务（学习提醒状态为 true）
 		UpdateUserReminderJob(id, Remind.RemindHour, Remind.ReminMin, true)
 
 		utils.LogInfo("更新用户提醒时间成功", logrus.Fields{"user_id": id, "remind_hour": Remind.RemindHour, "remin_min": Remind.ReminMin})
@@ -661,20 +661,39 @@ func UpdateUserRemind() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _ := utils.GetCurrentUserID(c)
 		user, _ := repository.GetUserByID(id)
-		user.IsRemind = !user.IsRemind
-		err := repository.UpdateUserRemindStatus(id, user.IsRemind)
+		// 切换学习提醒开关
+		user.IsStudyRemind = !user.IsStudyRemind
+		err := repository.UpdateUserStudyRemindStatus(id, user.IsStudyRemind)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "更新用户提醒状态失败,请重新再试..."})
 			utils.LogError("更新用户提醒状态失败", logrus.Fields{})
 			return
 		}
 
-		// 更新定时任务
-		UpdateUserReminderJob(id, user.RemindHour, user.RemindMin, user.IsRemind)
+		// 更新学习提醒定时任务
+		UpdateUserReminderJob(id, user.StudyRemindHour, user.StudyRemindMin, user.IsStudyRemind)
 
-		utils.LogInfo("更新用户提醒状态成功", logrus.Fields{"user_id": id, "is_remind": user.IsRemind})
-		c.JSON(200, gin.H{"message": "更新用户提醒状态成功!",
-			"状态": user.IsRemind})
+		utils.LogInfo("更新用户学习提醒状态成功", logrus.Fields{"user_id": id, "is_study_remind": user.IsStudyRemind})
+		c.JSON(200, gin.H{"message": "更新用户学习提醒状态成功!",
+			"状态": user.IsStudyRemind})
+	}
+}
+
+// 更新用户 Flag 提醒（用户级总开关）
+func UpdateUserFlagRemind() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := utils.GetCurrentUserID(c)
+		user, _ := repository.GetUserByID(id)
+		user.IsFlagRemind = !user.IsFlagRemind
+		err := repository.UpdateUserFlagRemindStatus(id, user.IsFlagRemind)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "更新用户 Flag 提醒状态失败,请重新再试..."})
+			utils.LogError("更新用户 Flag 提醒状态失败", logrus.Fields{})
+			return
+		}
+
+		utils.LogInfo("更新用户 Flag 提醒状态成功", logrus.Fields{"user_id": id, "is_flag_remind": user.IsFlagRemind})
+		c.JSON(200, gin.H{"message": "更新用户 Flag 提醒状态成功!", "状态": user.IsFlagRemind})
 	}
 }
 

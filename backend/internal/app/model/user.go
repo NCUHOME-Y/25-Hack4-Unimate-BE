@@ -8,27 +8,33 @@ import (
 )
 
 type User struct {
-	ID             uint          `gorm:"primaryKey" json:"user_id"`       //用户ID
-	Name           string        `json:"name"`                            //用户名
-	Email          string        `json:"email"`                           //邮箱
-	Password       string        `json:"password"`                        //密码
-	Status         string        `json:"status"`                          //用户状态
-	IsRemind       bool          `json:"is_remind" gorm:"default:false"`  //是否开启提醒
-	DoFlag         *time.Time    `json:"do_flag"`                         //最后打卡时间
-	HeadShow       int           `json:"head_show" gorm:"default:1"`      //头像显示
-	RemindHour     int           `json:"time_remind" default:"12"`        //提醒小时
-	RemindMin      int           `json:"min_remind" default:"0"`          //提醒分钟
-	Daka           int           `json:"daka"`                            //总打卡数
-	MonthLearntime int           `json:"month_learn_time"`                //本月学习时长
-	FlagNumber     int           `json:"flag_number"`                     //完成flag数量
-	Count          int           `json:"count"`                           //积分
-	Labels         Label         `json:"labels" gorm:"foreignKey:UserID"` //完成flag的标签数
-	DaKaNumber     []Daka_number `gorm:"foreignKey:UserID"`
-	LearnTimes     []LearnTime   `gorm:"foreignKey:UserID"` //外键绑定learn_time表
-	Flags          []Flag        `gorm:"foreignKey:UserID"` //外键绑定flag表
-	Posts          []Post        `gorm:"foreignKey:UserID"` //外键绑定post表
-	Achievements   []Achievement `gorm:"foreignKey:UserID"` //一对多绑定achievement表
-	AIHistories    []AIHistory   `gorm:"foreignKey:UserID"` //一对多绑定ai_history表
+	ID         uint       `gorm:"primaryKey" json:"user_id"`      //用户ID
+	Name       string     `json:"name"`                           //用户名
+	Email      string     `json:"email"`                          //邮箱
+	Password   string     `json:"password"`                       //密码
+	Status     string     `json:"status"`                         //用户状态
+	IsRemind   bool       `json:"is_remind" gorm:"default:false"` //是否开启提醒
+	DoFlag     *time.Time `json:"do_flag"`                        //最后打卡时间
+	HeadShow   int        `json:"head_show" gorm:"default:1"`     //头像显示
+	RemindHour int        `json:"time_remind" default:"12"`       //兼容字段：提醒小时（旧）
+	RemindMin  int        `json:"min_remind" default:"0"`         //兼容字段：提醒分钟（旧）
+
+	// 新增：将学习提醒和 Flag 提醒独立管理
+	IsStudyRemind   bool          `json:"is_study_remind" gorm:"default:false"` // 是否开启学习提醒
+	StudyRemindHour int           `json:"study_remind_hour" gorm:"default:12"`  // 学习提醒小时
+	StudyRemindMin  int           `json:"study_remind_min" gorm:"default:0"`    // 学习提醒分钟
+	IsFlagRemind    bool          `json:"is_flag_remind" gorm:"default:false"`  // 是否开启 Flag 提醒（用户级总开关）
+	Daka            int           `json:"daka"`                                 //总打卡数
+	MonthLearntime  int           `json:"month_learn_time"`                     //本月学习时长
+	FlagNumber      int           `json:"flag_number"`                          //完成flag数量
+	Count           int           `json:"count"`                                //积分
+	Labels          Label         `json:"labels" gorm:"foreignKey:UserID"`      //完成flag的标签数
+	DaKaNumber      []Daka_number `gorm:"foreignKey:UserID"`
+	LearnTimes      []LearnTime   `gorm:"foreignKey:UserID"` //外键绑定learn_time表
+	Flags           []Flag        `gorm:"foreignKey:UserID"` //外键绑定flag表
+	Posts           []Post        `gorm:"foreignKey:UserID"` //外键绑定post表
+	Achievements    []Achievement `gorm:"foreignKey:UserID"` //一对多绑定achievement表
+	AIHistories     []AIHistory   `gorm:"foreignKey:UserID"` //一对多绑定ai_history表
 }
 
 // Flag - 前端字段为主

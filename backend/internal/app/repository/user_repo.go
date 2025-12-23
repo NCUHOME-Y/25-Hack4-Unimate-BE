@@ -254,10 +254,10 @@ func UpdateFlagNotification(flagID uint, enabled bool) error {
 	return result.Error
 }
 
-// 统计用户已启用提醒的flag数量
+// 统计用户已启用提醒的flag数量（只统计未完成的flag）
 func CountEnabledNotificationFlags(userID uint) (int64, error) {
 	var count int64
-	result := DB.Model(&model.Flag{}).Where("user_id = ? AND enable_notification = ?", userID, true).Count(&count)
+	result := DB.Model(&model.Flag{}).Where("user_id = ? AND enable_notification = ? AND had_done = ?", userID, true, false).Count(&count)
 	return count, result.Error
 }
 
@@ -1052,13 +1052,27 @@ func UpdateUserExistStatus(email string) error {
 
 // 存储用户提醒时间
 func UpdateUserRemindTime(id uint, hour int, min int) error {
-	result := DB.Model(&model.User{}).Where("id=?", id).Updates(map[string]interface{}{"remind_hour": hour, "remind_min": min})
+	// 同时更新兼容字段和新的学习提醒字段，保持向后兼容
+	result := DB.Model(&model.User{}).Where("id=?", id).Updates(map[string]interface{}{"remind_hour": hour, "remind_min": min, "study_remind_hour": hour, "study_remind_min": min})
 	return result.Error
 }
 
 // 是否开启提醒
 func UpdateUserRemindStatus(id uint, IsRemind bool) error {
-	result := DB.Model(&model.User{}).Where("id=?", id).Update("is_remind", IsRemind)
+	// 更新兼容字段和新的学习提醒总开关
+	result := DB.Model(&model.User{}).Where("id=?", id).Updates(map[string]interface{}{"is_remind": IsRemind, "is_study_remind": IsRemind})
+	return result.Error
+}
+
+// 更新学习提醒开关（新）
+func UpdateUserStudyRemindStatus(id uint, enabled bool) error {
+	result := DB.Model(&model.User{}).Where("id=?", id).Update("is_study_remind", enabled)
+	return result.Error
+}
+
+// 更新 Flag 提醒开关（用户级别的总开关）
+func UpdateUserFlagRemindStatus(id uint, enabled bool) error {
+	result := DB.Model(&model.User{}).Where("id=?", id).Update("is_flag_remind", enabled)
 	return result.Error
 }
 

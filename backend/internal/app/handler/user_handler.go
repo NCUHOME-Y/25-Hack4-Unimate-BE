@@ -29,6 +29,7 @@ func BasicUser(r *gin.Engine) {
 	e.PUT("/api/updateDaka", service.DoDaKa())
 	e.PUT("/api/updateRemindTime", service.UpdateUserRemindTime())
 	e.PUT("/api/updateRemindStatus", service.UpdateUserRemind())
+	e.PUT("/api/updateFlagRemindStatus", service.UpdateUserFlagRemind())
 	e.GET("/api/getDakaRecords", service.GetDaKaRecords())
 	e.PUT("/api/addPoints", service.AddPointsHandler())
 	e.GET("/api/getUserStats", service.GetUserStats())
