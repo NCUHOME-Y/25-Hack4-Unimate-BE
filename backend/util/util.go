@@ -125,7 +125,7 @@ func LogDebug(message string, fields logrus.Fields) {
 	logger.WithFields(fields).Debug(message)
 }
 
-// 发送邮箱
+// 发送邮箱?
 func SentEmail(to, subject, body string) error {
 	// 验证环境变量
 	smtpHost := os.Getenv("SMTP_HOST")
@@ -135,9 +135,6 @@ func SentEmail(to, subject, body string) error {
 	smtpFrom := os.Getenv("SMTP_FROM")
 
 	if smtpHost == "" || smtpPort == "" || smtpUser == "" || smtpPass == "" || smtpFrom == "" {
-		errMsg := fmt.Sprintf("❌ SMTP配置缺失: HOST=%s, PORT=%s, USER=%s, FROM=%s",
-			smtpHost, smtpPort, smtpUser, smtpFrom)
-		fmt.Println(errMsg)
 		return fmt.Errorf("SMTP配置不完整")
 	}
 

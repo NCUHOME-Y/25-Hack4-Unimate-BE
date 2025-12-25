@@ -189,7 +189,6 @@ func getRankingWithCache(
 
 // 更新用户积分到 Redis 有序集合
 
-
 // 从 Redis 有序集合获取排行榜（支持分页）
 func GetRankingFromRedisZSet(key string, start, stop int64) ([]map[string]interface{}, error) {
 	// 从高分到低分获取
@@ -230,7 +229,6 @@ func StartRankingCacheRefresh() {
 
 	go func() {
 		for range ticker.C {
-			log.Println("[info] 定时刷新排行榜缓存...")
 			if err := RefreshAllRankings(); err != nil {
 				log.Printf("[error] 刷新排行榜缓存失败: %v", err)
 			}
