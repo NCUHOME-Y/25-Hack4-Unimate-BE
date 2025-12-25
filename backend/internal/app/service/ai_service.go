@@ -10,8 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
+	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // 学习计划请求
@@ -235,119 +238,7 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 使用Python官方教程配合视频课程学习，每天编写2-3个小程序巩固知识，在LeetCode刷入门题。
 1. 完成Python基础教程前5章并做笔记（每日完成：1次）
 2. 编写基础练习程序（变量、循环、函数）并添加注释（每日完成：1次）
-3. 总结学习心得并分享（每日完成：1次）
-
-阶段二：进阶学习（预计1-2周）
-【阶段目标】掌握Python核心数据结构和面向对象编程，解决实际问题。
-【行动要点】
-- 列表、元组、字典、集合的使用，理解适用场景。
-- 字符串处理和正则表达式，提升文本处理能力。
-- 文件读写和数据持久化，掌握数据管理。
-- 面向对象编程：类、对象、继承、多态。
-【实践建议】
-通过案例理解数据结构应用，编写小工具练习文件操作，设计类建模现实问题。
-1. 完成列表和字典练习题，整理常见错误（每日完成：2次）
-2. 开发学生成绩管理系统（使用类和文件）（每日完成：1次）
-3. 参与线上编程挑战，分享代码心得（每日完成：1次）
-
-阶段三：项目实战（预计1-2月）
-【阶段目标】独立完成完整项目，建立编程自信，具备团队协作能力。
-【行动要点】
-- 项目规划和模块化设计，合理分工与进度管理。
-- 代码规范和注释标准，提升团队协作效率。
-- 调试技巧和异常处理，减少bug提升稳定性。
-- 第三方库使用（requests、pandas等），扩展功能。
-【实践建议】
-从简单项目逐步增加复杂度，使用Git版本控制，参考GitHub开源项目学习。
-1. 开发实用工具（计算器/待办清单/天气应用）并撰写使用手册（每日完成：2次）
-2. 整理学习笔记和知识脑图并分享，收集反馈（每日完成：1次）
-3. 参与开源项目贡献代码，记录成长历程（每日完成：1次）"
-}
-
-【健康类示例】
-{
-    "flag": "早睡早起养成计划",
-    "difficulty": 100,
-    "plan": "【目标概述】调整作息规律，建立健康睡眠习惯，提升精神状态和生活质量。
-
-阶段一：适应期（预计1-3天）
-【阶段目标】逐步调整生物钟，初步建立早睡早起意识，减轻身体不适感。
-【行动要点】
-- 固定睡眠时间窗口（23:00-7:00），保证8小时睡眠。
-- 睡前1小时避免电子设备，放松身心准备入睡。
-- 早晨使用闹钟并立即起床，避免赖床。
-【实践建议】
-可以设置多个闹钟，并把闹钟放在离床较远的位置。睡前可以读纸质书、听轻音乐放松，营造良好睡眠环境。
-1. 在23:00前洗漱完毕并上床（每日完成：1次）
-2. 7:00准时起床并开窗通风（每日完成：1次）
-3. 记录当天睡眠质量和精神状态（每日完成：1次）
-
-阶段二：巩固期（预计1-2周）
-【阶段目标】稳定作息习惯，身体适应新节奏，减少对意志力的依赖。
-【行动要点】
-- 培养睡前仪式感（洗澡、护肤、冥想等），形成条件反射。
-- 增加晨间活动（运动、早餐、晨读），强化早起动力。
-- 午睡控制在20-30分钟，避免影响夜间睡眠。
-【实践建议】
-可以加入早起打卡群互相监督，设计奖励机制激励自己。白天增加户外活动，帮助夜晚更好入睡。
-1. 完成睡前固定流程（洗澡-护肤-冥想）（每日完成：1次）
-2. 早起后完成30分钟晨间活动（运动/阅读）（每日完成：1次）
-3. 总结一天作息情况并调整计划（每日完成：1次）
-
-阶段三：习惯养成期（预计1-2月）
-【阶段目标】将早睡早起内化为生活方式，无需刻意坚持即可自然执行。
-【行动要点】
-- 根据季节调整作息时间，保持灵活性。
-- 建立应对特殊情况的补救措施（偶尔晚睡如何快速恢复）。
-- 扩展健康生活习惯（规律运动、健康饮食），形成良性循环。
-【实践建议】
-定期回顾身体变化和精神状态改善，强化习惯的正向反馈。可以记录睡眠日记，分析影响睡眠质量的因素。
-1. 持续保持固定作息，允许周末±30分钟弹性（每日完成：1次）
-2. 每周总结作息规律和健康改善情况（每日完成：1次）
-3. 分享早睡早起心得，帮助他人建立习惯（每日完成：1次）"
-}
-
-【工作效率类示例】
-{
-    "flag": "提升工作效率计划",
-    "difficulty": 200,
-    "plan": "【目标概述】优化工作流程，提升任务完成效率，建立高效的时间管理体系。
-
-阶段一：基础规划（预计1-3天）
-【阶段目标】建立清晰的任务管理系统，培养记录和规划的习惯。
-【行动要点】
-- 每日早晨列出当天所有工作任务，按优先级排序。
-- 使用番茄工作法（25分钟专注+5分钟休息）提升专注力。
-- 记录时间分配，分析效率瓶颈和改进空间。
-【实践建议】
-使用Todo工具或纸笔记录任务，设置专注计时器，每天晚上复盘时间使用情况。
-1. 制定每日工作计划并按优先级排序（每日完成：1次）
-2. 完成3个番茄钟的专注工作（每日完成：3次）
-3. 记录时间使用日志并分析效率（每日完成：1次）
-
-阶段二：深度工作（预计1-2周）
-【阶段目标】培养深度工作能力，减少干扰，提升任务完成质量。
-【行动要点】
-- 设置专注时段，关闭非必要通知和干扰源。
-- 合理安排会议和沟通时间，避免频繁打断。
-- 学习高效工具和快捷键，减少重复操作时间。
-【实践建议】
-将重要任务安排在精力最充沛的时段，使用日历块时间管理，定期学习提效工具。
-1. 完成2小时深度工作时段，处理重要任务（每日完成：2次）
-2. 学习并应用1个提效工具或技巧（每日完成：1次）
-3. 优化工作流程，记录改进措施（每日完成：1次）
-
-阶段三：系统优化（预计1-2月）
-【阶段目标】建立个人工作系统，实现可持续的高效工作状态。
-【行动要点】
-- 建立标准化工作流程和模板，减少重复思考。
-- 定期回顾和优化工作方法，持续改进效率。
-- 保持工作生活平衡，避免过度消耗精力。
-【实践建议】
-每周进行工作回顾，总结经验教训，建立个人知识库，分享效率心得。
-1. 维护个人工作系统，优化流程和模板（每日完成：1次）
-2. 完成核心工作任务，保证质量和效率（每日完成：2次）
-3. 每周进行工作复盘和经验总结（每日完成：1次）"
+3. 总结学习心得并分享（每日完成：1次）"
 }
 
 【错误示例】
@@ -399,138 +290,189 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 	return flag, plan, difficulty, nil
 }
 
-// 解析AI响应
-func (p *TaiFuLearningPlanner) parseAIResponse(response string) (string, string, int, error) {
-	// 清理响应（移除可能的markdown代码块标记）
-	cleanResponse := response
-	cleanResponse = strings.TrimPrefix(cleanResponse, "```json")
-	cleanResponse = strings.TrimPrefix(cleanResponse, "```")
-	cleanResponse = strings.TrimSuffix(cleanResponse, "```")
-	cleanResponse = strings.TrimSpace(cleanResponse)
-
-	// 尝试解析JSON响应
-	var result struct {
-		Flag       string `json:"flag"`
-		Difficulty int    `json:"difficulty"`
-		Plan       string `json:"plan"`
-	}
-
-	err := json.Unmarshal([]byte(cleanResponse), &result)
-	if err != nil {
-		// 如果解析失败,返回原始响应作为计划
-		return "", cleanResponse, 0, nil
-	}
-
-	// 验证必要字段
-	if result.Plan == "" {
-		return result.Flag, cleanResponse, result.Difficulty, nil
-	}
-
-	return result.Flag, result.Plan, result.Difficulty, nil
-}
-
-// min helper function
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-// 调用OpenAI API
+// callOpenAI 发起 AI 请求并返回原始响应字符串
 func (p *TaiFuLearningPlanner) callOpenAI(systemPrompt, userPrompt string) (string, error) {
-	// 检查API密钥
-	if p.APIKey == "" {
-		return "", fmt.Errorf("❌ API密钥未配置，请检查环境变量 APIKEY")
-	}
-
-	// 准备请求数据 - 使用标准格式
-	type Message struct {
-		Role    string `json:"role"`
-		Content string `json:"content"`
-	}
-
-	requestData := map[string]interface{}{
-		"model": "Qwen/Qwen2.5-7B-Instruct", // 使用更稳定的模型
-		"messages": []Message{
-			{Role: "system", Content: systemPrompt},
-			{Role: "user", Content: userPrompt},
+	payload := map[string]interface{}{
+		"model": "gpt-4o-mini",
+		"messages": []map[string]string{
+			{"role": "system", "content": systemPrompt},
+			{"role": "user", "content": userPrompt},
 		},
-		"max_tokens":  4000, // 增加token数，确保完整输出
-		"temperature": 0.7,
-		"stream":      false,
 	}
-
-	requestBody, err := json.Marshal(requestData)
+	b, err := json.Marshal(payload)
 	if err != nil {
-		return "", fmt.Errorf("序列化请求失败: %v", err)
+		return "", err
 	}
-
-	req, err := http.NewRequest("POST", p.BaseURL, bytes.NewBuffer(requestBody))
+	req, err := http.NewRequest("POST", p.BaseURL, bytes.NewReader(b))
 	if err != nil {
-		return "", fmt.Errorf("创建请求失败: %v", err)
+		return "", err
 	}
-
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+p.APIKey)
-
-	// 创建带 60 秒超时的客户端（给 AI 充足时间响应）
-	client := &http.Client{Timeout: 60 * time.Second}
+	if p.APIKey != "" {
+		req.Header.Set("Authorization", "Bearer "+p.APIKey)
+	}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("❌ 发送请求失败: %v", err)
+		return "", err
 	}
 	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("读取响应失败: %v", err)
+		return "", err
 	}
+	return string(bodyBytes), nil
+}
 
-	var response struct {
-		Code    int    `json:"code"`
-		Message string `json:"message"`
-		Data    struct {
-			Choices []struct {
-				Message struct {
-					Content string `json:"content"`
-				} `json:"message"`
-			} `json:"choices"`
-		} `json:"data"`
+// parseAIResponse 尝试从 AI 响应中解析 JSON 格式的 flag/plan/difficulty
+func (p *TaiFuLearningPlanner) parseAIResponse(response string) (string, string, int, error) {
+	// 优先尝试 OpenAI 样式的 wrapper
+	var wrapper struct {
 		Choices []struct {
 			Message struct {
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
-		Error struct {
-			Message string `json:"message"`
-		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(response), &wrapper); err == nil && len(wrapper.Choices) > 0 {
+		content := wrapper.Choices[0].Message.Content
+		var out struct {
+			Flag       string `json:"flag"`
+			Plan       string `json:"plan"`
+			Difficulty int    `json:"difficulty"`
+		}
+		if err2 := json.Unmarshal([]byte(content), &out); err2 == nil {
+			return out.Flag, out.Plan, out.Difficulty, nil
+		}
 	}
 
-	if err := json.Unmarshal(body, &response); err != nil {
-		return "", fmt.Errorf("解析响应失败: %v", err)
+	// 直接尝试将响应解析为目标结构
+	var out struct {
+		Flag       string `json:"flag"`
+		Plan       string `json:"plan"`
+		Difficulty int    `json:"difficulty"`
+	}
+	if err := json.Unmarshal([]byte(response), &out); err == nil {
+		if out.Plan != "" {
+			return out.Flag, out.Plan, out.Difficulty, nil
+		}
 	}
 
-	// 检查是否有错误码
-	if response.Code != 0 && response.Code != 200 {
-		return "", fmt.Errorf("❌ SiliconFlow API 错误: %s (错误码: %d)", response.Message, response.Code)
-	}
+	return "", "", 0, fmt.Errorf("无法解析AI响应")
+}
 
-	if response.Error.Message != "" {
-		return "", fmt.Errorf("❌ SiliconFlow API 错误: %s", response.Error.Message)
-	}
+// ==================== AI 历史记录相关接口 ====================
 
-	// 优先检查 Data 中的 Choices（某些版本 API）
-	if len(response.Data.Choices) > 0 {
-		content := response.Data.Choices[0].Message.Content
-		return content, nil
-	}
+// 保存AI历史记录
+func SaveAIHistory() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := utils.GetCurrentUserID(c)
+		if !ok || id == 0 {
+			c.JSON(401, gin.H{"error": "未授权，请先登录"})
+			return
+		}
 
-	// 备选：检查顶级的 Choices
-	if len(response.Choices) > 0 {
-		content := response.Choices[0].Message.Content
-		return content, nil
-	}
+		var req struct {
+			Background    string `json:"background"`
+			Goal          string `json:"goal"`
+			Difficulty    string `json:"difficulty"`
+			GeneratedPlan string `json:"generated_plan"` // JSON字符串
+		}
 
-	return "", fmt.Errorf("未收到有效的 AI 响应")
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "参数格式错误"})
+			utils.LogError("解析AI历史记录参数失败", logrus.Fields{"error": err.Error()})
+			return
+		}
+
+		// 创建AI历史记录
+		aiHistory := model.AIHistory{
+			UserID:        id,
+			Background:    req.Background,
+			Goal:          req.Goal,
+			Difficulty:    req.Difficulty,
+			GeneratedPlan: req.GeneratedPlan,
+			CreatedAt:     time.Now(),
+		}
+
+		if err := repository.DB.Create(&aiHistory).Error; err != nil {
+			c.JSON(500, gin.H{"error": "保存AI历史记录失败"})
+			utils.LogError("保存AI历史记录失败", logrus.Fields{"user_id": id, "error": err.Error()})
+			return
+		}
+
+		utils.LogInfo("保存AI历史记录成功", logrus.Fields{"user_id": id, "goal": req.Goal})
+		c.JSON(200, gin.H{"success": true, "message": "AI历史记录已保存"})
+	}
+}
+
+// 获取AI历史记录
+func GetAIHistory() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := utils.GetCurrentUserID(c)
+		if !ok || id == 0 {
+			c.JSON(401, gin.H{"error": "未授权，请先登录"})
+			return
+		}
+
+		var aiHistories []model.AIHistory
+		if err := repository.DB.Where("user_id = ?", id).Order("created_at desc").Limit(10).Find(&aiHistories).Error; err != nil {
+			c.JSON(500, gin.H{"error": "获取AI历史记录失败"})
+			utils.LogError("获取AI历史记录失败", logrus.Fields{"user_id": id, "error": err.Error()})
+			return
+		}
+
+		// 转换为前端需要的格式
+		var result []gin.H
+		for _, history := range aiHistories {
+			var plan interface{}
+			if err := json.Unmarshal([]byte(history.GeneratedPlan), &plan); err != nil {
+				// 如果解析失败，使用原始字符串
+				plan = history.GeneratedPlan
+			}
+
+			result = append(result, gin.H{
+				"id":             history.ID,
+				"background":     history.Background,
+				"goal":           history.Goal,
+				"difficulty":     history.Difficulty,
+				"generated_plan": plan,
+				"created_at":     history.CreatedAt,
+			})
+		}
+
+		utils.LogInfo("获取AI历史记录成功", logrus.Fields{"user_id": id, "count": len(result)})
+		c.JSON(200, gin.H{"ai_histories": result})
+	}
+}
+
+// 删除AI历史记录
+func DeleteAIHistory() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := utils.GetCurrentUserID(c)
+		if !ok || id == 0 {
+			c.JSON(401, gin.H{"error": "未授权，请先登录"})
+			return
+		}
+
+		var req struct {
+			HistoryID uint `json:"history_id" binding:"required"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "参数格式错误"})
+			utils.LogError("解析删除AI历史记录参数失败", logrus.Fields{"error": err.Error()})
+			return
+		}
+
+		// 确保只能删除自己的记录
+		if err := repository.DB.Where("id = ? AND user_id = ?", req.HistoryID, id).Delete(&model.AIHistory{}).Error; err != nil {
+			c.JSON(500, gin.H{"error": "删除AI历史记录失败"})
+			utils.LogError("删除AI历史记录失败", logrus.Fields{"user_id": id, "history_id": req.HistoryID, "error": err.Error()})
+			return
+		}
+
+		utils.LogInfo("删除AI历史记录成功", logrus.Fields{"user_id": id, "history_id": req.HistoryID})
+		c.JSON(200, gin.H{"success": true, "message": "AI历史记录已删除"})
+	}
 }
