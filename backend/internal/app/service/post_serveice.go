@@ -1,8 +1,6 @@
 ﻿package service
 
 import (
-	"fmt"
-
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
 	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
@@ -148,33 +146,7 @@ func CommentOnPost() gin.HandlerFunc {
 					receiverName = postAuthor.Name
 				}
 
-				emailSubject := "【知序】您收到了新的消息"
-				emailBody := fmt.Sprintf(`尊敬的%s，您好！
-
-您的帖子"%s"收到了新的评论：
-
-评论者：%s
-评论内容：%s
-
-请登录知序平台（http://139.199.157.76）查看详情。
-
-——知序平台`, receiverName, post.Title, commenterName, req.Content)
-
-				// 异步发送邮件，不影响主流程
-				go func() {
-					if err := utils.SentEmail(postAuthor.Email, emailSubject, emailBody); err != nil {
-						utils.LogError("评论通知邮件发送失败", logrus.Fields{
-							"post_id":  req.PostID,
-							"to_email": postAuthor.Email,
-							"error":    err.Error(),
-						})
-					} else {
-						utils.LogInfo("评论通知邮件发送成功", logrus.Fields{
-							"post_id":  req.PostID,
-							"to_email": postAuthor.Email,
-						})
-					}
-				}()
+				SendPostCommentNotification(postAuthor.Email, receiverName, post.Title, commenterName, req.Content)
 			}
 		}
 
@@ -336,33 +308,7 @@ func CommentOnFlag() gin.HandlerFunc {
 					receiverName = flagOwner.Name
 				}
 
-				emailSubject := "【知序】您收到了新的消息"
-				emailBody := fmt.Sprintf(`尊敬的%s，您好！
-
-您的目标"%s"收到了新的评论：
-
-评论者：%s
-评论内容：%s
-
-请登录知序平台（http://139.199.157.76）查看详情。
-
-——知序平台`, receiverName, flag.Title, commenterName, comment.Content)
-
-				// 异步发送邮件，不影响主流程
-				go func() {
-					if err := utils.SentEmail(flagOwner.Email, emailSubject, emailBody); err != nil {
-						utils.LogError("目标评论通知邮件发送失败", logrus.Fields{
-							"flag_id":  comment.FlagID,
-							"to_email": flagOwner.Email,
-							"error":    err.Error(),
-						})
-					} else {
-						utils.LogInfo("目标评论通知邮件发送成功", logrus.Fields{
-							"flag_id":  comment.FlagID,
-							"to_email": flagOwner.Email,
-						})
-					}
-				}()
+				SendFlagCommentNotification(flagOwner.Email, receiverName, flag.Title, commenterName, comment.Content)
 			}
 		}
 

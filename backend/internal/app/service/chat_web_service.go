@@ -249,31 +249,7 @@ func (manager *Manager) Start() {
 								receiverName = targetUser.Name
 							}
 
-							emailSubject := "【知序】您收到了新的消息"
-							emailBody := fmt.Sprintf(`尊敬的%s，您好！
-
-%s 给您发送了一条私聊消息：
-
-"%s"
-
-请登录知序平台（http://139.199.157.76）查看详情。
-
-——知序平台`, receiverName, senderName, message.Content)
-
-							if err := utils.SentEmail(targetUser.Email, emailSubject, emailBody); err != nil {
-								utils.LogError("私聊通知邮件发送失败", logrus.Fields{
-									"from_id":  message.FromID,
-									"to_id":    message.ToID,
-									"to_email": targetUser.Email,
-									"error":    err.Error(),
-								})
-							} else {
-								utils.LogInfo("私聊通知邮件发送成功", logrus.Fields{
-									"from_id":  message.FromID,
-									"to_id":    message.ToID,
-									"to_email": targetUser.Email,
-								})
-							}
+							SendPrivateMessageNotification(targetUser.Email, receiverName, senderName, message.Content)
 						}
 					}()
 				}

@@ -179,19 +179,7 @@ func AddUserCronJob(user model.User) {
 	if user.IsStudyRemind {
 		cronStr := fmt.Sprintf("0 %d %d * * *", user.RemindMin, user.RemindHour)
 		cronScheduler.AddFunc(cronStr, func() {
-			emailSubject := "【知序】您的学习提醒"
-			emailBody := fmt.Sprintf(`尊敬的%s，您好！
-
-这是您设定的每日学习提醒。
-
-提醒时间：%02d:%02d
-
-请记得保持良好的习惯，持续追求进步。自律是成功的基石，每一天的坚持都将成为您通往目标的阶梯。
-
-请登录知序平台（http://139.199.157.76）查看详情。
-
-——知序平台`, user.Name, user.RemindHour, user.RemindMin)
-			utils.SentEmail(user.Email, emailSubject, emailBody)
+			SendStudyReminderEmail(user.Email, user.Name, user.RemindHour, user.RemindMin)
 		})
 		utils.LogInfo("为新用户添加提醒任务", logrus.Fields{
 			"user_id": user.ID,
@@ -236,29 +224,7 @@ func UpdateUserReminderJob(userID uint, hour, min int, isRemind bool) {
 				"time":    fmt.Sprintf("%02d:%02d", hour, min),
 			})
 
-			// 构建正式的邮件内容
-			emailSubject := "【知序】您的学习提醒"
-			emailBody := fmt.Sprintf(`尊敬的%s，您好！
-
-这是您设定的每日学习提醒。
-
-提醒时间：%02d:%02d
-
-请记得保持良好的习惯，持续追求进步。自律是成功的基石，每一天的坚持都将成为您通往目标的阶梯。
-
-请登录知序平台（http://139.199.157.76）查看详情。
-
-——知序平台`, user.Name, hour, min)
-
-			err := utils.SentEmail(user.Email, emailSubject, emailBody)
-			if err != nil {
-				utils.LogError("发送提醒邮件失败", logrus.Fields{
-					"user_id": userID,
-					"error":   err.Error(),
-				})
-			} else {
-				utils.LogInfo("✅ 提醒邮件发送成功", logrus.Fields{"user_id": userID})
-			}
+			SendStudyReminderEmail(user.Email, user.Name, hour, min)
 		})
 
 		if err != nil {
@@ -405,35 +371,9 @@ func sendFlagReminders() {
 				continue
 			}
 
-			// 构建正式的邮件内容
-			emailSubject := "知序 - Flag目标提醒通知"
-			emailBody := fmt.Sprintf(`尊敬的 %s 用户：您好！
-
-这是来自知序平台的Flag目标提醒通知。
-
-【Flag详情】
-标题：%s
-详细说明：%s
-提醒时间：%s
-优先级：%d
-
-请及时完成您设定的目标任务，保持良好的学习和生活习惯。持续的自律和坚持将帮助您实现更好的自己。
-
-请登录知序平台（http://139.199.157.76）查看详情。
-
-——知序平台
-`, user.Name, flag.Title, flag.Detail, flag.ReminderTime, flag.Priority)
-
-			// 发送邮件
-			err = utils.SentEmail(user.Email, emailSubject, emailBody)
-			if err != nil {
-				utils.LogError("发送Flag提醒邮件失败", logrus.Fields{
-					"user_id": flag.UserID,
-					"flag_id": flag.ID,
-					"email":   user.Email,
-					"error":   err.Error(),
-				})
-			} else {
+			// 发送Flag提醒邮件
+			err = SendFlagReminderEmail(user.Email, user.Name, flag.Title, flag.Detail, flag.ReminderTime, flag.Priority)
+			if err == nil {
 				utils.LogInfo("✅ Flag提醒邮件发送成功", logrus.Fields{
 					"user_id":   flag.UserID,
 					"flag_id":   flag.ID,

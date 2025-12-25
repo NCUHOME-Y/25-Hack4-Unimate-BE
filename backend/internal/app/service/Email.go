@@ -266,18 +266,7 @@ func SendEmailCode() gin.HandlerFunc {
 		code := utils.GenerateCode()
 
 		// 发送邮件
-		emailBody := fmt.Sprintf(`尊敬的用户，您好！
-
-您正在进行身份验证，验证码为：
-
-    %s
-
-该验证码将在5分钟内有效，请及时使用。如非本人操作，请忽略此邮件。
-
-请登录知序平台（http://139.199.157.76）查看详情。
-
-——知序平台`, code)
-		sendErr := utils.SentEmail(req.Email, "【知序】身份验证码", emailBody)
+		sendErr := SendIdentityVerificationEmail(req.Email, code)
 		if sendErr != nil {
 			c.JSON(500, gin.H{"error": "验证码发送失败,请重新再试..."})
 			utils.LogError("验证码发送失败", logrus.Fields{"user_email": req.Email, "error": sendErr.Error()})
