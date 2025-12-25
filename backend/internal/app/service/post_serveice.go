@@ -18,8 +18,7 @@ func PostUserPost() gin.HandlerFunc {
 			Content string `json:"content"`
 			FlagID  *uint  `json:"flag_id"` // 关联的Flag ID（可选）
 		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": "Invalid input"})
+		if HandleBindError(c, c.ShouldBindJSON(&req)) {
 			return
 		}
 
@@ -62,8 +61,7 @@ func DeleteUserPost() gin.HandlerFunc {
 		var req struct {
 			PostID uint `json:"post_id"`
 		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": "Invalid input"})
+		if HandleBindError(c, c.ShouldBindJSON(&req)) {
 			return
 		}
 
@@ -102,8 +100,7 @@ func CommentOnPost() gin.HandlerFunc {
 			PostID  uint   `json:"postId"`
 			Content string `json:"content"`
 		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": "Invalid input"})
+		if err := c.ShouldBindJSON(&req); HandleBindError(c, err) {
 			return
 		}
 
@@ -135,17 +132,8 @@ func CommentOnPost() gin.HandlerFunc {
 			// 不是自己的帖子才发通知
 			postAuthor, err := repository.GetUserByID(post.UserID)
 			if err == nil && postAuthor.Email != "" {
-				commenter, _ := repository.GetUserByID(userID)
-				commenterName := "用户"
-				if commenter.Name != "" {
-					commenterName = commenter.Name
-				}
-
-				receiverName := "用户"
-				if postAuthor.Name != "" {
-					receiverName = postAuthor.Name
-				}
-
+				commenterName := GetUserDisplayNameByID(userID)
+				receiverName := GetUserDisplayName(postAuthor)
 				SendPostCommentNotification(postAuthor.Email, receiverName, post.Title, commenterName, req.Content)
 			}
 		}
@@ -185,8 +173,7 @@ func DeleteUserPostComment() gin.HandlerFunc {
 		var req struct {
 			CommentID uint `json:"comment_id"`
 		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": "Invalid input"})
+		if err := c.ShouldBindJSON(&req); HandleBindError(c, err) {
 			return
 		}
 
@@ -255,8 +242,7 @@ func LikeFlag() gin.HandlerFunc {
 			FlagID uint `json:"flag_id"`
 			Like   int  `json:"like"`
 		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": "Invalid input"})
+		if err := c.ShouldBindJSON(&req); HandleBindError(c, err) {
 			return
 		}
 		err := repository.UpdateFlagLikes(req.FlagID, req.Like)
@@ -272,8 +258,7 @@ func LikeFlag() gin.HandlerFunc {
 func CommentOnFlag() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var comment model.FlagComment
-		if err := c.ShouldBindJSON(&comment); err != nil {
-			c.JSON(400, gin.H{"error": "Invalid input"})
+		if err := c.ShouldBindJSON(&comment); HandleBindError(c, err) {
 			return
 		}
 
@@ -297,17 +282,8 @@ func CommentOnFlag() gin.HandlerFunc {
 			// 不是自己的flag才发通知
 			flagOwner, err := repository.GetUserByID(flag.UserID)
 			if err == nil && flagOwner.Email != "" {
-				commenter, _ := repository.GetUserByID(userID)
-				commenterName := "用户"
-				if commenter.Name != "" {
-					commenterName = commenter.Name
-				}
-
-				receiverName := "用户"
-				if flagOwner.Name != "" {
-					receiverName = flagOwner.Name
-				}
-
+				commenterName := GetUserDisplayNameByID(userID)
+				receiverName := GetUserDisplayName(flagOwner)
 				SendFlagCommentNotification(flagOwner.Email, receiverName, flag.Title, commenterName, comment.Content)
 			}
 		}
@@ -322,8 +298,7 @@ func DeleteFlagComment() gin.HandlerFunc {
 		var req struct {
 			FlagCommentID uint `json:"flagcomment_id"`
 		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": "Invalid input"})
+		if err := c.ShouldBindJSON(&req); HandleBindError(c, err) {
 			return
 		}
 		err := repository.DeleteFlagComment(req.FlagCommentID)
@@ -388,8 +363,7 @@ func GetFlagLikes() gin.HandlerFunc {
 		var req struct {
 			FlagID uint `json:"flag_id"`
 		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": "Invalid input"})
+		if HandleBindError(c, c.ShouldBindJSON(&req)) {
 			return
 		}
 		like, err := repository.GetFlagLikes(req.FlagID)
@@ -409,8 +383,7 @@ func GetPostLikes() gin.HandlerFunc {
 			PostID uint `json:"post_id"`
 		}
 
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": "Invalid input"})
+		if err := c.ShouldBindJSON(&req); HandleBindError(c, err) {
 			return
 		}
 		like, err := repository.GetPostLikes(req.PostID)

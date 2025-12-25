@@ -173,18 +173,11 @@ func RegisterUser() gin.HandlerFunc {
 		}
 
 		// 生成并发送验证码
-		code := utils.GenerateCode()
-		err := SendVerificationCodeEmail(user.Email, code)
+		_, err := GenerateAndSendVerificationCode(user.Email)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "验证码发送失败，请稍后重试"})
-			utils.LogError("验证码发送失败", logrus.Fields{"email": user.Email, "error": err.Error()})
 			return
 		}
-
-		// 保存验证码到数据库
-		repository.SaveEmailCodeToDB(code, user.Email)
-
-		utils.LogInfo("注册验证码已发送", logrus.Fields{"email": user.Email})
 		c.JSON(http.StatusOK, gin.H{
 			"message": "验证码已发送到您的邮箱，请查收并输入验证码完成注册",
 			"email":   user.Email,

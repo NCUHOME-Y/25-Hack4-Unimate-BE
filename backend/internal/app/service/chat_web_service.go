@@ -244,11 +244,7 @@ func (manager *Manager) Start() {
 								senderName = fmt.Sprintf("用户%d", message.FromID)
 							}
 
-							receiverName := "用户"
-							if targetUser.Name != "" {
-								receiverName = targetUser.Name
-							}
-
+							receiverName := GetUserDisplayName(targetUser)
 							SendPrivateMessageNotification(targetUser.Email, receiverName, senderName, message.Content)
 						}
 					}()

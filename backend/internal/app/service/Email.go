@@ -262,20 +262,12 @@ func SendEmailCode() gin.HandlerFunc {
 			return
 		}
 
-		// 生成验证码
-		code := utils.GenerateCode()
-
-		// 发送邮件
-		sendErr := SendIdentityVerificationEmail(req.Email, code)
+		// 生成并发送验证码
+		_, sendErr := GenerateAndSendIdentityCode(req.Email)
 		if sendErr != nil {
 			c.JSON(500, gin.H{"error": "验证码发送失败,请重新再试..."})
-			utils.LogError("验证码发送失败", logrus.Fields{"user_email": req.Email, "error": sendErr.Error()})
 			return
 		}
-
-		// 保存验证码到数据库
-		repository.SaveEmailCodeToDB(code, req.Email)
-		utils.LogInfo("验证码发送成功", logrus.Fields{"user_email": req.Email})
 		c.JSON(http.StatusOK, gin.H{"message": "验证码已发送!"})
 	}
 }
