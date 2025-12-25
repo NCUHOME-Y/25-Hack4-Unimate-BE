@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
+	"github.com/gin-gonic/gin"
 )
 
-// Redis 排行榜服务 - 使用缓存加速排行榜查询
-
+// ==================== 常量和缓存配置 ====================
 const (
 	// Redis key 定义
 	RankingKeyCounts       = "ranking:counts"      // 积分排行榜
@@ -23,8 +24,76 @@ const (
 	RankingCacheTTLSeconds = int64(5 * 60)         // 缓存过期时间（秒）
 )
 
-// ==================== 缓存更新函数 ====================
+// ==================== 基础排行榜查询（DB） ====================
+// 积分函数（已修正为使用原子自增）
+func AddUserCount(count string, id uint) {
+	var countInt, _ = strconv.Atoi(count)
+	err := repository.CountAddDB(id, countInt)
+	if err != nil {
+		log.Printf("[error] 积分更新失败: %v", err)
+		return
+	}
+	log.Printf("[info] 积分增加成功 - 用户ID: %d, 增加积分: %d", id, countInt)
+}
 
+// 积分封神榜
+func GetUserCount() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		users, err := repository.GetUserByCount()
+		if err != nil {
+			log.Printf("[error] 获取积分封神榜失败: %v", err)
+			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试...", "data": []gin.H{}})
+			return
+		}
+		//埋点
+		repository.AddTrackPointToDB(0, "查看积分封神榜")
+		c.JSON(200, gin.H{"message": "获取封神榜成功", "data": users})
+	}
+}
+
+// 月学习时间封神榜
+func GetUserMonthLearnTime() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		users, err := repository.GetUserByMonthLearnTime()
+		if err != nil {
+			log.Printf("[error] 获取月学习时间封神榜失败: %v", err)
+			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试...", "data": []gin.H{}})
+			return
+		}
+		repository.AddTrackPointToDB(0, "查看月学习时间封神榜")
+		c.JSON(200, gin.H{"message": "获取封神榜成功", "data": users})
+	}
+}
+
+// 总打卡数封神榜
+func GetUserTotalDaka() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		users, err := repository.GetUserByDaka()
+		if err != nil {
+			log.Printf("[error] 获取总打卡数封神榜失败: %v", err)
+			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试...", "data": []gin.H{}})
+			return
+		}
+		repository.AddTrackPointToDB(0, "查看总打卡数封神榜")
+		c.JSON(200, gin.H{"message": "获取封神榜成功", "data": users})
+	}
+}
+
+// 按flag数量排序
+func GetUserByFlagNumber() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		users, err := repository.GetUserByFlagNumber()
+		if err != nil {
+			log.Printf("[error] 获取flag数量封神榜失败: %v", err)
+			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试...", "data": []gin.H{}})
+			return
+		}
+		repository.AddTrackPointToDB(0, "查看flag数量封神榜")
+		c.JSON(200, gin.H{"message": "获取封神榜成功", "data": users})
+	}
+}
+
+// ==================== Redis 缓存更新函数 ====================
 // 更新所有排行榜缓存
 func RefreshAllRankings() error {
 	if err := RefreshRankingCounts(); err != nil {
@@ -114,7 +183,6 @@ func RefreshRankingFlagNumber() error {
 }
 
 // ==================== 查询函数（优先读取缓存） ====================
-
 // 获取积分排行榜（先查 Redis，没有则查 MySQL）
 func GetRankingCountsWithCache() ([]model.User, error) {
 	return getRankingWithCache(
@@ -184,12 +252,7 @@ func getRankingWithCache(
 	return users, nil
 }
 
-// 使用 Redis 有序集合实现排行榜
-// 优点：排序、分页、分数查询都很快
-
-// 更新用户积分到 Redis 有序集合
-
-// 从 Redis 有序集合获取排行榜（支持分页）
+// 使用 Redis 有序集合实现排行榜（分页/排名）
 func GetRankingFromRedisZSet(key string, start, stop int64) ([]map[string]interface{}, error) {
 	// 从高分到低分获取
 	results, err := repository.RedisClient.ZRevRangeWithScores(context.Background(), key, start, stop).Result()
