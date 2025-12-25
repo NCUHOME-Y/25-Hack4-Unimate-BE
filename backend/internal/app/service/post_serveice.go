@@ -413,3 +413,24 @@ func GetUserLikedPosts() gin.HandlerFunc {
 		c.JSON(200, gin.H{"liked_post_ids": ids})
 	}
 }
+
+// 根据帖子关键字搜索帖子
+func SearchPosts() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			Keyword string `json:"keyword"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "错误绑定"})
+			return
+		}
+		posts, err := repository.SearchPosts(req.Keyword)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "搜索帖子失败,请重新再试..."})
+			utils.LogError("搜索帖子失败", nil)
+			return
+		}
+		repository.AddTrackPointToDB(0, "搜索帖子")
+		c.JSON(200, gin.H{"post": posts})
+	}
+}

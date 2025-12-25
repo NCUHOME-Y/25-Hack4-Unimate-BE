@@ -33,6 +33,8 @@ func BasicUser(r *gin.Engine) {
 	e.GET("/api/getDakaRecords", service.GetDaKaRecords())
 	e.PUT("/api/addPoints", service.AddPointsHandler())
 	e.GET("/api/getUserStats", service.GetUserStats())
+	// 管理接口：手动触发 flag_number 对齐（需要登录）
+	e.POST("/api/admin/recalc_flag_numbers", service.RecalcFlagNumbers())
 }
 
 func Flag(r *gin.Engine) {

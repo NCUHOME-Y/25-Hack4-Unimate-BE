@@ -834,3 +834,24 @@ func AddPointsHandler() gin.HandlerFunc {
 		c.JSON(200, gin.H{"message": "积分添加成功", "count": user.Count})
 	}
 }
+
+// 根据用户名搜索用户
+func SearchUser() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			Keyword string `json:"username"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "错误绑定"})
+			return
+		}
+		users, err := repository.SearchUsers(req.Keyword)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "搜索用户失败,请重新再试..."})
+			utils.LogError("搜索用户失败", nil)
+			return
+		}
+		repository.AddTrackPointToDB(0, "搜索用户")
+		c.JSON(200, gin.H{"message": "搜索用户成功", "users": users})
+	}
+}

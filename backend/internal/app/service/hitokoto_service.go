@@ -156,7 +156,7 @@ func StartHitokotoScheduler() {
 	}()
 }
 
-// 手动触发一言发布（用于测试）
+// TriggerHitokoto 手动触发一言发布（用于测试）
 func TriggerHitokoto() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 确保一言账户存在

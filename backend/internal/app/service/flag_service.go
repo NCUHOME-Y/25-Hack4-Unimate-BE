@@ -625,3 +625,15 @@ func ToggleFlagNotification() gin.HandlerFunc {
 		c.JSON(200, gin.H{"success": true, "enable_notification": req.EnableNotification})
 	}
 }
+
+// RecalcFlagNumbers 重新计算所有用户的flag_number
+func RecalcFlagNumbers() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		utils.LogInfo("开始重新计算所有用户的flag_number", nil)
+
+		c.JSON(200, gin.H{
+			"success": true,
+			"message": "此功能当前不可用，请联系管理员",
+		})
+	}
+}
