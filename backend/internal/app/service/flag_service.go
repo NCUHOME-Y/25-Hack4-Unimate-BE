@@ -439,12 +439,6 @@ func UpdateFlagInfo() gin.HandlerFunc {
 			return
 		}
 
-		utils.LogInfo("收到更新Flag请求", logrus.Fields{
-			"flag_id":   req.ID,
-			"title":     req.Title,
-			"is_public": req.IsPublic,
-		})
-
 		// 验证flag是否存在
 		_, err := repository.GetFlagByID(req.ID)
 		if err != nil {

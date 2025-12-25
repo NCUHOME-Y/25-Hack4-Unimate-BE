@@ -42,8 +42,7 @@ type Flag struct {
 	ID                 uint          `gorm:"primaryKey" json:"id"`
 	Title              string        `gorm:"column:flag" json:"title"`          // 前端: title
 	Detail             string        `gorm:"column:plan_content" json:"detail"` // 前端: detail
-	LabelStr           string        `gorm:"column:label" json:"-"`             // 数据库字段（字符串）
-	Label              int           `gorm:"-" json:"label"`                    // 前端: label (1-5数字)
+	Label              int           `gorm:"column:label" json:"label"`         // 前端&数据库: label (1-5数字)
 	Priority           int           `json:"priority"`                          // 前端: priority (1-4)
 	UserID             uint          `json:"user_id"`
 	IsPublic           bool          `gorm:"column:is_public;not null;default:false" json:"is_public"`            // 是否公开到社交页面
@@ -60,48 +59,7 @@ type Flag struct {
 	ReminderTime       string        `gorm:"column:reminder_time;default:'12:00'" json:"reminder_time"`           // 该flag的提醒时间 (HH:MM 格式)
 }
 
-// AfterFind - GORM钩子：查询后转换label
-func (f *Flag) AfterFind(tx *gorm.DB) error {
-	// 将字符串label转换为数字（统一前后端格式）
-	labelMap := map[string]int{
-		"life":  1,
-		"study": 2,
-		"work":  3,
-		"like":  4,
-		"sport": 5,
-		"生活":    1,
-		"学习":    2,
-		"工作":    3,
-		"兴趣":    4,
-		"运动":    5,
-	}
-	if val, ok := labelMap[f.LabelStr]; ok {
-		f.Label = val
-	} else {
-		f.Label = 2 // 默认学习
-	}
-
-	return nil
-}
-
-// BeforeSave - GORM钩子：保存前转换label
-func (f *Flag) BeforeSave(tx *gorm.DB) error {
-	// 将数字label转换为字符串存储到数据库
-	labelMap := map[int]string{
-		1: "生活",
-		2: "学习",
-		3: "工作",
-		4: "兴趣",
-		5: "运动",
-	}
-	if val, ok := labelMap[f.Label]; ok {
-		f.LabelStr = val
-	} else {
-		f.LabelStr = "学习" // 默认学习
-	}
-
-	return nil
-}
+// 注意：Label字段已改为直接存储数字(1-5)到数据库，不再需要类型转换钩子
 
 // 帖子
 type Post struct {
