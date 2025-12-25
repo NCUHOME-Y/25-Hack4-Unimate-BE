@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Go 后端应用服务（连接宿主机的 MySQL）
   backend:
