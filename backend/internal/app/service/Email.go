@@ -232,16 +232,24 @@ func SendEmailCode() gin.HandlerFunc {
 			return
 		}
 
-		// 检查发送频率限制（1分钟内只能发送一次）
+		// 🔒 安全加固：检查发送频率限制（5分钟内只能发送一次 + 每天最多5次）
 		canSend, lastSentTime, err := repository.CheckEmailCodeRateLimit(req.Email)
 		if err != nil {
+			if err.Error() == "今日验证码发送次数已达上限" {
+				c.JSON(429, gin.H{
+					"error":   "今日验证码发送次数已达上限",
+					"message": "为了安全起见，每个邮箱每天最多发送5次验证码，请明天再试",
+				})
+				utils.LogWarn("今日验证码发送次数超限", logrus.Fields{"user_email": req.Email})
+				return
+			}
 			c.JSON(500, gin.H{"error": "检查发送频率失败,请重新再试..."})
 			utils.LogError("检查验证码发送频率失败", logrus.Fields{"user_email": req.Email, "error": err.Error()})
 			return
 		}
 		if !canSend {
 			// 计算还需要等待多少秒
-			waitSeconds := 60 - int(time.Since(lastSentTime).Seconds())
+			waitSeconds := 300 - int(time.Since(lastSentTime).Seconds()) // 5分钟 = 300秒
 			if waitSeconds < 0 {
 				waitSeconds = 0
 			}

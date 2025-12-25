@@ -23,6 +23,14 @@ var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 var logger = logrus.New()
 
 func init() {
+	// 🔒 安全检查：JWT_SECRET 必须设置
+	if len(jwtSecret) == 0 {
+		log.Fatal("❌ 安全错误：JWT_SECRET 环境变量未设置！请在 .env 文件中设置至少32位的随机字符串")
+	}
+	if len(jwtSecret) < 32 {
+		log.Fatal("❌ 安全错误：JWT_SECRET 长度不足32位！请使用更强的密钥")
+	}
+
 	file, err := os.OpenFile("Unimate.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		logger.Fatal("无法打开日志文件: ", err)
@@ -47,7 +55,7 @@ type Claims struct {
 // GenerateToken 生成 JWT Token
 func GenerateToken(userID uint, username, email string) (string, error) {
 	now := time.Now()
-	expireTime := now.Add(30 * 24 * time.Hour) // Token 有效期 7 天
+	expireTime := now.Add(7 * 24 * time.Hour) // 🔒 Token 有效期 7 天（安全加固）
 
 	claims := Claims{
 		UserID:   userID,

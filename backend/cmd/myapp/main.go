@@ -63,12 +63,37 @@ func main() {
 		})
 	})
 
-	// 添加全局 CORS 中间件
+	// 🔒 安全加固：请求体大小限制（防止DOS攻击）
+	r.MaxMultipartMemory = 10 << 20 // 10MB
+
+	// 🔒 安全加固：CORS 中间件 - 只允许特定域名
 	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		origin := c.Request.Header.Get("Origin")
+		// 允许的域名白名单
+		allowedOrigins := map[string]bool{
+			"http://localhost:5173":      true, // 本地开发
+			"http://139.199.157.76":      true, // 生产服务器
+			"http://139.199.157.76:5173": true, // 生产前端
+			// 可根据需要添加更多域名
+		}
+
+		if allowedOrigins[origin] {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		} else {
+			// 如果来源不在白名单，不设置CORS头（浏览器会阻止）
+			utils.LogWarn("未授权的CORS请求", map[string]interface{}{"origin": origin})
+		}
+
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
+
+		// 🔒 安全响应头
+		c.Writer.Header().Set("X-Content-Type-Options", "nosniff")
+		c.Writer.Header().Set("X-Frame-Options", "DENY")
+		c.Writer.Header().Set("X-XSS-Protection", "1; mode=block")
+		c.Writer.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		c.Writer.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)

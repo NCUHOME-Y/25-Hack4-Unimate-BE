@@ -19,7 +19,16 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	// 🔒 安全加固：WebSocket 来源检查
+	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		allowedOrigins := map[string]bool{
+			"http://localhost:5173":      true,
+			"http://139.199.157.76":      true,
+			"http://139.199.157.76:5173": true,
+		}
+		return allowedOrigins[origin]
+	},
 }
 
 type Client struct {

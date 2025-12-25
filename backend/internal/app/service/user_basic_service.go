@@ -29,7 +29,27 @@ func validateUsername(name string) bool {
 }
 
 func validatePassword(password string) bool {
-	return len(password) >= 6 && len(password) <= 100
+	// 🔒 安全加固：强制密码强度要求（匹配前端）
+	if len(password) < 8 || len(password) > 100 {
+		return false
+	}
+
+	// 至少包含3种类型字符
+	typeCount := 0
+	if regexp.MustCompile(`[a-z]`).MatchString(password) {
+		typeCount++ // 小写字母
+	}
+	if regexp.MustCompile(`[A-Z]`).MatchString(password) {
+		typeCount++ // 大写字母
+	}
+	if regexp.MustCompile(`[0-9]`).MatchString(password) {
+		typeCount++ // 数字
+	}
+	if regexp.MustCompile(`[^a-zA-Z0-9]`).MatchString(password) {
+		typeCount++ // 特殊字符
+	}
+
+	return typeCount >= 3
 }
 
 // 安全比较验证码（防止时序攻击）
@@ -334,16 +354,65 @@ func LoginUser() gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "登录失败,请重新再试..."})
 			return
 		}
+
+		// 🔒 安全加固：检查登录失败次数限制
+		loginKey := fmt.Sprintf("login_fail:%s", user_login.Email)
+		lockKey := fmt.Sprintf("login_lock:%s", user_login.Email)
+
+		// 检查是否被锁定
+		if repository.RedisClient != nil {
+			locked, err := repository.RedisClient.Get(repository.Ctx, lockKey).Result()
+			if err == nil && locked == "1" {
+				ttl := repository.RedisClient.TTL(repository.Ctx, lockKey).Val()
+				c.JSON(429, gin.H{
+					"error":   "登录失败次数过多，账户已被临时锁定",
+					"message": fmt.Sprintf("请等待 %d 分钟后再试", int(ttl.Minutes())+1),
+				})
+				utils.LogWarn("账户登录被锁定", logrus.Fields{"email": user_login.Email})
+				return
+			}
+		}
+
 		user, err := repository.GetUserBasicByEmail(user_login.Email) // 🔧 性能优化：登录验证只需要基本信息
 		// 检查用户是否存在
 		if err != nil || user.ID == 0 {
+			// 记录失败次数
+			if repository.RedisClient != nil {
+				repository.RedisClient.Incr(repository.Ctx, loginKey)
+				repository.RedisClient.Expire(repository.Ctx, loginKey, 15*time.Minute)
+			}
 			c.JSON(401, gin.H{"error": "用户名或密码错误,请重新再试..."})
 			return
 		}
 		// 检查密码是否正确
 		if !utils.CheckPasswordHash(user_login.Password, user.Password) {
+			// 🔒 安全加固：记录失败次数并检查是否需要锁定
+			if repository.RedisClient != nil {
+				failCount, _ := repository.RedisClient.Incr(repository.Ctx, loginKey).Result()
+				repository.RedisClient.Expire(repository.Ctx, loginKey, 15*time.Minute)
+
+				// 5次失败后锁定15分钟
+				if failCount >= 5 {
+					repository.RedisClient.Set(repository.Ctx, lockKey, "1", 15*time.Minute)
+					repository.RedisClient.Del(repository.Ctx, loginKey)
+					c.JSON(429, gin.H{
+						"error":   "登录失败次数过多，账户已被锁定",
+						"message": "请15分钟后再试",
+					})
+					utils.LogWarn("账户因多次登录失败被锁定", logrus.Fields{"email": user_login.Email, "fail_count": failCount})
+					return
+				}
+
+				utils.LogWarn("登录密码错误", logrus.Fields{"email": user_login.Email, "fail_count": failCount})
+			}
 			c.JSON(401, gin.H{"error": "用户名或密码错误,请重新再试..."})
 			return
+		}
+
+		// 🔒 登录成功，清除失败记录
+		if repository.RedisClient != nil {
+			repository.RedisClient.Del(repository.Ctx, loginKey)
+			repository.RedisClient.Del(repository.Ctx, lockKey)
 		}
 		token, err := utils.GenerateToken(user.ID, user.Name, user.Email)
 		if err != nil {

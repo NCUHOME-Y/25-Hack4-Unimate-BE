@@ -1027,21 +1027,32 @@ func DeleteExpiredEmailCodes() error {
 	return result.Error
 }
 
-// 检查邮箱最近1分钟内是否发送过验证码
+// 🔒 安全加固：检查邮箱验证码发送频率限制（5分钟1次 + 每天最多5次）
 func CheckEmailCodeRateLimit(email string) (bool, time.Time, error) {
 	var emailCode model.EmailCode
-	oneMinuteAgo := time.Now().Add(-time.Minute)
-	err := DB.Where("email = ? AND created_at > ?", email, oneMinuteAgo).Order("created_at desc").First(&emailCode).Error
-	if err == gorm.ErrRecordNotFound {
-		// 没有找到最近1分钟的记录，可以发送
-		return true, time.Time{}, nil
-	}
-	if err != nil {
+
+	// 检查5分钟内是否发送过
+	fiveMinutesAgo := time.Now().Add(-5 * time.Minute)
+	err := DB.Where("email = ? AND created_at > ?", email, fiveMinutesAgo).Order("created_at desc").First(&emailCode).Error
+	if err != gorm.ErrRecordNotFound {
+		if err == nil {
+			// 找到了最近5分钟的记录，不能发送
+			return false, emailCode.CreatedAt, nil
+		}
 		// 数据库错误
 		return false, time.Time{}, err
 	}
-	// 找到了最近的记录，不能发送，返回创建时间
-	return false, emailCode.CreatedAt, nil
+
+	// 检查今天发送次数（不超过5次）
+	todayStart := time.Now().Truncate(24 * time.Hour)
+	var todayCount int64
+	DB.Model(&model.EmailCode{}).Where("email = ? AND created_at > ?", email, todayStart).Count(&todayCount)
+	if todayCount >= 5 {
+		return false, emailCode.CreatedAt, fmt.Errorf("今日验证码发送次数已达上限")
+	}
+
+	// 可以发送
+	return true, time.Time{}, nil
 }
 
 // 修改用户的验证状态
