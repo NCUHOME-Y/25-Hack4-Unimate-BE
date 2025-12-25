@@ -46,6 +46,7 @@ type Flag struct {
 	Priority           int           `json:"priority"`                          // 前端: priority (1-4)
 	UserID             uint          `json:"user_id"`
 	IsPublic           bool          `gorm:"column:is_public;not null;default:false" json:"is_public"`            // 是否公开到社交页面
+	PostID             *uint         `gorm:"column:post_id;index" json:"post_id,omitempty"`                       // 关联的社交帖子ID（与Post表双向关联）
 	Completed          bool          `gorm:"column:had_done" json:"completed"`                                    // 前端: completed
 	Count              int           `gorm:"column:done_number" json:"count"`                                     // 前端: count (已完成次数)
 	DailyTotal         int           `gorm:"column:daily_total" json:"total"`                                     // 前端: total (每日所需完成次数)

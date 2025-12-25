@@ -283,12 +283,36 @@ func UpdateUserStatus(id uint, status string) error {
 func AddPostToDB(Id uint, post model.Post) error {
 	post.UserID = Id
 	result := DB.Create(&post)
-	return result.Error
+	if result.Error != nil {
+		return result.Error
+	}
+
+	// 如果帖子关联了Flag，更新Flag的post_id
+	if post.FlagID != nil {
+		if err := DB.Model(&model.Flag{}).Where("id = ?", *post.FlagID).Update("post_id", post.ID).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // 删除帖子
 func DeletePostFromDB(postID uint) error {
-	// 先删除帖子的所有评论
+	// 先找到这个帖子，获取关联的flag_id
+	var post model.Post
+	if err := DB.First(&post, postID).Error; err != nil {
+		return err
+	}
+
+	// 如果帖子关联了Flag，清除Flag的post_id
+	if post.FlagID != nil {
+		if err := DB.Model(&model.Flag{}).Where("id = ?", *post.FlagID).Update("post_id", nil).Error; err != nil {
+			return err
+		}
+	}
+
+	// 删除帖子的所有评论
 	if err := DB.Where("post_id = ?", postID).Delete(&model.PostComment{}).Error; err != nil {
 		return err
 	}
