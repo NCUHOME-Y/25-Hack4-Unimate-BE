@@ -19,13 +19,11 @@ import (
 func GetUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, ok := utils.GetCurrentUserID(c)
-		log.Printf("[debug] user_id = %d", id)
 		if !ok {
 			c.JSON(400, gin.H{"error": "获取用户信息失败,请重新再试..."})
 			return
 		}
 		flags, err := repository.GetFlagsByUserID(id)
-		log.Printf("[debug] sql err=%v  len=%d", err, len(flags))
 		if err != nil {
 			c.JSON(401, gin.H{"error": "获取flag失败,请重新再试..."})
 			log.Print("Get flags error")
@@ -287,7 +285,6 @@ func FinshDoneFlag() gin.HandlerFunc {
 		}
 		level := c.Query("level")
 		id, _ := utils.GetCurrentUserID(c)
-		log.Printf("[debug] user_id = %d", id)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "更新flag失败,请重新再试..."})
 			log.Print("Binding error")

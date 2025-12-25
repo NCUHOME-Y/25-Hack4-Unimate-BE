@@ -146,18 +146,13 @@ func SentEmail(to, subject, body string) error {
 
 	port, err := strconv.Atoi(smtpPort)
 	if err != nil {
-		fmt.Printf("❌ SMTP端口号格式错误: %s\n", smtpPort)
 		return fmt.Errorf("SMTP端口配置错误")
 	}
 
-	fmt.Printf("📧 准备发送邮件: TO=%s, HOST=%s:%d, USER=%s\n", to, smtpHost, port, smtpUser)
-
 	d := mail.NewDialer(smtpHost, port, smtpUser, smtpPass)
 	if err := d.DialAndSend(m); err != nil {
-		fmt.Printf("❌ 发送邮件失败: %+v\n", err)
 		return err
 	}
-	fmt.Printf("✅ 邮件发送成功: %s\n", to)
 	return nil
 }
 

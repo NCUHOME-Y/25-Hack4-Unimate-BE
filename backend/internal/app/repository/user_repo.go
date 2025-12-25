@@ -751,7 +751,6 @@ func GetRecent6MonthsLearnTime(user_id uint) ([]model.LearnTime, error) {
 			CreatedAt: repDate,
 			Duration:  totalDuration,
 		}
-		fmt.Printf("6月聚合[%d]: %s, 时长: %d\n", i, repDate.Format("2006-01-02"), totalDuration)
 	}
 	return result, nil
 }

@@ -86,7 +86,6 @@ func ensureHitokotoUser() error {
 		return fmt.Errorf("创建一言账户失败: %v", err)
 	}
 
-	fmt.Printf("✅ 一言系统账户创建成功 (ID: %d)\n", HitokotoUserID)
 	return nil
 }
 
@@ -121,7 +120,6 @@ func postHitokoto() error {
 		return fmt.Errorf("发布一言帖子失败: %v", err)
 	}
 
-	fmt.Printf("✅ 一言帖子发布成功: %s\n", hitokoto.Hitokoto)
 	return nil
 }
 
@@ -129,11 +127,8 @@ func postHitokoto() error {
 func StartHitokotoScheduler() {
 	// 确保一言系统账户存在
 	if err := ensureHitokotoUser(); err != nil {
-		fmt.Printf("❌ 一言账户初始化失败: %v\n", err)
 		return
 	}
-
-	fmt.Println("✅ 一言定时任务已启动，每天早上8点发布")
 
 	// 启动定时器
 	go func() {
@@ -148,14 +143,11 @@ func StartHitokotoScheduler() {
 
 			// 等待到8点
 			duration := next.Sub(now)
-			fmt.Printf("⏰ 下次一言发布时间: %s (还有 %.1f 小时)\n", next.Format("2006-01-02 15:04:05"), duration.Hours())
 
 			time.Sleep(duration)
 
 			// 发布一言
-			if err := postHitokoto(); err != nil {
-				fmt.Printf("❌ 发布一言失败: %v\n", err)
-			}
+			postHitokoto()
 
 			// 等待1分钟，避免重复执行
 			time.Sleep(1 * time.Minute)
