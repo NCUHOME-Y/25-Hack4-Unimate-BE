@@ -24,6 +24,9 @@ func main() {
 		log.Printf("警告: 加载 .env 文件失败: %v", err)
 	}
 
+	// 🔒 安全检查：在 .env 加载之后校验 JWT_SECRET
+	utils.RequireJWTSecret()
+
 	// 🔧 阶段5：配置日志级别和模式
 	ginMode := os.Getenv("GIN_MODE")
 	if ginMode == "" {

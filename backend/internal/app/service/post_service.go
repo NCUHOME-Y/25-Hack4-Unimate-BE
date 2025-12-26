@@ -12,17 +12,21 @@ import (
 // 发布帖子
 func PostUserPost() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, _ := utils.GetCurrentUserID(c)
+		id, ok := utils.GetCurrentUserID(c)
+		if !ok {
+			c.JSON(401, gin.H{"error": "未授权"})
+			return
+		}
 		var req struct {
 			Title   string `json:"title"`
 			Content string `json:"content"`
-			FlagID  *uint  `json:"flag_id"` // 关联的Flag ID（可选）
+			FlagID  *uint  `json:"flagId"` // 关联的Flag ID（可选）
 		}
 		if HandleBindError(c, c.ShouldBindJSON(&req)) {
 			return
 		}
 
-		post := model.Post{
+		post := &model.Post{
 			Title:   req.Title,
 			Content: req.Content,
 			FlagID:  req.FlagID,
@@ -34,13 +38,16 @@ func PostUserPost() gin.HandlerFunc {
 			utils.LogError("数据库添加帖子失败", nil)
 			return
 		}
-		// 获取刚创建的帖子（包含ID和用户信息）
-		posts, _ := repository.GetAllPosts()
-		var createdPost model.Post
-		if len(posts) > 0 {
-			createdPost = posts[0] // 最新的帖子
+
+		// 重新从数据库加载帖子，获取完整的关联信息（User、Comments等）
+		createdPost, err := repository.GetPostByID(post.ID)
+		if err != nil {
+			// 降级：直接返回刚创建的post（至少有ID和基本字段）
+			utils.LogError("获取刚创建的帖子失败，返回基本信息", logrus.Fields{"post_id": post.ID, "error": err.Error()})
+			createdPost = post
 		}
-		utils.LogInfo("用户发布帖子成功", nil)
+
+		utils.LogInfo("用户发布帖子成功", logrus.Fields{"post_id": post.ID, "flag_id": post.FlagID})
 		c.JSON(200, gin.H{
 			"success": true,
 			"post":    createdPost,
@@ -59,7 +66,7 @@ func DeleteUserPost() gin.HandlerFunc {
 		}
 
 		var req struct {
-			PostID uint `json:"post_id"`
+			PostID uint `json:"postId"`
 		}
 		if HandleBindError(c, c.ShouldBindJSON(&req)) {
 			return
@@ -67,7 +74,7 @@ func DeleteUserPost() gin.HandlerFunc {
 
 		// 验证帖子所有权
 		post, err := repository.GetPostByID(req.PostID)
-		if err != nil {
+		if err != nil || post == nil {
 			c.JSON(404, gin.H{"error": "帖子不存在"})
 			return
 		}
@@ -116,7 +123,7 @@ func CommentOnPost() gin.HandlerFunc {
 			Content: req.Content,
 		}
 
-		err := repository.AddPostCommentToDB(req.PostID, comment)
+		err := repository.AddPostCommentToDB(req.PostID, &comment)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to add comment"})
 			utils.LogError("数据库添加评论失败", logrus.Fields{
@@ -128,7 +135,7 @@ func CommentOnPost() gin.HandlerFunc {
 
 		// 获取帖子信息以便通知作者
 		post, err := repository.GetPostByID(req.PostID)
-		if err == nil && post.UserID != userID {
+		if err == nil && post != nil && post.UserID != userID {
 			// 不是自己的帖子才发通知
 			postAuthor, err := repository.GetUserByID(post.UserID)
 			if err == nil && postAuthor.Email != "" {
@@ -141,7 +148,23 @@ func CommentOnPost() gin.HandlerFunc {
 		// 重新查询评论以获取完整的用户信息
 		savedComment, err := repository.GetCommentByID(comment.ID)
 		if err != nil {
-			utils.LogError("查询评论失败", logrus.Fields{"comment_id": comment.ID})
+			utils.LogError("查询评论失败，返回基本信息", logrus.Fields{"comment_id": comment.ID, "error": err.Error()})
+			userName := GetUserDisplayNameByID(userID)
+			userAvatar := ""
+			if me, err2 := repository.GetUserByID(userID); err2 == nil {
+				userAvatar = utils.GetAvatarPath(me.HeadShow)
+			}
+
+			c.JSON(200, gin.H{
+				"success":    true,
+				"id":         comment.ID,
+				"userId":     comment.UserID,
+				"userName":   userName,
+				"userAvatar": userAvatar,
+				"content":    comment.Content,
+				"createdAt":  comment.CreatedAt.Format("15:04"),
+			})
+			return
 		}
 
 		utils.LogInfo("用户发表评论成功", logrus.Fields{
@@ -171,7 +194,7 @@ func DeleteUserPostComment() gin.HandlerFunc {
 		}
 
 		var req struct {
-			CommentID uint `json:"comment_id"`
+			CommentID uint `json:"commentId"`
 		}
 		if err := c.ShouldBindJSON(&req); HandleBindError(c, err) {
 			return
@@ -239,7 +262,7 @@ func GetVisibleFlags() gin.HandlerFunc {
 func LikeFlag() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			FlagID uint `json:"flag_id"`
+			FlagID uint `json:"flagId"`
 			Like   int  `json:"like"`
 		}
 		if err := c.ShouldBindJSON(&req); HandleBindError(c, err) {
@@ -251,6 +274,7 @@ func LikeFlag() gin.HandlerFunc {
 			utils.LogError("数据库点赞flag失败", nil)
 			return
 		}
+		c.JSON(200, gin.H{"success": true})
 	}
 }
 
@@ -315,7 +339,7 @@ func DeleteFlagComment() gin.HandlerFunc {
 func LikePost() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			PostID uint `json:"post_id"`
+			PostID uint `json:"postId"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": "Invalid input"})
@@ -361,9 +385,9 @@ func LikePost() gin.HandlerFunc {
 func GetFlagLikes() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			FlagID uint `json:"flag_id"`
+			FlagID uint `form:"flagId"`
 		}
-		if HandleBindError(c, c.ShouldBindJSON(&req)) {
+		if HandleBindError(c, c.ShouldBindQuery(&req)) {
 			return
 		}
 		like, err := repository.GetFlagLikes(req.FlagID)
@@ -380,10 +404,9 @@ func GetFlagLikes() gin.HandlerFunc {
 func GetPostLikes() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			PostID uint `json:"post_id"`
+			PostID uint `form:"postId"`
 		}
-
-		if err := c.ShouldBindJSON(&req); HandleBindError(c, err) {
+		if err := c.ShouldBindQuery(&req); HandleBindError(c, err) {
 			return
 		}
 		like, err := repository.GetPostLikes(req.PostID)

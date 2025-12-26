@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-mail/mail/v2"
@@ -17,17 +18,37 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// JWT 密钥（生产环境应从环境变量或配置文件中读取）
-var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
+var (
+	jwtSecret        []byte
+	jwtSecretOnce    sync.Once
+	jwtSecretLoadErr error
+)
 
 var logger = logrus.New()
 
-func init() {
-	// 🔒 安全检查：JWT_SECRET 必须设置
-	if len(jwtSecret) == 0 {
+func loadJWTSecret() ([]byte, error) {
+	jwtSecretOnce.Do(func() {
+		secret := os.Getenv("JWT_SECRET")
+		if secret == "" {
+			jwtSecretLoadErr = errors.New("JWT_SECRET 环境变量未设置")
+			return
+		}
+		jwtSecret = []byte(secret)
+	})
+
+	if jwtSecretLoadErr != nil {
+		return nil, jwtSecretLoadErr
+	}
+	return jwtSecret, nil
+}
+
+func RequireJWTSecret() {
+	if _, err := loadJWTSecret(); err != nil {
 		log.Fatal("❌ 安全错误：JWT_SECRET 环境变量未设置！请在 .env 文件中设置")
 	}
+}
 
+func init() {
 	file, err := os.OpenFile("Unimate.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		logger.Fatal("无法打开日志文件: ", err)
@@ -51,6 +72,11 @@ type Claims struct {
 
 // GenerateToken 生成 JWT Token
 func GenerateToken(userID uint, username, email string) (string, error) {
+	secret, err := loadJWTSecret()
+	if err != nil {
+		return "", err
+	}
+
 	now := time.Now()
 	expireTime := now.Add(7 * 24 * time.Hour) // 🔒 Token 有效期 7 天（安全加固）
 
@@ -67,13 +93,18 @@ func GenerateToken(userID uint, username, email string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString(secret)
 }
 
 // ParseToken 解析 JWT Token
 func ParseToken(tokenString string) (*Claims, error) {
+	secret, err := loadJWTSecret()
+	if err != nil {
+		return nil, err
+	}
+
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return jwtSecret, nil
+		return secret, nil
 	})
 
 	if err != nil {

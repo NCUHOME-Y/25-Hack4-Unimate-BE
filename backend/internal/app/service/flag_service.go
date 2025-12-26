@@ -38,9 +38,9 @@ func GetUserFlags() gin.HandlerFunc {
 func PostUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var flag struct {
-			Title              string `json:"title"`
-			Detail             string `json:"detail"`
-			IsPublic           bool   `json:"is_public"`
+			Title  string `json:"title"`
+			Detail string `json:"detail"`
+
 			Label              int    `json:"label"`    // 前端发送数字1-5
 			Priority           int    `json:"priority"` // 前端发送数字1-4
 			Total              int    `json:"total"`
@@ -109,7 +109,6 @@ func PostUserFlags() gin.HandlerFunc {
 		flag_model := model.Flag{
 			Title:              flag.Title,
 			Detail:             flag.Detail,
-			IsPublic:           flag.IsPublic,
 			Label:              flag.Label,
 			Priority:           flag.Priority,
 			DailyTotal:         flag.Total, // 每日所需完成次数
@@ -397,20 +396,10 @@ func UpdateFlagHide() gin.HandlerFunc {
 			log.Print("Binding error")
 			return
 		}
-		flag, err := repository.GetFlagByID(req.ID)
-		if err != nil {
-			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
-			return
-		}
-		flag.IsPublic = !flag.IsPublic
-		err = repository.UpdateFlagVisibility(req.ID, !flag.IsPublic)
-		if err != nil {
-			c.JSON(400, gin.H{"error": "更新flag失败,请重新再试..."})
-			utils.LogError("数据库更新flag公开状态失败", logrus.Fields{})
-			return
-		}
-		utils.LogInfo("flag公开状态更新成功", logrus.Fields{"flag_id": req.ID})
-		c.JSON(200, gin.H{"success": true})
+		// 该接口已废弃：分享状态由post_id控制，不再需要单独的可见性字段
+		// 前端应通过创建/删除Post来控制分享状态
+		utils.LogInfo("该接口已废弃，请使用Post相关接口", logrus.Fields{"flag_id": req.ID})
+		c.JSON(200, gin.H{"success": true, "message": "该接口已废弃"})
 	}
 }
 
@@ -424,11 +413,11 @@ func UpdateFlagInfo() gin.HandlerFunc {
 			Label              int    `json:"label"`
 			Priority           int    `json:"priority"`
 			Total              int    `json:"total"`
-			IsPublic           bool   `json:"is_public"`
 			StartDate          string `json:"start_date"`
 			EndDate            string `json:"end_date"`
 			ReminderTime       string `json:"reminder_time"`
 			EnableNotification bool   `json:"enable_notification"`
+			PostID             *uint  `json:"postId"` // 添加PostID字段，保留分享状态
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": "参数解析失败"})
@@ -451,9 +440,13 @@ func UpdateFlagInfo() gin.HandlerFunc {
 			"label":               req.Label,
 			"priority":            req.Priority,
 			"daily_total":         req.Total,
-			"is_public":           req.IsPublic,
 			"reminder_time":       req.ReminderTime,
 			"enable_notification": req.EnableNotification,
+		}
+
+		// 添加post_id字段（如果前端传递了）
+		if req.PostID != nil {
+			updates["post_id"] = req.PostID
 		}
 
 		// 添加可选的起始/结束时间
@@ -468,15 +461,9 @@ func UpdateFlagInfo() gin.HandlerFunc {
 			}
 		}
 
-		// 检查is_public状态是否发生变化（用于决定是否需要删除帖子）
-		flag, _ := repository.GetFlagByID(req.ID)
-		oldIsPublic := flag.IsPublic
-
 		utils.LogInfo("准备更新Flag", logrus.Fields{
-			"flag_id":       req.ID,
-			"updates":       updates,
-			"old_is_public": oldIsPublic,
-			"new_is_public": req.IsPublic,
+			"flag_id": req.ID,
+			"updates": updates,
 		})
 
 		err = repository.UpdateFlag(req.ID, updates)
@@ -486,18 +473,7 @@ func UpdateFlagInfo() gin.HandlerFunc {
 			return
 		}
 
-		// 如果is_public从true变为false,删除关联的帖子
-		if oldIsPublic && !req.IsPublic {
-			err = repository.DeletePostsByFlagID(req.ID)
-			if err != nil {
-				utils.LogError("删除关联帖子失败", logrus.Fields{"flag_id": req.ID, "error": err.Error()})
-				// 不影响主流程,继续返回成功
-			} else {
-				utils.LogInfo("已删除Flag的关联帖子", logrus.Fields{"flag_id": req.ID})
-			}
-		}
-
-		utils.LogInfo("flag更新成功", logrus.Fields{"flag_id": req.ID, "is_public": req.IsPublic})
+		utils.LogInfo("flag更新成功", logrus.Fields{"flag_id": req.ID})
 		c.JSON(200, gin.H{"success": true, "message": "Flag更新成功"})
 	}
 }
@@ -566,7 +542,7 @@ func GetExpiredFlags() gin.HandlerFunc {
 func ToggleFlagNotification() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			FlagID             uint `json:"flag_id"`
+			FlagID             uint `json:"flagId"`
 			EnableNotification bool `json:"enable_notification"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {

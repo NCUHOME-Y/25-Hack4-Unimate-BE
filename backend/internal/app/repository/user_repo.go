@@ -184,10 +184,10 @@ func SearchUsers(keyword string) ([]model.User, error) {
 	return users, err
 }
 
-// 更新flag的可见性
+// 更新flag的可见性（已废弃：使用post_id判断，不再需要单独的is_public字段）
 func UpdateFlagVisibility(flagID uint, isHidden bool) error {
-	result := DB.Model(&model.Flag{}).Where("id = ?", flagID).Update("is_public", !isHidden)
-	return result.Error
+	// 该函数已废弃，分享状态由post_id控制
+	return nil
 }
 
 // 更新flag的内容
@@ -280,9 +280,9 @@ func UpdateUserStatus(id uint, status string) error {
 }
 
 // 发布帖子
-func AddPostToDB(Id uint, post model.Post) error {
+func AddPostToDB(Id uint, post *model.Post) error {
 	post.UserID = Id
-	result := DB.Create(&post)
+	result := DB.Create(post)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -334,9 +334,9 @@ func DeletePostsByFlagID(flagID uint) error {
 }
 
 // 添加评论
-func AddPostCommentToDB(postId uint, comment model.PostComment) error {
+func AddPostCommentToDB(postId uint, comment *model.PostComment) error {
 	comment.PostID = postId
-	result := DB.Create(&comment)
+	result := DB.Create(comment)
 	return result.Error
 }
 
@@ -497,10 +497,13 @@ func GetAllPosts() ([]model.Post, error) {
 }
 
 // 根据ID获取单个帖子
-func GetPostByID(postID uint) (model.Post, error) {
+func GetPostByID(postID uint) (*model.Post, error) {
 	var post model.Post
 	result := DB.Preload("Comments.User").Preload("User").First(&post, postID)
-	return post, result.Error
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &post, nil
 }
 
 // 根据ID获取单个评论
@@ -513,7 +516,7 @@ func GetCommentByID(commentID uint) (model.PostComment, error) {
 // 获取所有可见的flag
 func GetVisibleFlags() ([]model.Flag, error) {
 	var flags []model.Flag
-	result := DB.Preload("FlagComment").Where("is_public = ?", true).Find(&flags)
+	result := DB.Preload("FlagComment").Where("post_id IS NOT NULL").Find(&flags)
 	return flags, result.Error
 }
 

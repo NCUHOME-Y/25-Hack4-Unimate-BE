@@ -45,6 +45,9 @@ var planner *TaiFuLearningPlanner
 func initPlanner() {
 	if planner == nil {
 		apiKey := os.Getenv("APIKEY")
+		if apiKey == "" {
+			logrus.Error("APIKEY 环境变量未设置")
+		}
 		planner = &TaiFuLearningPlanner{
 			APIKey:  apiKey,
 			BaseURL: "https://api.siliconflow.cn/v1/chat/completions",
@@ -110,9 +113,8 @@ func isRepeatingChars(s string) bool {
 }
 
 func GenerateLearningPlan(c *gin.Context) {
-	// 确保 planner 已初始化
 	initPlanner()
-	id, _ := getCurrentUserID(c)
+	id, _ := utils.GetCurrentUserID(c)
 	var req LearningPlanRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, LearningPlanResponse{
@@ -131,9 +133,12 @@ func GenerateLearningPlan(c *gin.Context) {
 		return
 	}
 
-	// 生成计划
 	flag, plan, difficulty, err := planner.GenerateLearningPlan(req)
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"error": err.Error(),
+			"goal":  req.Flag,
+		}).Error("AI计划生成失败")
 		c.JSON(http.StatusInternalServerError, LearningPlanResponse{
 			Success: false,
 			Error:   fmt.Sprintf("生成计划失败: %v", err),
@@ -142,7 +147,14 @@ func GenerateLearningPlan(c *gin.Context) {
 	}
 
 	// 埋点：生成计划（不添加Flag，让前端决定）
-	repository.AddTrackPointToDB(id, "生成AI计划")
+	// 注意：埋点失败不影响主功能，仅记录错误日志
+	if err := repository.AddTrackPointToDB(id, "生成AI计划"); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"user_id": id,
+			"error":   err.Error(),
+		}).Warn("埋点记录失败（不影响功能）")
+	}
+
 	c.JSON(http.StatusOK, LearningPlanResponse{
 		Success: true,
 		Flag:    flag,
@@ -293,7 +305,7 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 // callOpenAI 发起 AI 请求并返回原始响应字符串
 func (p *TaiFuLearningPlanner) callOpenAI(systemPrompt, userPrompt string) (string, error) {
 	payload := map[string]interface{}{
-		"model": "gpt-4o-mini",
+		"model": "Qwen/Qwen2.5-7B-Instruct",
 		"messages": []map[string]string{
 			{"role": "system", "content": systemPrompt},
 			{"role": "user", "content": userPrompt},
@@ -312,15 +324,22 @@ func (p *TaiFuLearningPlanner) callOpenAI(systemPrompt, userPrompt string) (stri
 		req.Header.Set("Authorization", "Bearer "+p.APIKey)
 	}
 	client := &http.Client{Timeout: 30 * time.Second}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
+
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("AI API错误(状态码%d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
 	return string(bodyBytes), nil
 }
 

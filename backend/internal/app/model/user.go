@@ -44,20 +44,19 @@ type Flag struct {
 	Detail             string        `gorm:"column:plan_content" json:"detail"` // 前端: detail
 	Label              int           `gorm:"column:label" json:"label"`         // 前端&数据库: label (1-5数字)
 	Priority           int           `json:"priority"`                          // 前端: priority (1-4)
-	UserID             uint          `json:"user_id"`
-	IsPublic           bool          `gorm:"column:is_public;not null;default:false" json:"is_public"`            // 是否公开到社交页面
-	PostID             *uint         `gorm:"column:post_id;index" json:"post_id,omitempty"`                       // 关联的社交帖子ID（与Post表双向关联）
-	Completed          bool          `gorm:"column:had_done" json:"completed"`                                    // 前端: completed
-	Count              int           `gorm:"column:done_number" json:"count"`                                     // 前端: count (已完成次数)
-	DailyTotal         int           `gorm:"column:daily_total" json:"total"`                                     // 前端: total (每日所需完成次数)
-	Points             int           `json:"points"`                                                              // 前端: points (积分)
-	Likes              int           `gorm:"column:like" json:"likes"`                                            // 前端: agreeNumber → likes
-	Comments           []FlagComment `gorm:"foreignKey:FlagID" json:"comments"`                                   // 评论列表
-	CreatedAt          time.Time     `json:"created_at"`                                                          // 前端: createdAt
-	StartTime          *time.Time    `gorm:"column:start_time" json:"start_time"`                                 // 前端: startTime
-	EndTime            *time.Time    `gorm:"column:end_time" json:"end_time"`                                     // 前端: endTime
-	EnableNotification bool          `gorm:"column:enable_notification;default:false" json:"enable_notification"` // 是否启用该flag的消息提醒
-	ReminderTime       string        `gorm:"column:reminder_time;default:'12:00'" json:"reminder_time"`           // 该flag的提醒时间 (HH:MM 格式)
+	UserID             uint          `json:"userId"`
+	PostID             *uint         `gorm:"column:post_id;index" json:"postId,omitempty"`                       // 关联的社交帖子ID（null=未分享，有值=已分享且指向Post.ID）
+	Completed          bool          `gorm:"column:had_done" json:"completed"`                                   // 前端: completed
+	Count              int           `gorm:"column:done_number" json:"count"`                                    // 前端: count (已完成次数)
+	DailyTotal         int           `gorm:"column:daily_total" json:"total"`                                    // 前端: total (每日所需完成次数)
+	Points             int           `json:"points"`                                                             // 前端: points (积分)
+	Likes              int           `gorm:"column:like" json:"likes"`                                           // 前端: agreeNumber → likes
+	Comments           []FlagComment `gorm:"foreignKey:FlagID" json:"comments"`                                  // 评论列表
+	CreatedAt          time.Time     `json:"createdAt"`                                                          // 前端: createdAt
+	StartTime          *time.Time    `gorm:"column:start_time" json:"startTime"`                                 // 前端: startTime
+	EndTime            *time.Time    `gorm:"column:end_time" json:"endTime"`                                     // 前端: endTime
+	EnableNotification bool          `gorm:"column:enable_notification;default:false" json:"enableNotification"` // 是否启用该flag的消息提醒
+	ReminderTime       string        `gorm:"column:reminder_time;default:'12:00'" json:"reminderTime"`           // 该flag的提醒时间 (HH:MM 格式)
 }
 
 // 注意：Label字段已改为直接存储数字(1-5)到数据库，不再需要类型转换钩子
@@ -67,15 +66,15 @@ type Post struct {
 	ID         uint          `gorm:"primaryKey" json:"id"`
 	Title      string        `json:"title"`
 	Content    string        `json:"content"`
-	Like       int           `json:"like"`
-	UserID     uint          `gorm:"foreignKey:UserID" json:"user_id"`
-	FlagID     *uint         `gorm:"index" json:"flag_id,omitempty"`          // 关联的Flag ID（可选）
+	Like       int           `json:"likes"`                                   // 前端期望 likes
+	UserID     uint          `gorm:"foreignKey:UserID" json:"userId"`         // 驼峰
+	FlagID     *uint         `gorm:"index" json:"flagId,omitempty"`           // 驼峰
 	User       *User         `gorm:"foreignKey:UserID" json:"user,omitempty"` // 关联用户信息
 	UserName   string        `gorm:"-" json:"userName"`                       // 前端需要的用户名（计算字段）
 	UserAvatar string        `gorm:"-" json:"userAvatar"`                     // 前端需要的用户头像（计算字段）
-	CreatedAt  time.Time     `json:"created_at"`
-	UpdatedAt  time.Time     `json:"updated_at"`
-	Comments   []PostComment `gorm:"foreignKey:PostID" json:"comments"` //外键绑定post_comment表
+	CreatedAt  time.Time     `json:"createdAt"`                               // 驼峰
+	UpdatedAt  time.Time     `json:"updatedAt"`                               // 驼峰
+	Comments   []PostComment `gorm:"foreignKey:PostID" json:"comments"`       //外键绑定post_comment表
 }
 
 // AfterFind - GORM钩子：查询后自动填充用户信息
@@ -90,11 +89,11 @@ func (p *Post) AfterFind(tx *gorm.DB) error {
 // 帖子评论
 type PostComment struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
-	PostID     uint      `json:"post_id"`
-	UserID     uint      `json:"userId" gorm:"column:user_id"` // 评论者ID
+	PostID     uint      `json:"postId"`                       // 驼峰
+	UserID     uint      `json:"userId" gorm:"column:user_id"` // 评论者ID，驼峰
 	Content    string    `json:"content"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	CreatedAt  time.Time `json:"createdAt"`                  // 驼峰
+	UpdatedAt  time.Time `json:"updatedAt"`                  // 驼峰
 	User       *User     `gorm:"foreignKey:UserID" json:"-"` // 关联用户信息
 	UserName   string    `gorm:"-" json:"userName"`          // 前端需要的用户名（计算字段）
 	UserAvatar string    `gorm:"-" json:"userAvatar"`        // 前端需要的用户头像（计算字段）
