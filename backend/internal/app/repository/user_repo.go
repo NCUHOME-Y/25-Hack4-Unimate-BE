@@ -1399,12 +1399,12 @@ func GetPrivateChatHistory(userID1, userID2 uint, limit int) ([]model.ChatMessag
 
 // Conversation 会话信息
 type Conversation struct {
-	UserID        uint      `json:"user_id"`
-	UserName      string    `json:"user_name"`
-	UserAvatar    string    `json:"user_avatar"`
-	LastMessage   string    `json:"last_message"`
-	LastMessageAt time.Time `json:"last_message_at"`
-	UnreadCount   int       `json:"unread_count"`
+	UserID        uint      `json:"userId"`
+	UserName      string    `json:"userName"`
+	UserAvatar    string    `json:"userAvatar"`
+	LastMessage   string    `json:"lastMessage"`
+	LastMessageAt time.Time `json:"lastMessageAt"`
+	UnreadCount   int       `json:"unreadCount"`
 }
 
 // 获取私聊会话列表（按最后消息时间排序）

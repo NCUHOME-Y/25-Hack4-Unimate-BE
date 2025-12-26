@@ -62,7 +62,7 @@ func GetLearnTimeRecords() gin.HandlerFunc {
 		}
 		utils.LogInfo("获取学习时长记录成功", logrus.Fields{"user_id": id})
 		c.JSON(200, gin.H{
-			"learn_times": learnTimes,
+			"learnTimes": learnTimes,
 		})
 	}
 }
@@ -87,7 +87,7 @@ func GetLearnTimeLast7Days() gin.HandlerFunc {
 		}
 		utils.LogInfo("获取最近7天学习时长记录成功", logrus.Fields{"user_id": id})
 		c.JSON(200, gin.H{
-			"learn_times": learnTimes,
+			"learnTimes": learnTimes,
 		})
 	}
 }
@@ -103,7 +103,7 @@ func GetLearnTimeLast180Days() gin.HandlerFunc {
 		}
 		utils.LogInfo("获取最近180天学习时长记录成功", logrus.Fields{"user_id": id})
 		c.JSON(200, gin.H{
-			"learn_times": learnTimes,
+			"learnTimes": learnTimes,
 		})
 	}
 }
@@ -124,7 +124,7 @@ func GetCurrentMonthLearnTime() gin.HandlerFunc {
 		}
 		utils.LogInfo("获取当前月份学习时长记录成功", logrus.Fields{"user_id": id})
 		c.JSON(200, gin.H{
-			"learn_times": learnTimes,
+			"learnTimes": learnTimes,
 		})
 	}
 }
@@ -145,7 +145,7 @@ func GetRecent6MonthsLearnTime() gin.HandlerFunc {
 		}
 		utils.LogInfo("获取最近6个月学习时长记录成功", logrus.Fields{"user_id": id})
 		c.JSON(200, gin.H{
-			"learn_times": learnTimes,
+			"learnTimes": learnTimes,
 		})
 	}
 }

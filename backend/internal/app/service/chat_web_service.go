@@ -110,7 +110,7 @@ func WsHandler() gin.HandlerFunc {
 		}
 
 		// 获取房间ID参数（私聊时可以不提供）
-		roomID := c.Query("room_id")
+		roomID := c.Query("roomId")
 
 		utils.LogInfo("WebSocket用户ID验证成功", map[string]interface{}{"user_id": id, "room_id": roomID})
 
@@ -460,11 +460,11 @@ func CreateChatRoom() gin.HandlerFunc {
 		utils.LogInfo("创建聊天室成功", logrus.Fields{"room_id": roomID, "name": req.Name, "creator_id": userID})
 
 		c.JSON(http.StatusOK, gin.H{
-			"id":         room.ID,
-			"name":       room.Name,
-			"creator_id": room.CreatorID,
-			"created_at": room.CreatedAt,
-			"max_users":  room.MaxUsers,
+			"id":        room.ID,
+			"name":      room.Name,
+			"creatorId": room.CreatorID,
+			"createdAt": room.CreatedAt,
+			"maxUsers":  room.MaxUsers,
 		})
 	}
 }
@@ -472,7 +472,7 @@ func CreateChatRoom() gin.HandlerFunc {
 // 删除聊天室（仅创建者或系统可删除）
 func DeleteChatRoom() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		roomID := c.Param("room_id")
+		roomID := c.Param("roomId")
 		userID, _ := utils.GetCurrentUserID(c)
 
 		// 不能删除默认房间
@@ -512,7 +512,7 @@ func DeleteChatRoom() gin.HandlerFunc {
 // 获取聊天室历史消息
 func GetChatHistory() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		roomID := c.Param("room_id")
+		roomID := c.Param("roomId")
 		limit := 30
 		if limitParam := c.Query("limit"); limitParam != "" {
 			var l int
@@ -611,10 +611,10 @@ func (manager *Manager) GetAllRooms() []map[string]interface{} {
 	var rooms []map[string]interface{}
 	for _, room := range manager.Rooms {
 		rooms = append(rooms, map[string]interface{}{
-			"id":           room.ID,
-			"name":         room.Name,
-			"online_count": len(room.Clients),
-			"max_users":    room.MaxUsers,
+			"id":          room.ID,
+			"name":        room.Name,
+			"onlineCount": len(room.Clients),
+			"maxUsers":    room.MaxUsers,
 		})
 	}
 	return rooms

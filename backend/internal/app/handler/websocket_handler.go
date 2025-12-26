@@ -18,10 +18,10 @@ func GetRoomsInfo(c *gin.Context) {
 
 // 获取房间内的用户列表
 func GetRoomUsers(c *gin.Context) {
-	roomID := c.Query("room_id")
+	roomID := c.Query("roomId")
 	if roomID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "缺少 room_id 参数",
+			"error": "缺少 roomId 参数",
 		})
 		return
 	}
@@ -29,7 +29,7 @@ func GetRoomUsers(c *gin.Context) {
 	users := service.GetRoomManager().GetRoomUsers(roomID)
 	c.JSON(http.StatusOK, gin.H{
 		"message": "获取房间用户列表成功",
-		"room_id": roomID,
+		"roomId":  roomID,
 		"users":   users,
 	})
 }

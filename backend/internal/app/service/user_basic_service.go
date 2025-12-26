@@ -465,7 +465,7 @@ func UpdateUserName() gin.HandlerFunc {
 		id, _ := utils.GetCurrentUserID(c)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			log.Printf("UpdateUserName: 请求绑定失败: %v", err)
-			c.JSON(400, gin.H{"error": "请求体格式错误, 请以 {new_name: string} 提交"})
+			c.JSON(400, gin.H{"error": "请求体格式错误, 请以 {newName: string} 提交"})
 			return
 		}
 		log.Printf("UpdateUserName: user_id=%d 请求新用户名=%q", id, req.NewName)
@@ -537,9 +537,13 @@ func GetUserStats() gin.HandlerFunc {
 
 		// 目标用户ID，可选，默认查看自己
 		var targetID uint
-		if q := c.Query("user_id"); q != "" {
+		userIDStr := c.Query("userId")
+		if userIDStr == "" {
+			userIDStr = c.Query("user_id")
+		}
+		if userIDStr != "" {
 			var parsed uint
-			if _, err := fmt.Sscanf(q, "%d", &parsed); err == nil {
+			if _, err := fmt.Sscanf(userIDStr, "%d", &parsed); err == nil {
 				targetID = parsed
 			}
 		}
@@ -623,11 +627,11 @@ func GetTodayPoints() gin.HandlerFunc {
 		total, err := repository.GetTodayPoints(id)
 		if err != nil {
 			utils.LogError("获取今日积分失败", logrus.Fields{"user_id": id, "error": err.Error()})
-			c.JSON(500, gin.H{"today_points": 0})
+			c.JSON(500, gin.H{"todayPoints": 0})
 			return
 		}
-		utils.LogInfo("获取今日积分成功", logrus.Fields{"user_id": id, "today_points": total})
-		c.JSON(200, gin.H{"today_points": total})
+		utils.LogInfo("获取今日积分成功", logrus.Fields{"user_id": id, "todayPoints": total})
+		c.JSON(200, gin.H{"todayPoints": total})
 	}
 }
 

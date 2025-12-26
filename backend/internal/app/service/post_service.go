@@ -433,7 +433,7 @@ func GetUserLikedPosts() gin.HandlerFunc {
 			utils.LogError("获取已点赞帖子失败", nil)
 			return
 		}
-		c.JSON(200, gin.H{"liked_post_ids": ids})
+		c.JSON(200, gin.H{"likedPostIds": ids})
 	}
 }
 

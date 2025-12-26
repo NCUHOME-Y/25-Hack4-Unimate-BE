@@ -256,9 +256,9 @@ func SendEmailCode() gin.HandlerFunc {
 				waitSeconds = 0
 			}
 			c.JSON(429, gin.H{
-				"error":        "发送过于频繁,请稍后再试",
-				"wait_seconds": waitSeconds,
-				"message":      fmt.Sprintf("请等待%d秒后再试", waitSeconds),
+				"error":       "发送过于频繁,请稍后再试",
+				"waitSeconds": waitSeconds,
+				"message":     fmt.Sprintf("请等待%d秒后再试", waitSeconds),
 			})
 			utils.LogInfo("验证码发送被限流", logrus.Fields{"user_email": req.Email, "wait_seconds": waitSeconds})
 			return

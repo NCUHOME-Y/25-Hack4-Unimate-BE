@@ -128,10 +128,10 @@ type FlagComment struct {
 type Achievement struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	Name        string    `json:"name"`
-	UserID      uint      `gorm:"index;not null" json:"user_id"`
+	UserID      uint      `gorm:"index;not null" json:"userId"`
 	Description string    `json:"description"`
-	HadDone     bool      `json:"had_done"`
-	GotTime     time.Time `json:"got_time"`
+	HadDone     bool      `json:"hadDone"`
+	GotTime     time.Time `json:"gotTime"`
 	User        *User     `gorm:"foreignKey:UserID;references:ID" json:"-"` // 补充关联声明
 }
 
@@ -174,7 +174,7 @@ type Label struct {
 // 埋点
 type TrackPoint struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	UserID    uint      `json:"user_id"`
+	UserID    uint      `json:"userId"`
 	Event     string    `json:"event"`
 	Timestamp time.Time `json:"timestamp"`
 }
@@ -184,12 +184,12 @@ type ChatMessage struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	FromUserID uint      `json:"from" gorm:"column:from_user_id"`
 	ToUserID   uint      `json:"to" gorm:"column:to_user_id"` // 0表示群聊
-	RoomID     string    `json:"room_id"`
+	RoomID     string    `json:"roomId"`
 	Content    string    `json:"content"`
-	CreatedAt  time.Time `json:"created_at"`
+	CreatedAt  time.Time `json:"createdAt"`
 	User       *User     `gorm:"foreignKey:FromUserID" json:"-"` // 关联发送者信息
-	UserName   string    `gorm:"-" json:"user_name"`
-	UserAvatar string    `gorm:"-" json:"user_avatar"`
+	UserName   string    `gorm:"-" json:"userName"`
+	UserAvatar string    `gorm:"-" json:"userAvatar"`
 }
 
 // AfterFind - GORM钩子：查询后自动填充用户信息
@@ -205,18 +205,18 @@ func (m *ChatMessage) AfterFind(tx *gorm.DB) error {
 // 积分日志（记录每次积分变动，用于统计“今日获得积分”）
 type PointsLog struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	UserID    uint      `gorm:"index" json:"user_id"`
+	UserID    uint      `gorm:"index" json:"userId"`
 	Amount    int       `json:"amount"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // AI历史记录
 type AIHistory struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
-	UserID        uint      `gorm:"index" json:"user_id"`
-	Background    string    `json:"background"`     // 个人背景
-	Goal          string    `json:"goal"`           // 目标
-	Difficulty    string    `json:"difficulty"`     // 难度
-	GeneratedPlan string    `json:"generated_plan"` // 生成的计划（JSON格式）
-	CreatedAt     time.Time `json:"created_at"`
+	UserID        uint      `gorm:"index" json:"userId"`
+	Background    string    `json:"background"`    // 个人背景
+	Goal          string    `json:"goal"`          // 目标
+	Difficulty    string    `json:"difficulty"`    // 难度
+	GeneratedPlan string    `json:"generatedPlan"` // 生成的计划（JSON格式）
+	CreatedAt     time.Time `json:"createdAt"`
 }

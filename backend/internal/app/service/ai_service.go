@@ -451,17 +451,17 @@ func GetAIHistory() gin.HandlerFunc {
 			}
 
 			result = append(result, gin.H{
-				"id":             history.ID,
-				"background":     history.Background,
-				"goal":           history.Goal,
-				"difficulty":     history.Difficulty,
-				"generated_plan": plan,
-				"created_at":     history.CreatedAt,
+				"id":            history.ID,
+				"background":    history.Background,
+				"goal":          history.Goal,
+				"difficulty":    history.Difficulty,
+				"generatedPlan": plan,
+				"createdAt":     history.CreatedAt,
 			})
 		}
 
 		utils.LogInfo("获取AI历史记录成功", logrus.Fields{"user_id": id, "count": len(result)})
-		c.JSON(200, gin.H{"ai_histories": result})
+		c.JSON(200, gin.H{"aiHistories": result})
 	}
 }
 

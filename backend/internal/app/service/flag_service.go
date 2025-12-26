@@ -598,7 +598,7 @@ func ToggleFlagNotification() gin.HandlerFunc {
 		}
 
 		utils.LogInfo("flag提醒状态更新成功", logrus.Fields{"user_id": userID, "flag_id": req.FlagID, "enabled": req.EnableNotification})
-		c.JSON(200, gin.H{"success": true, "enable_notification": req.EnableNotification})
+		c.JSON(200, gin.H{"success": true, "enableNotification": req.EnableNotification})
 	}
 }
 
