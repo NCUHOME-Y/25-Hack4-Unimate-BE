@@ -263,9 +263,9 @@ func GetRankingFromRedisZSet(key string, start, stop int64) ([]map[string]interf
 	ranking := make([]map[string]interface{}, len(results))
 	for i, result := range results {
 		ranking[i] = map[string]interface{}{
-			"rank":    start + int64(i) + 1,
-			"user_id": result.Member,
-			"score":   result.Score,
+			"rank":   start + int64(i) + 1,
+			"userId": result.Member,
+			"score":  result.Score,
 		}
 	}
 	return ranking, nil

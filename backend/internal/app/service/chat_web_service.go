@@ -35,28 +35,28 @@ type Client struct {
 	ID        uint            `json:"id"`
 	Conn      *websocket.Conn `json:"-"`
 	Send      chan []byte     `json:"-"`
-	CreatedAt time.Time       `json:"created_at"`
-	RoomID    string          `json:"room_id"`
+	CreatedAt time.Time       `json:"createdAt"`
+	RoomID    string          `json:"roomId"`
 }
 
 type Message struct {
 	FromID     uint      `json:"from"`
 	ToID       uint      `json:"to"`
 	Content    string    `json:"content"`
-	CreatedAt  time.Time `json:"created_at"`
-	RoomID     string    `json:"room_id"`
-	UserName   string    `json:"user_name"`
-	UserAvatar string    `json:"user_avatar"`
+	CreatedAt  time.Time `json:"createdAt"`
+	RoomID     string    `json:"roomId"`
+	UserName   string    `json:"userName"`
+	UserAvatar string    `json:"userAvatar"`
 }
 
 type ChatRoom struct {
 	ID         string           `json:"id"`
 	Name       string           `json:"name"`
-	CreatorID  uint             `json:"creator_id"`
+	CreatorID  uint             `json:"creatorId"`
 	Clients    map[uint]*Client `json:"-"`
-	CreatedAt  time.Time        `json:"created_at"`
-	LastActive time.Time        `json:"last_active"`
-	MaxUsers   int              `json:"max_users"`
+	CreatedAt  time.Time        `json:"createdAt"`
+	LastActive time.Time        `json:"lastActive"`
+	MaxUsers   int              `json:"maxUsers"`
 }
 
 type Manager struct {
@@ -375,10 +375,10 @@ func GetChatRooms() gin.HandlerFunc {
 		type RoomInfo struct {
 			ID        string    `json:"id"`
 			Name      string    `json:"name"`
-			UserCount int       `json:"user_count"`
-			MaxUsers  int       `json:"max_users"`
-			CreatedAt time.Time `json:"created_at"`
-			CreatorID uint      `json:"creator_id"`
+			UserCount int       `json:"userCount"`
+			MaxUsers  int       `json:"maxUsers"`
+			CreatedAt time.Time `json:"createdAt"`
+			CreatorID uint      `json:"creatorId"`
 		}
 
 		// 🔧 修复：先收集所有房间，然后排序
@@ -540,7 +540,7 @@ func GetPrivateChatHistory() gin.HandlerFunc {
 			return
 		}
 
-		targetUserID := c.Query("target_user_id")
+		targetUserID := c.Query("targetUserId")
 		if targetUserID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "缺少目标用户ID"})
 			return

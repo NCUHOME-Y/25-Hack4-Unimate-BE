@@ -45,12 +45,12 @@ func PostUserFlags() gin.HandlerFunc {
 			Priority           int    `json:"priority"` // 前端发送数字1-4
 			Total              int    `json:"total"`
 			Points             int    `json:"points"`
-			DailyLimit         int    `json:"daily_limit"`         // 每日完成次数限制
-			IsRecurring        bool   `json:"is_recurring"`        // 是否循环任务
-			EndTime            string `json:"end_time"`            // 改为string，手动解析
-			StartTime          string `json:"start_time"`          // 改为string，手动解析
-			ReminderTime       string `json:"reminder_time"`       // 提醒时间 (HH:MM 格式)
-			EnableNotification bool   `json:"enable_notification"` // 是否启用提醒
+			DailyLimit         int    `json:"dailyLimit"`         // 每日完成次数限制
+			IsRecurring        bool   `json:"isRecurring"`        // 是否循环任务
+			EndTime            string `json:"endTime"`            // 改为string，手动解析
+			StartTime          string `json:"startTime"`          // 改为string，手动解析
+			ReminderTime       string `json:"reminderTime"`       // 提醒时间 (HH:MM 格式)
+			EnableNotification bool   `json:"enableNotification"` // 是否启用提醒
 		}
 		if err := c.ShouldBindJSON(&flag); err != nil {
 			c.JSON(500, gin.H{"err": "添加flag失败,请重新再试..."})
@@ -413,10 +413,10 @@ func UpdateFlagInfo() gin.HandlerFunc {
 			Label              int    `json:"label"`
 			Priority           int    `json:"priority"`
 			Total              int    `json:"total"`
-			StartDate          string `json:"start_date"`
-			EndDate            string `json:"end_date"`
-			ReminderTime       string `json:"reminder_time"`
-			EnableNotification bool   `json:"enable_notification"`
+			StartDate          string `json:"startDate"`
+			EndDate            string `json:"endDate"`
+			ReminderTime       string `json:"reminderTime"`
+			EnableNotification bool   `json:"enableNotification"`
 			PostID             *uint  `json:"postId"` // 添加PostID字段，保留分享状态
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -543,7 +543,7 @@ func ToggleFlagNotification() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
 			FlagID             uint `json:"flagId"`
-			EnableNotification bool `json:"enable_notification"`
+			EnableNotification bool `json:"enableNotification"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": "请求参数错误"})

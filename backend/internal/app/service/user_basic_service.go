@@ -311,16 +311,16 @@ func CompleteRegistration() gin.HandlerFunc {
 		utils.LogInfo("用户注册成功", logrus.Fields{"user_id": user.ID, "email": user.Email, "name": user.Name})
 
 		c.JSON(http.StatusOK, gin.H{
-			"message":          "注册成功！",
-			"token":            token,
-			"user_id":          user.ID,
-			"name":             user.Name,
-			"email":            user.Email,
-			"head_show":        user.HeadShow,
-			"daka":             user.Daka,
-			"flag_number":      user.FlagNumber,
-			"count":            user.Count,
-			"month_learn_time": user.MonthLearntime,
+			"message":        "注册成功！",
+			"token":          token,
+			"userId":         user.ID,
+			"name":           user.Name,
+			"email":          user.Email,
+			"headShow":       user.HeadShow,
+			"daka":           user.Daka,
+			"flagNumber":     user.FlagNumber,
+			"count":          user.Count,
+			"monthLearnTime": user.MonthLearntime,
 		})
 	}
 }
@@ -407,16 +407,16 @@ func LoginUser() gin.HandlerFunc {
 		}
 		utils.LogInfo("用户登录成功", logrus.Fields{"user_id": user.ID, "user_email": user.Email})
 		c.JSON(http.StatusOK, gin.H{
-			"message":          "登录成功!",
-			"user_id":          user.ID,
-			"name":             user.Name,
-			"email":            user.Email,
-			"head_show":        user.HeadShow,
-			"daka":             user.Daka,
-			"flag_number":      user.FlagNumber,
-			"count":            user.Count,
-			"month_learn_time": user.MonthLearntime,
-			"token":            token,
+			"message":        "登录成功!",
+			"userId":         user.ID,
+			"name":           user.Name,
+			"email":          user.Email,
+			"headShow":       user.HeadShow,
+			"daka":           user.Daka,
+			"flagNumber":     user.FlagNumber,
+			"count":          user.Count,
+			"monthLearnTime": user.MonthLearntime,
+			"token":          token,
 		})
 	}
 }
@@ -425,8 +425,8 @@ func LoginUser() gin.HandlerFunc {
 func UpdateUserPassword() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			Password    string `json:"old_password"`
-			NewPassword string `json:"new_password"`
+			Password    string `json:"oldPassword"`
+			NewPassword string `json:"newPassword"`
 		}
 		id, _ := utils.GetCurrentUserID(c)
 		user, _ := repository.GetUserBasicByID(id) // 🔧 性能优化：使用轻量级查询
@@ -460,7 +460,7 @@ func UpdateUserPassword() gin.HandlerFunc {
 func UpdateUserName() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			NewName string `json:"new_name"`
+			NewName string `json:"newName"`
 		}
 		id, _ := utils.GetCurrentUserID(c)
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -563,15 +563,15 @@ func GetUserStats() gin.HandlerFunc {
 		dakaDays := user.Daka
 
 		c.JSON(http.StatusOK, gin.H{
-			"user_id":          user.ID,
-			"name":             user.Name,
-			"head_show":        user.HeadShow,
-			"avatar_index":     user.HeadShow,
-			"total_points":     user.Count,
-			"month_learn_time": user.MonthLearntime,
-			"completed_flags":  len(doneFlags),
-			"flag_number":      user.FlagNumber,
-			"daka_days":        dakaDays,
+			"userId":         user.ID,
+			"name":           user.Name,
+			"headShow":       user.HeadShow,
+			"avatarIndex":    user.HeadShow,
+			"totalPoints":    user.Count,
+			"monthLearnTime": user.MonthLearntime,
+			"completedFlags": len(doneFlags),
+			"flagNumber":     user.FlagNumber,
+			"dakaDays":       dakaDays,
 		})
 	}
 }
@@ -596,18 +596,18 @@ func GetUser() gin.HandlerFunc {
 		}
 		utils.LogInfo("获取用户信息成功", logrus.Fields{"user_id": id})
 		c.JSON(http.StatusOK, gin.H{
-			"id":               user.ID,
-			"user_id":          user.ID,
-			"username":         user.Name,
-			"name":             user.Name,
-			"email":            user.Email,
-			"phone":            user.Email,
-			"head_show":        user.HeadShow,
-			"daka":             user.Daka,
-			"flag_number":      user.FlagNumber,
-			"count":            user.Count,
-			"month_learn_time": user.MonthLearntime,
-			"user":             user,
+			"id":             user.ID,
+			"userId":         user.ID,
+			"username":       user.Name,
+			"name":           user.Name,
+			"email":          user.Email,
+			"phone":          user.Email,
+			"headShow":       user.HeadShow,
+			"daka":           user.Daka,
+			"flagNumber":     user.FlagNumber,
+			"count":          user.Count,
+			"monthLearnTime": user.MonthLearntime,
+			"user":           user,
 		})
 	}
 }
@@ -674,8 +674,8 @@ func GetDaKaRecords() gin.HandlerFunc {
 func UpdateUserRemindTime() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var Remind struct {
-			RemindHour int `json:"time_remind"`
-			ReminMin   int `json:"min_remind"`
+			RemindHour int `json:"timeRemind"`
+			ReminMin   int `json:"minRemind"`
 		}
 		if err := c.ShouldBindJSON(&Remind); err != nil {
 			c.JSON(400, gin.H{"error": "获取用户提醒时间失败,请重新再试..."})

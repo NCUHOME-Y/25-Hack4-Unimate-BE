@@ -133,16 +133,16 @@ func LoginWithOTP() gin.HandlerFunc {
 
 		utils.LogInfo("验证码登录成功", logrus.Fields{"email": req.Email, "user_id": user.ID})
 		c.JSON(http.StatusOK, gin.H{
-			"message":          "登录成功！",
-			"token":            token,
-			"user_id":          user.ID,
-			"name":             user.Name,
-			"email":            user.Email,
-			"head_show":        user.HeadShow,
-			"daka":             user.Daka,
-			"flag_number":      user.FlagNumber,
-			"count":            user.Count,
-			"month_learn_time": user.MonthLearntime,
+			"message":        "登录成功！",
+			"token":          token,
+			"userId":         user.ID,
+			"name":           user.Name,
+			"email":          user.Email,
+			"headShow":       user.HeadShow,
+			"daka":           user.Daka,
+			"flagNumber":     user.FlagNumber,
+			"count":          user.Count,
+			"monthLearnTime": user.MonthLearntime,
 		})
 	}
 }
@@ -152,7 +152,7 @@ func ForgetPassword() gin.HandlerFunc {
 		var requestData struct {
 			Email       string `json:"email"`
 			Code        string `json:"code"`
-			NewPassword string `json:"new_password"`
+			NewPassword string `json:"newPassword"`
 		}
 		if err := c.ShouldBindJSON(&requestData); err != nil {
 			c.JSON(400, gin.H{"error": "请求参数错误"})

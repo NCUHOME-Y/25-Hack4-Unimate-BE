@@ -8,27 +8,27 @@ import (
 )
 
 type User struct {
-	ID         uint       `gorm:"primaryKey" json:"user_id"`      //用户ID
-	Name       string     `json:"name"`                           //用户名
-	Email      string     `json:"email"`                          //邮箱
-	Password   string     `json:"password"`                       //密码
-	Status     string     `json:"status"`                         //用户状态
-	IsRemind   bool       `json:"is_remind" gorm:"default:false"` //是否开启提醒
-	DoFlag     *time.Time `json:"do_flag"`                        //最后打卡时间
-	HeadShow   int        `json:"head_show" gorm:"default:1"`     //头像显示
-	RemindHour int        `json:"time_remind" default:"12"`       //兼容字段：提醒小时（旧）
-	RemindMin  int        `json:"min_remind" default:"0"`         //兼容字段：提醒分钟（旧）
+	ID         uint       `gorm:"primaryKey" json:"userId"`      //用户ID
+	Name       string     `json:"name"`                          //用户名
+	Email      string     `json:"email"`                         //邮箱
+	Password   string     `json:"password"`                      //密码
+	Status     string     `json:"status"`                        //用户状态
+	IsRemind   bool       `json:"isRemind" gorm:"default:false"` //是否开启提醒
+	DoFlag     *time.Time `json:"doFlag"`                        //最后打卡时间
+	HeadShow   int        `json:"headShow" gorm:"default:1"`     //头像显示
+	RemindHour int        `json:"timeRemind" default:"12"`       //兼容字段：提醒小时（旧）
+	RemindMin  int        `json:"minRemind" default:"0"`         //兼容字段：提醒分钟（旧）
 
 	// 新增：将学习提醒和 Flag 提醒独立管理
-	IsStudyRemind   bool          `json:"is_study_remind" gorm:"default:false"` // 是否开启学习提醒
-	StudyRemindHour int           `json:"study_remind_hour" gorm:"default:12"`  // 学习提醒小时
-	StudyRemindMin  int           `json:"study_remind_min" gorm:"default:0"`    // 学习提醒分钟
-	IsFlagRemind    bool          `json:"is_flag_remind" gorm:"default:false"`  // 是否开启 Flag 提醒（用户级总开关）
-	Daka            int           `json:"daka"`                                 //总打卡数
-	MonthLearntime  int           `json:"month_learn_time"`                     //本月学习时长
-	FlagNumber      int           `json:"flag_number"`                          //完成flag数量
-	Count           int           `json:"count"`                                //积分
-	Labels          Label         `json:"labels" gorm:"foreignKey:UserID"`      //完成flag的标签数
+	IsStudyRemind   bool          `json:"isStudyRemind" gorm:"default:false"` // 是否开启学习提醒
+	StudyRemindHour int           `json:"studyRemindHour" gorm:"default:12"`  // 学习提醒小时
+	StudyRemindMin  int           `json:"studyRemindMin" gorm:"default:0"`    // 学习提醒分钟
+	IsFlagRemind    bool          `json:"isFlagRemind" gorm:"default:false"`  // 是否开启 Flag 提醒（用户级总开关）
+	Daka            int           `json:"daka"`                               //总打卡数
+	MonthLearntime  int           `json:"monthLearnTime"`                     //本月学习时长
+	FlagNumber      int           `json:"flagNumber"`                         //完成flag数量
+	Count           int           `json:"count"`                              //积分
+	Labels          Label         `json:"labels" gorm:"foreignKey:UserID"`    //完成flag的标签数
 	DaKaNumber      []Daka_number `gorm:"foreignKey:UserID"`
 	LearnTimes      []LearnTime   `gorm:"foreignKey:UserID"` //外键绑定learn_time表
 	Flags           []Flag        `gorm:"foreignKey:UserID"` //外键绑定flag表
@@ -111,18 +111,18 @@ func (c *PostComment) AfterFind(tx *gorm.DB) error {
 // 用户-帖子点赞关系表
 type UserPostLike struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	UserID    uint      `gorm:"index" json:"user_id"`
-	PostID    uint      `gorm:"index" json:"post_id"`
-	CreatedAt time.Time `json:"created_at"`
+	UserID    uint      `gorm:"index" json:"userId"`
+	PostID    uint      `gorm:"index" json:"postId"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // flag评论
 type FlagComment struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	FlagID    uint      `json:"flag_id"`
+	FlagID    uint      `json:"flagId"`
 	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type Achievement struct {
@@ -137,37 +137,37 @@ type Achievement struct {
 
 type LearnTime struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UserID    uint      `json:"user_id"`
+	CreatedAt time.Time `json:"createdAt"`
+	UserID    uint      `json:"userId"`
 	Duration  int       `json:"duration"` // 学习时长，单位为秒 (Duration in seconds)
 }
 
 type Daka_number struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	UserID    uint      `gorm:"column:user_id" json:"user_id"`
-	HadDone   bool      `gorm:"column:had_done" json:"had_done"`
-	MonthDaka int       `gorm:"column:month_daka" json:"month_daka"`
-	DaKaDate  time.Time `gorm:"column:daka_date" json:"daka_date"`
+	UserID    uint      `gorm:"column:user_id" json:"userId"`
+	HadDone   bool      `gorm:"column:had_done" json:"hadDone"`
+	MonthDaka int       `gorm:"column:month_daka" json:"monthDaka"`
+	DaKaDate  time.Time `gorm:"column:daka_date" json:"dakaDate"`
 }
 
 // 邮箱验证码
 type EmailCode struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	Email     string    `json:"email"`
-	HadUse    bool      `json:"had_use"`
+	HadUse    bool      `json:"hadUse"`
 	Code      string    `json:"code"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"createdAt"`
 	Expires   time.Time `json:"expires"`
 }
 
 // 标签
 type Label struct {
 	ID     uint `gorm:"primaryKey" json:"id"`
-	UserID uint `json:"user_id"`
+	UserID uint `json:"userId"`
 	Life   int  `json:"life"`
 	Study  int  `json:"study"`
 	Work   int  `json:"work"`
-	Like   int  `json:"like"`
+	Like   int  `json:"likeCount"`
 	Sport  int  `json:"sport"`
 }
 

@@ -156,7 +156,7 @@ func GetUserDakaTotal() gin.HandlerFunc {
 		id, _ := utils.GetCurrentUserID(c)
 		user, _ := repository.GetUserBasicByID(id) // 🔧 性能优化
 		c.JSON(200, gin.H{
-			"daka_total": user.Daka,
+			"dakaTotal": user.Daka,
 		})
 	}
 }
@@ -167,7 +167,7 @@ func GetUserMonthDaka() gin.HandlerFunc {
 		id, _ := utils.GetCurrentUserID(c)
 		dakaNumber, _ := repository.GetRecentDakaNumber(id)
 		c.JSON(200, gin.H{
-			"month_daka": dakaNumber.MonthDaka,
+			"monthDaka": dakaNumber.MonthDaka,
 		})
 	}
 }
@@ -178,7 +178,7 @@ func GetLearnTimeRecordsMonth() gin.HandlerFunc {
 		id, _ := utils.GetCurrentUserID(c)
 		user, _ := repository.GetUserBasicByID(id) // 🔧 性能优化
 		c.JSON(200, gin.H{
-			"month_learntime": user.MonthLearntime,
+			"monthLearntime": user.MonthLearntime,
 		})
 	}
 }
@@ -207,13 +207,13 @@ func GetTodayLearnTime() gin.HandlerFunc {
 		learnTime, err := repository.GetTodayLearnTime(id)
 		if err != nil {
 			c.JSON(200, gin.H{
-				"today_learn_time": 0,
+				"todayLearnTime": 0,
 			})
 			return
 		}
 		utils.LogInfo("获取今日学习时长成功", logrus.Fields{"user_id": id, "duration": learnTime.Duration})
 		c.JSON(200, gin.H{
-			"today_learn_time": learnTime.Duration,
+			"todayLearnTime": learnTime.Duration,
 		})
 	}
 }

@@ -320,7 +320,7 @@ func CommentOnFlag() gin.HandlerFunc {
 func DeleteFlagComment() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			FlagCommentID uint `json:"flagcomment_id"`
+			FlagCommentID uint `json:"flagCommentId"`
 		}
 		if err := c.ShouldBindJSON(&req); HandleBindError(c, err) {
 			return

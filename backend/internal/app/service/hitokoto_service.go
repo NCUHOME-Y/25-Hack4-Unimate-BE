@@ -18,7 +18,7 @@ type HitokotoResponse struct {
 	Hitokoto   string `json:"hitokoto"` // 一言正文
 	Type       string `json:"type"`     // 类型
 	From       string `json:"from"`     // 来源
-	FromWho    string `json:"from_who"` // 作者
+	FromWho    string `json:"fromWho"`  // 作者
 	Creator    string `json:"creator"`  // 添加者
 	CreatorUID int    `json:"creator_uid"`
 	Reviewer   int    `json:"reviewer"`

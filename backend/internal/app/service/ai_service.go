@@ -395,7 +395,7 @@ func SaveAIHistory() gin.HandlerFunc {
 			Background    string `json:"background"`
 			Goal          string `json:"goal"`
 			Difficulty    string `json:"difficulty"`
-			GeneratedPlan string `json:"generated_plan"` // JSON字符串
+			GeneratedPlan string `json:"generatedPlan"` // JSON字符串
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -475,7 +475,7 @@ func DeleteAIHistory() gin.HandlerFunc {
 		}
 
 		var req struct {
-			HistoryID uint `json:"history_id" binding:"required"`
+			HistoryID uint `json:"historyId" binding:"required"`
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
