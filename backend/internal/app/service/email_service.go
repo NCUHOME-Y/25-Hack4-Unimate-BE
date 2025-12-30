@@ -63,7 +63,7 @@ func VerifyEmail() gin.HandlerFunc {
 		c.JSON(200, gin.H{
 			"success": true,
 			"token":   token,
-			"user_id": user.ID,
+			"userId":  user.ID,
 			"name":    user.Name,
 			"email":   user.Email,
 		})

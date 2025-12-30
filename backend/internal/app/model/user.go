@@ -8,18 +8,15 @@ import (
 )
 
 type User struct {
-	ID         uint       `gorm:"primaryKey" json:"userId"`      //用户ID
-	Name       string     `json:"name"`                          //用户名
-	Email      string     `json:"email"`                         //邮箱
-	Password   string     `json:"password"`                      //密码
-	Status     string     `json:"status"`                        //用户状态
-	IsRemind   bool       `json:"isRemind" gorm:"default:false"` //是否开启提醒
-	DoFlag     *time.Time `json:"doFlag"`                        //最后打卡时间
-	HeadShow   int        `json:"headShow" gorm:"default:1"`     //头像显示
-	RemindHour int        `json:"timeRemind" default:"12"`       //兼容字段：提醒小时（旧）
-	RemindMin  int        `json:"minRemind" default:"0"`         //兼容字段：提醒分钟（旧）
+	ID       uint       `gorm:"primaryKey" json:"userId"`  //用户ID
+	Name     string     `json:"name"`                      //用户名
+	Email    string     `json:"email"`                     //邮箱
+	Password string     `json:"password"`                  //密码
+	Status   string     `json:"status"`                    //用户状态
+	DoFlag   *time.Time `json:"doFlag"`                    //最后打卡时间
+	HeadShow int        `json:"headShow" gorm:"default:1"` //头像显示
 
-	// 新增：将学习提醒和 Flag 提醒独立管理
+	// 学习提醒和 Flag 提醒独立管理
 	IsStudyRemind   bool          `json:"isStudyRemind" gorm:"default:false"` // 是否开启学习提醒
 	StudyRemindHour int           `json:"studyRemindHour" gorm:"default:12"`  // 学习提醒小时
 	StudyRemindMin  int           `json:"studyRemindMin" gorm:"default:0"`    // 学习提醒分钟

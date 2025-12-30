@@ -677,36 +677,52 @@ func GetDaKaRecords() gin.HandlerFunc {
 // 用户选择的时间定时提醒
 func UpdateUserRemindTime() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var Remind struct {
-			RemindHour int `json:"timeRemind"`
-			ReminMin   int `json:"minRemind"`
+		var req struct {
+			StudyRemindHour *int `json:"studyRemindHour"`
+			StudyRemindMin  *int `json:"studyRemindMin"`
 		}
-		if err := c.ShouldBindJSON(&Remind); err != nil {
+		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": "获取用户提醒时间失败,请重新再试..."})
 			utils.LogError("获取用户提醒时间失败", logrus.Fields{})
 			return
 		}
-		id, _ := utils.GetCurrentUserID(c)
 
-		// 先开启学习提醒状态（如果还未开启）
-		user, _ := repository.GetUserByID(id)
-		if !user.IsStudyRemind {
-			repository.UpdateUserStudyRemindStatus(id, true)
-			utils.LogInfo("自动开启学习提醒功能", logrus.Fields{"user_id": id})
-		}
-
-		// 更新学习提醒时间（同时兼容旧字段）
-		err := repository.UpdateUserRemindTime(id, Remind.RemindHour, Remind.ReminMin)
-		if err != nil {
-			c.JSON(500, gin.H{"error": "更新用户提醒时间失败,请重新再试..."})
-			utils.LogError("更新用户提醒时间失败", logrus.Fields{})
+		if req.StudyRemindHour == nil || req.StudyRemindMin == nil {
+			c.JSON(400, gin.H{"error": "请提供完整的提醒时间"})
 			return
 		}
 
-		// 更新学习提醒定时任务（学习提醒状态为 true）
-		UpdateUserReminderJob(id, Remind.RemindHour, Remind.ReminMin, true)
+		hour := *req.StudyRemindHour
+		min := *req.StudyRemindMin
 
-		utils.LogInfo("更新用户提醒时间成功", logrus.Fields{"user_id": id, "remind_hour": Remind.RemindHour, "remin_min": Remind.ReminMin})
+		// 验证时间范围
+		if hour < 0 || hour > 23 || min < 0 || min > 59 {
+			c.JSON(400, gin.H{"error": "提醒时间格式错误(小时:0-23,分钟:0-59)"})
+			utils.LogError("提醒时间格式错误", logrus.Fields{"hour": hour, "min": min})
+			return
+		}
+
+		id, _ := utils.GetCurrentUserID(c)
+		user, err := repository.GetUserByID(id)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取用户信息失败,请重新再试..."})
+			utils.LogError("获取用户信息失败", logrus.Fields{"user_id": id, "error": err.Error()})
+			return
+		}
+
+		// 更新学习提醒时间（写入新字段）
+		err = repository.UpdateUserRemindTime(id, hour, min)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "更新用户提醒时间失败,请重新再试..."})
+			utils.LogError("更新用户提醒时间失败", logrus.Fields{"user_id": id, "error": err.Error()})
+			return
+		}
+
+		// 只在当前开启提醒时更新定时任务；不强制把“关闭”改成“开启”
+		isEnabled := user.IsStudyRemind
+		UpdateUserReminderJob(id, hour, min, isEnabled)
+
+		utils.LogInfo("更新用户提醒时间成功", logrus.Fields{"user_id": id, "study_remind_hour": hour, "study_remind_min": min, "is_enabled": isEnabled})
 		c.JSON(200, gin.H{"message": "更新用户提醒时间成功!"})
 	}
 }
@@ -714,11 +730,26 @@ func UpdateUserRemindTime() gin.HandlerFunc {
 // 用户选择是否开启提醒
 func UpdateUserRemind() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var req struct {
+			Status *bool `json:"status"`
+		}
+		_ = c.ShouldBindJSON(&req)
+
 		id, _ := utils.GetCurrentUserID(c)
-		user, _ := repository.GetUserByID(id)
-		// 切换学习提醒开关
-		user.IsStudyRemind = !user.IsStudyRemind
-		err := repository.UpdateUserStudyRemindStatus(id, user.IsStudyRemind)
+		user, err := repository.GetUserByID(id)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取用户信息失败,请重新再试..."})
+			utils.LogError("获取用户信息失败", logrus.Fields{"user_id": id, "error": err.Error()})
+			return
+		}
+
+		// 兼容：如果前端传了 status 就按 status 设置；否则保持旧行为（toggle）
+		enabled := !user.IsStudyRemind
+		if req.Status != nil {
+			enabled = *req.Status
+		}
+
+		err = repository.UpdateUserStudyRemindStatus(id, enabled)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "更新用户提醒状态失败,请重新再试..."})
 			utils.LogError("更新用户提醒状态失败", logrus.Fields{})
@@ -726,29 +757,44 @@ func UpdateUserRemind() gin.HandlerFunc {
 		}
 
 		// 更新学习提醒定时任务
-		UpdateUserReminderJob(id, user.StudyRemindHour, user.StudyRemindMin, user.IsStudyRemind)
+		UpdateUserReminderJob(id, user.StudyRemindHour, user.StudyRemindMin, enabled)
 
-		utils.LogInfo("更新用户学习提醒状态成功", logrus.Fields{"user_id": id, "is_study_remind": user.IsStudyRemind})
-		c.JSON(200, gin.H{"message": "更新用户学习提醒状态成功!",
-			"状态": user.IsStudyRemind})
+		utils.LogInfo("更新用户学习提醒状态成功", logrus.Fields{"user_id": id, "is_study_remind": enabled})
+		c.JSON(200, gin.H{"message": "更新用户学习提醒状态成功!", "isEnabled": enabled})
 	}
 }
 
 // 更新用户 Flag 提醒（用户级总开关）
 func UpdateUserFlagRemind() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var req struct {
+			Status *bool `json:"status"`
+		}
+		_ = c.ShouldBindJSON(&req)
+
 		id, _ := utils.GetCurrentUserID(c)
-		user, _ := repository.GetUserByID(id)
-		user.IsFlagRemind = !user.IsFlagRemind
-		err := repository.UpdateUserFlagRemindStatus(id, user.IsFlagRemind)
+		user, err := repository.GetUserByID(id)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取用户信息失败,请重新再试..."})
+			utils.LogError("获取用户信息失败", logrus.Fields{"user_id": id, "error": err.Error()})
+			return
+		}
+
+		// 兼容：如果前端传了 status 就按 status 设置；否则保持旧行为（toggle）
+		enabled := !user.IsFlagRemind
+		if req.Status != nil {
+			enabled = *req.Status
+		}
+
+		err = repository.UpdateUserFlagRemindStatus(id, enabled)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "更新用户 Flag 提醒状态失败,请重新再试..."})
 			utils.LogError("更新用户 Flag 提醒状态失败", logrus.Fields{})
 			return
 		}
 
-		utils.LogInfo("更新用户 Flag 提醒状态成功", logrus.Fields{"user_id": id, "is_flag_remind": user.IsFlagRemind})
-		c.JSON(200, gin.H{"message": "更新用户 Flag 提醒状态成功!", "状态": user.IsFlagRemind})
+		utils.LogInfo("更新用户 Flag 提醒状态成功", logrus.Fields{"user_id": id, "is_flag_remind": enabled})
+		c.JSON(200, gin.H{"message": "更新用户 Flag 提醒状态成功!", "isEnabled": enabled})
 	}
 }
 

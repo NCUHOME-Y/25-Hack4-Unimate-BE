@@ -74,13 +74,13 @@ func ensureHitokotoUser() error {
 
 	// 创建一言系统账户
 	hitokotoUser := model.User{
-		ID:       HitokotoUserID,
-		Name:     HitokotoUsername,
-		Email:    "hitokoto@system.local",
-		Password: "", // 系统账户无需密码
-		Status:   "一言·每日智慧",
-		HeadShow: HitokotoUserAvatar,
-		IsRemind: false,
+		ID:            HitokotoUserID,
+		Name:          HitokotoUsername,
+		Email:         "hitokoto@system.local",
+		Password:      "", // 系统账户无需密码
+		Status:        "一言·每日智慧",
+		HeadShow:      HitokotoUserAvatar,
+		IsStudyRemind: false,
 	}
 
 	if err := repository.DB.Create(&hitokotoUser).Error; err != nil {

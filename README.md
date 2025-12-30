@@ -66,7 +66,26 @@ mysql -u root -p < scripts/unimate.sql
 库名 unimate，字符集 utf8mb4
 
 
-3. 环境变量
+3. **数据迁移（仅旧版本升级需要）**
+⚠️ **新安装请跳过此步**！仅当满足以下条件时才执行：
+- 你是从旧版本升级（非全新安装）
+- 数据库表 `users` 中仍存在旧列：`is_remind`、`remind_hour`、`remind_min`
+
+执行迁移命令：
+```bash
+mysql -u root -p unimate < backend/cmd/tools/migrate_reminder_fields/migrate.sql
+```
+该迁移会将旧用户的 `is_remind/remind_hour/remind_min` 字段数据复制到新字段 `is_study_remind/study_remind_hour/study_remind_min`。
+
+验证迁移结果（可选）：
+```bash
+mysql -u root -p unimate < backend/cmd/tools/migrate_reminder_fields/verify.sql
+```
+
+**如果已手动删除旧列，或从未有过旧列，则无需也无法执行该迁移**。
+
+
+4. 环境变量
 cp .env.example .env
 必须项
 DB_DSN="user:pass@tcp(127.0.0.1:3306)/unimate?charset=utf8mb4&parseTime=True&loc=Local"
@@ -74,7 +93,7 @@ JWT_SECRET="32位随机字符串"
 APIKEY="SiliconFlow 令牌"   # AI 计划生成用
 
 
-4. 运行
+5. 运行
 go run main.go
 → 监听 0.0.0.0:8080
 

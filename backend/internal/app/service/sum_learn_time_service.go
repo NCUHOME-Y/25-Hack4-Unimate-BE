@@ -164,10 +164,19 @@ func GetUserDakaTotal() gin.HandlerFunc {
 // 获取月打卡数
 func GetUserMonthDaka() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, _ := utils.GetCurrentUserID(c)
-		dakaNumber, _ := repository.GetRecentDakaNumber(id)
+		id, ok := utils.GetCurrentUserID(c)
+		if !ok || id == 0 {
+			c.JSON(401, gin.H{"error": "未授权，请先登录"})
+			return
+		}
+		count, err := repository.GetCurrentMonthDakaCount(id)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "获取月打卡数失败,请重新再试..."})
+			utils.LogError("获取月打卡数失败", logrus.Fields{"user_id": id, "error": err.Error()})
+			return
+		}
 		c.JSON(200, gin.H{
-			"monthDaka": dakaNumber.MonthDaka,
+			"monthDaka": count,
 		})
 	}
 }

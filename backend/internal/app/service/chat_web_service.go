@@ -226,7 +226,26 @@ func (manager *Manager) Start() {
 					case targetClient.Send <- data:
 						log.Printf("📨 Private message from %d to %d delivered", message.FromID, message.ToID)
 					default:
-						log.Printf("❌ Failed to send private message from %d to %d", message.FromID, message.ToID)
+						log.Printf("❌ Failed to send private message from %d to %d (treat as offline)", message.FromID, message.ToID)
+
+						// 发送失败也按“离线”处理：补发邮件通知
+						go func(toID, fromID uint, content, fromName string) {
+							targetUser, err := repository.GetUserByID(toID)
+							if err != nil || targetUser.Email == "" {
+								return
+							}
+							sender, _ := repository.GetUserByID(fromID)
+							senderName := fromName
+							if senderName == "" && sender.Name != "" {
+								senderName = sender.Name
+							}
+							if senderName == "" {
+								senderName = fmt.Sprintf("用户%d", fromID)
+							}
+
+							receiverName := GetUserDisplayName(targetUser)
+							SendPrivateMessageNotification(targetUser.Email, receiverName, senderName, content)
+						}(message.ToID, message.FromID, message.Content, message.UserName)
 					}
 				} else {
 					log.Printf("⚠️ Target user %d not online for private message", message.ToID)

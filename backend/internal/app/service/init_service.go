@@ -46,61 +46,79 @@ func Init() {
 
 	for _, u := range users {
 		user := u
+		// 🐛 修复闭包陷阱：捕获用户ID值，避免引用循环变量
+		userID := user.ID
 
 		// 每日任务
 		_, err := cronScheduler.AddFunc("@daily", func() {
-			InitDakaNumberRecord(user.DaKaNumber, user.ID)
-			InitDaliyLearnTimeRecord(user.ID)
-			InitDaliyFlag(user.Flags)
-			utils.LogInfo("执行每日初始化任务", logrus.Fields{"user_id": user.ID})
+			// 注意：GetUserByID 默认不 Preload DaKaNumber；这里直接按 user_id 查询，确保每日任务完整生效。
+			var dakaRecords []model.Daka_number
+			if err := repository.DB.Where("user_id = ?", userID).Find(&dakaRecords).Error; err != nil {
+				utils.LogError("每日任务获取打卡记录失败", logrus.Fields{"user_id": userID, "error": err.Error()})
+				return
+			}
+
+			var flags []model.Flag
+			if err := repository.DB.Where("user_id = ?", userID).Find(&flags).Error; err != nil {
+				utils.LogError("每日任务获取Flag失败", logrus.Fields{"user_id": userID, "error": err.Error()})
+				return
+			}
+
+			InitDakaNumberRecord(dakaRecords, userID)
+			InitDaliyLearnTimeRecord(userID)
+			InitDaliyFlag(flags)
+			utils.LogInfo("执行每日初始化任务", logrus.Fields{"user_id": userID})
 		})
 		if err != nil {
-			utils.LogError("添加每日任务失败", logrus.Fields{"user_id": user.ID, "error": err.Error()})
+			utils.LogError("添加每日任务失败", logrus.Fields{"user_id": userID, "error": err.Error()})
 		}
 
 		// 每月任务
 		_, err = cronScheduler.AddFunc("@monthly", func() {
-			InitMonthlyDakaRecord(user.ID)
-			user.MonthLearntime = 0
-			err := repository.SaveUserToDB(user)
-			if err != nil {
-				utils.LogError("重置用户每月学习时长失败", logrus.Fields{"user_id": user.ID, "error": err.Error()})
+			InitMonthlyDakaRecord(userID)
+			// 重置月学习时长（原子更新，避免 Save 覆盖其它字段）
+			if err := repository.DB.Model(&model.User{}).Where("id = ?", userID).Update("month_learntime", 0).Error; err != nil {
+				utils.LogError("重置用户每月学习时长失败", logrus.Fields{"user_id": userID, "error": err.Error()})
+				return
 			}
-			utils.LogInfo("执行每月初始化任务", logrus.Fields{"user_id": user.ID})
+			utils.LogInfo("执行每月初始化任务", logrus.Fields{"user_id": userID})
 		})
 		if err != nil {
-			utils.LogError("添加每月任务失败", logrus.Fields{"user_id": user.ID, "error": err.Error()})
+			utils.LogError("添加每月任务失败", logrus.Fields{"user_id": userID, "error": err.Error()})
 		}
 
 		// 学习提醒任务（用户级学习提醒）
 		if user.IsStudyRemind {
+			hour := user.StudyRemindHour
+			min := user.StudyRemindMin
 			// 修复：使用正确的 cron 格式（秒 分 时 日 月 周）
-			cronStr := fmt.Sprintf("0 %d %d * * *", user.StudyRemindMin, user.StudyRemindHour)
+			cronStr := fmt.Sprintf("0 %d %d * * *", min, hour)
+			// 🐛 修复闭包陷阱：捕获当前用户ID/时间副本，避免闭包引用外部变量
+			userID := user.ID
+			reminderHour := hour
+			reminderMin := min
 			entryID, err := cronScheduler.AddFunc(cronStr, func() {
+				// 发送时只需要邮箱/姓名，用轻量查询即可
+				currentUser, err := repository.GetUserBasicByID(userID)
+				if err != nil {
+					utils.LogError("获取用户信息失败", logrus.Fields{"user_id": userID, "error": err.Error()})
+					return
+				}
+
 				utils.LogInfo("发送定时提醒邮件", logrus.Fields{
-					"user_id": user.ID,
-					"email":   user.Email,
-					"time":    fmt.Sprintf("%02d:%02d", user.RemindHour, user.RemindMin),
+					"user_id": userID,
+					"email":   currentUser.Email,
+					"time":    fmt.Sprintf("%02d:%02d", reminderHour, reminderMin),
 				})
 
-				err := utils.SentEmail(user.Email, "【知序】您的学习提醒", fmt.Sprintf(`尊敬的%s，您好！
-
-这是您设定的每日学习提醒。
-
-提醒时间：%02d:%02d
-
-请记得保持良好的学习习惯，持续追求进步。自律是成功的基石，每一天的坚持都将成为您通往目标的阶梯。
-
-请登录知序平台（http://139.199.157.76）查看详情。
-
-——知序平台`, user.Name, user.RemindHour, user.RemindMin))
+				err = SendStudyReminderEmail(currentUser.Email, currentUser.Name, reminderHour, reminderMin)
 				if err != nil {
 					utils.LogError("发送提醒邮件失败", logrus.Fields{
-						"user_id": user.ID,
+						"user_id": userID,
 						"error":   err.Error(),
 					})
 				} else {
-					utils.LogInfo("提醒邮件发送成功", logrus.Fields{"user_id": user.ID})
+					utils.LogInfo("提醒邮件发送成功", logrus.Fields{"user_id": userID})
 				}
 			})
 
@@ -118,7 +136,7 @@ func Init() {
 
 				utils.LogInfo("✅ 添加提醒任务成功", logrus.Fields{
 					"user_id": user.ID,
-					"time":    fmt.Sprintf("%02d:%02d", user.RemindHour, user.RemindMin),
+					"time":    fmt.Sprintf("%02d:%02d", hour, min),
 				})
 			}
 		}
@@ -163,27 +181,68 @@ func AddUserCronJob(user model.User) {
 		return
 	}
 
+	// 🐛 修复闭包陷阱：捕获用户ID值
+	userID := user.ID
+
 	// 每日任务
 	cronScheduler.AddFunc("@daily", func() {
-		InitDakaNumberRecord(user.DaKaNumber, user.ID)
-		InitDaliyLearnTimeRecord(user.ID)
-		InitDaliyFlag(user.Flags)
+		var dakaRecords []model.Daka_number
+		if err := repository.DB.Where("user_id = ?", userID).Find(&dakaRecords).Error; err != nil {
+			return
+		}
+
+		var flags []model.Flag
+		if err := repository.DB.Where("user_id = ?", userID).Find(&flags).Error; err != nil {
+			return
+		}
+
+		InitDakaNumberRecord(dakaRecords, userID)
+		InitDaliyLearnTimeRecord(userID)
+		InitDaliyFlag(flags)
 	})
 
 	// 每月任务
 	cronScheduler.AddFunc("@monthly", func() {
-		InitMonthlyDakaRecord(user.ID)
+		InitMonthlyDakaRecord(userID)
+		_ = repository.DB.Model(&model.User{}).Where("id = ?", userID).Update("month_learntime", 0).Error
 	})
 
 	// 学习提醒任务（用户级学习提醒）
 	if user.IsStudyRemind {
-		cronStr := fmt.Sprintf("0 %d %d * * *", user.RemindMin, user.RemindHour)
-		cronScheduler.AddFunc(cronStr, func() {
-			SendStudyReminderEmail(user.Email, user.Name, user.RemindHour, user.RemindMin)
+		hour := user.StudyRemindHour
+		min := user.StudyRemindMin
+
+		cronStr := fmt.Sprintf("0 %d %d * * *", min, hour)
+		// 🐛 修复闭包陷阱：捕获用户ID和时间副本，发送时用轻量查询获取最新邮箱/姓名
+		userID := user.ID
+		reminderHour := hour
+		reminderMin := min
+
+		// 避免重复注册：若已存在旧任务，先移除
+		reminderMutex.Lock()
+		if oldJobID, exists := userReminderJobs[userID]; exists {
+			cronScheduler.Remove(oldJobID)
+			delete(userReminderJobs, userID)
+		}
+		reminderMutex.Unlock()
+
+		entryID, err := cronScheduler.AddFunc(cronStr, func() {
+			currentUser, err := repository.GetUserBasicByID(userID)
+			if err != nil {
+				return
+			}
+			SendStudyReminderEmail(currentUser.Email, currentUser.Name, reminderHour, reminderMin)
 		})
+		if err != nil {
+			utils.LogError("为新用户添加提醒任务失败", logrus.Fields{"user_id": userID, "cron_str": cronStr, "error": err.Error()})
+		} else {
+			reminderMutex.Lock()
+			userReminderJobs[userID] = entryID
+			reminderMutex.Unlock()
+		}
 		utils.LogInfo("为新用户添加提醒任务", logrus.Fields{
 			"user_id": user.ID,
-			"time":    fmt.Sprintf("%02d:%02d", user.RemindHour, user.RemindMin),
+			"time":    fmt.Sprintf("%02d:%02d", hour, min),
 		})
 	}
 
@@ -191,7 +250,7 @@ func AddUserCronJob(user model.User) {
 }
 
 // 更新用户的学习提醒任务
-func UpdateUserReminderJob(userID uint, hour, min int, isRemind bool) {
+func UpdateUserReminderJob(userID uint, hour, min int, isStudyRemind bool) {
 	if cronScheduler == nil {
 		utils.LogError("定时任务调度器未初始化", nil)
 		return
@@ -208,23 +267,25 @@ func UpdateUserReminderJob(userID uint, hour, min int, isRemind bool) {
 	}
 
 	// 如果开启学习提醒，添加新的任务
-	if isRemind {
-		// 获取用户信息
-		user, err := repository.GetUserByID(userID)
-		if err != nil {
-			utils.LogError("获取用户信息失败", logrus.Fields{"user_id": userID, "error": err.Error()})
-			return
-		}
-
+	if isStudyRemind {
 		cronStr := fmt.Sprintf("0 %d %d * * *", min, hour)
+		// 🐛 修复闭包陷阱：捕获 userID 和时间副本，发送时重新获取邮箱/姓名
+		reminderHour := hour
+		reminderMin := min
 		entryID, err := cronScheduler.AddFunc(cronStr, func() {
+			user, err := repository.GetUserBasicByID(userID)
+			if err != nil {
+				utils.LogError("获取用户信息失败", logrus.Fields{"user_id": userID, "error": err.Error()})
+				return
+			}
+
 			utils.LogInfo("⏰ 发送定时提醒邮件", logrus.Fields{
 				"user_id": userID,
 				"email":   user.Email,
-				"time":    fmt.Sprintf("%02d:%02d", hour, min),
+				"time":    fmt.Sprintf("%02d:%02d", reminderHour, reminderMin),
 			})
 
-			SendStudyReminderEmail(user.Email, user.Name, hour, min)
+			SendStudyReminderEmail(user.Email, user.Name, reminderHour, reminderMin)
 		})
 
 		if err != nil {
@@ -245,17 +306,17 @@ func UpdateUserReminderJob(userID uint, hour, min int, isRemind bool) {
 
 // 初始化每天学习时间记录
 func InitDaliyLearnTimeRecord(id uint) {
-	user, _ := repository.GetUserByID(id)
 	Time, _ := repository.GetTodayLearnTime(id)
-	user.MonthLearntime = user.MonthLearntime + Time.Duration
 
-	// 🐛 修复：保存 month_learntime 到数据库
-	err := repository.SaveUserToDB(user)
-	if err != nil {
-		utils.LogError("更新用户月学习时长失败", logrus.Fields{"user_id": id, "error": err.Error()})
+	// 🐛 修复：用原子更新累加月学习时长，避免 Save 覆盖其他字段
+	if Time.Duration > 0 {
+		err := repository.DB.Exec("UPDATE users SET month_learntime = month_learntime + ? WHERE id = ?", Time.Duration, id).Error
+		if err != nil {
+			utils.LogError("更新用户月学习时长失败", logrus.Fields{"user_id": id, "error": err.Error()})
+		}
 	}
 
-	err = repository.AddNewLearnTimeToDB(id)
+	err := repository.AddNewLearnTimeToDB(id)
 	if err != nil {
 		utils.LogError("添加新的学习时间记录失败", logrus.Fields{"user_id": id})
 		return

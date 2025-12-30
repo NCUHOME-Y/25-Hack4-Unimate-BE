@@ -686,40 +686,43 @@ func GetRecent180LearnTime(user_id uint) ([]model.LearnTime, error) {
 
 // 获取当前月份的学习时长记录（补全缺失日期）
 func GetCurrentMonthLearnTime(user_id uint) ([]model.LearnTime, error) {
+	// 只查询当前月范围，避免扫全表；并按天累加（防御历史脏数据/重复记录）
+	now := time.Now()
+	year, month, _ := now.Date()
+	firstDay := time.Date(year, month, 1, 0, 0, 0, 0, now.Location())
+	nextMonthFirstDay := firstDay.AddDate(0, 1, 0)
+
 	var learnTime []model.LearnTime
-	err := DB.Where("user_id = ?", user_id).Order("created_at desc").Find(&learnTime).Error
+	err := DB.Where(
+		"user_id = ? AND created_at >= ? AND created_at < ?",
+		user_id,
+		firstDay,
+		nextMonthFirstDay,
+	).Order("created_at asc").Find(&learnTime).Error
 	if err != nil {
 		return nil, err
 	}
 
-	// 创建日期映射（只保存非负值）
+	// 日期映射：同一天累加
 	dataMap := make(map[string]int)
 	for _, record := range learnTime {
-		dateStr := record.CreatedAt.Format("2006-01-02")
-		if record.Duration >= 0 {
-			dataMap[dateStr] = record.Duration
+		if record.Duration < 0 {
+			continue
 		}
+		dateStr := record.CreatedAt.Format("2006-01-02")
+		dataMap[dateStr] += record.Duration
 	}
 
-	// 获取当前月份的天数
-	now := time.Now()
-	year, month, _ := now.Date()
-	firstDay := time.Date(year, month, 1, 0, 0, 0, 0, now.Location())
-	daysInMonth := now.Day() // 从1号到今天
-
-	// 补全当前月份的数据
+	// 从1号补到今天（包含今天）
+	daysInMonth := now.Day()
 	result := make([]model.LearnTime, daysInMonth)
 	for i := 0; i < daysInMonth; i++ {
 		date := firstDay.AddDate(0, 0, i)
 		dateStr := date.Format("2006-01-02")
-		duration := 0
-		if val, ok := dataMap[dateStr]; ok {
-			duration = val
-		}
 		result[i] = model.LearnTime{
 			UserID:    user_id,
 			CreatedAt: date,
-			Duration:  duration,
+			Duration:  dataMap[dateStr],
 		}
 	}
 	return result, nil
@@ -1012,6 +1015,19 @@ func GetMonthDakaRecords(user_id uint) ([]model.Daka_number, error) {
 	return records, err
 }
 
+// 获取用户本月打卡天数（按打卡记录统计，语义严格为“本月”）
+func GetCurrentMonthDakaCount(user_id uint) (int64, error) {
+	now := time.Now()
+	firstDay := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	nextMonthFirstDay := firstDay.AddDate(0, 1, 0)
+
+	var count int64
+	err := DB.Model(&model.Daka_number{}).
+		Where("user_id = ? AND had_done = true AND daka_date >= ? AND daka_date < ?", user_id, firstDay, nextMonthFirstDay).
+		Count(&count).Error
+	return count, err
+}
+
 // 每日更新打卡状态
 func UpdateDakaHadDone(userid uint) error {
 	result := DB.Model(&model.Daka_number{}).Where("user_id = ?", userid).Update("had_done", false)
@@ -1089,15 +1105,10 @@ func UpdateUserExistStatus(email string) error {
 
 // 存储用户提醒时间
 func UpdateUserRemindTime(id uint, hour int, min int) error {
-	// 同时更新兼容字段和新的学习提醒字段，保持向后兼容
-	result := DB.Model(&model.User{}).Where("id=?", id).Updates(map[string]interface{}{"remind_hour": hour, "remind_min": min, "study_remind_hour": hour, "study_remind_min": min})
-	return result.Error
-}
-
-// 是否开启提醒
-func UpdateUserRemindStatus(id uint, IsRemind bool) error {
-	// 更新兼容字段和新的学习提醒总开关
-	result := DB.Model(&model.User{}).Where("id=?", id).Updates(map[string]interface{}{"is_remind": IsRemind, "is_study_remind": IsRemind})
+	result := DB.Model(&model.User{}).Where("id=?", id).Updates(map[string]interface{}{
+		"study_remind_hour": hour,
+		"study_remind_min":  min,
+	})
 	return result.Error
 }
 
