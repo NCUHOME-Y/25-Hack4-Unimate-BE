@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/model"
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
+	utils "github.com/NCUHOME-Y/25-Hack4-Unimate-BE/util"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // ==================== 常量和缓存配置 ====================
@@ -30,10 +31,10 @@ func AddUserCount(count string, id uint) {
 	var countInt, _ = strconv.Atoi(count)
 	err := repository.CountAddDB(id, countInt)
 	if err != nil {
-		log.Printf("[error] 积分更新失败: %v", err)
+		utils.LogError("积分更新失败", logrus.Fields{"user_id": id, "error": err.Error()})
 		return
 	}
-	log.Printf("[info] 积分增加成功 - 用户ID: %d, 增加积分: %d", id, countInt)
+	utils.LogInfo("积分增加成功", logrus.Fields{"user_id": id, "points": countInt})
 }
 
 // 积分封神榜
@@ -41,7 +42,7 @@ func GetUserCount() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		users, err := repository.GetUserByCount()
 		if err != nil {
-			log.Printf("[error] 获取积分封神榜失败: %v", err)
+			utils.LogError("获取积分封神榜失败", logrus.Fields{"error": err.Error()})
 			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试...", "data": []gin.H{}})
 			return
 		}
@@ -56,7 +57,7 @@ func GetUserMonthLearnTime() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		users, err := repository.GetUserByMonthLearnTime()
 		if err != nil {
-			log.Printf("[error] 获取月学习时间封神榜失败: %v", err)
+			utils.LogError("获取月学习时间封神榜失败", logrus.Fields{"error": err.Error()})
 			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试...", "data": []gin.H{}})
 			return
 		}
@@ -70,7 +71,7 @@ func GetUserTotalDaka() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		users, err := repository.GetUserByDaka()
 		if err != nil {
-			log.Printf("[error] 获取总打卡数封神榜失败: %v", err)
+			utils.LogError("获取总打卡数封神榜失败", logrus.Fields{"error": err.Error()})
 			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试...", "data": []gin.H{}})
 			return
 		}
@@ -84,7 +85,7 @@ func GetUserByFlagNumber() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		users, err := repository.GetUserByFlagNumber()
 		if err != nil {
-			log.Printf("[error] 获取flag数量封神榜失败: %v", err)
+			utils.LogError("获取flag数量封神榜失败", logrus.Fields{"error": err.Error()})
 			c.JSON(500, gin.H{"error": "获取封神榜失败,请重新再试...", "data": []gin.H{}})
 			return
 		}
@@ -97,16 +98,16 @@ func GetUserByFlagNumber() gin.HandlerFunc {
 // 更新所有排行榜缓存
 func RefreshAllRankings() error {
 	if err := RefreshRankingCounts(); err != nil {
-		log.Printf("[error] 更新积分排行榜失败: %v", err)
+		utils.LogError("更新积分排行榜失败", logrus.Fields{"error": err.Error()})
 	}
 	if err := RefreshRankingMonthLearn(); err != nil {
-		log.Printf("[error] 更新月学习时间排行榜失败: %v", err)
+		utils.LogError("更新月学习时间排行榜失败", logrus.Fields{"error": err.Error()})
 	}
 	if err := RefreshRankingDaka(); err != nil {
-		log.Printf("[error] 更新打卡数排行榜失败: %v", err)
+		utils.LogError("更新打卡数排行榜失败", logrus.Fields{"error": err.Error()})
 	}
 	if err := RefreshRankingFlagNumber(); err != nil {
-		log.Printf("[error] 更新Flag数量排行榜失败: %v", err)
+		utils.LogError("更新Flag数量排行榜失败", logrus.Fields{"error": err.Error()})
 	}
 	return nil
 }
@@ -127,7 +128,7 @@ func RefreshRankingCounts() error {
 
 	// ③ 存入 Redis（带过期时间）
 	err = repository.RedisSetEx(RankingKeyCounts, string(data), RankingCacheTTL)
-	log.Printf("[info] 已更新积分排行榜缓存，共 %d 条记录", len(users))
+	utils.LogInfo("已更新积分排行榜缓存", logrus.Fields{"count": len(users)})
 	return err
 }
 
@@ -144,7 +145,7 @@ func RefreshRankingMonthLearn() error {
 	}
 
 	err = repository.RedisSetEx(RankingKeyMonthLearn, string(data), RankingCacheTTL)
-	log.Printf("[info] 已更新月学习时间排行榜缓存，共 %d 条记录", len(users))
+	utils.LogInfo("已更新月学习时间排行榜缓存", logrus.Fields{"count": len(users)})
 	return err
 }
 
@@ -161,7 +162,7 @@ func RefreshRankingDaka() error {
 	}
 
 	err = repository.RedisSetEx(RankingKeyDaka, string(data), RankingCacheTTL)
-	log.Printf("[info] 已更新打卡数排行榜缓存，共 %d 条记录", len(users))
+	utils.LogInfo("已更新打卡数排行榜缓存", logrus.Fields{"count": len(users)})
 	return err
 }
 
@@ -178,7 +179,7 @@ func RefreshRankingFlagNumber() error {
 	}
 
 	err = repository.RedisSetEx(RankingKeyFlagNumber, string(data), RankingCacheTTL)
-	log.Printf("[info] 已更新Flag数量排行榜缓存，共 %d 条记录", len(users))
+	utils.LogInfo("已更新Flag数量排行榜缓存", logrus.Fields{"count": len(users)})
 	return err
 }
 
@@ -230,13 +231,13 @@ func getRankingWithCache(
 	if err == nil && cachedData != "" {
 		var users []model.User
 		if err := json.Unmarshal([]byte(cachedData), &users); err == nil {
-			log.Printf("[cache hit] 从 Redis 读取 %s", redisKey)
+			utils.LogInfo("Redis缓存命中", logrus.Fields{"key": redisKey})
 			return users, nil
 		}
 	}
 
 	// ② Redis 中没有或过期，从 MySQL 读取
-	log.Printf("[cache miss] %s 不在缓存中，从 MySQL 读取", redisKey)
+	utils.LogInfo("Redis缓存未命中，从MySQL读取", logrus.Fields{"key": redisKey})
 	users, err := mysqlQuery()
 	if err != nil {
 		return nil, err
@@ -245,7 +246,7 @@ func getRankingWithCache(
 	// ③ 后台异步更新缓存，不影响当前请求
 	go func() {
 		if err := refreshFunc(); err != nil {
-			log.Printf("[error] 更新缓存失败: %v", err)
+			utils.LogError("更新缓存失败", logrus.Fields{"error": err.Error()})
 		}
 	}()
 
@@ -293,7 +294,7 @@ func StartRankingCacheRefresh() {
 	go func() {
 		for range ticker.C {
 			if err := RefreshAllRankings(); err != nil {
-				log.Printf("[error] 刷新排行榜缓存失败: %v", err)
+				utils.LogError("刷新排行榜缓存失败", logrus.Fields{"error": err.Error()})
 			}
 		}
 	}()

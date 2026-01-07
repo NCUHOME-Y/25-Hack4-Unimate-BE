@@ -3,7 +3,6 @@
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"sort"
 	"sync"
@@ -23,9 +22,12 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
 		allowedOrigins := map[string]bool{
-			"http://localhost:5173":      true,
-			"http://139.199.157.76":      true,
-			"http://139.199.157.76:5173": true,
+			"http://localhost:4173":       true,
+			"http://localhost:5173":       true,
+			"http://139.199.157.76":       true,
+			"http://139.199.157.76:5173":  true,
+			"https://139.199.157.76":      true,
+			"https://139.199.157.76:5173": true,
 		}
 		return allowedOrigins[origin]
 	},
@@ -187,10 +189,10 @@ func (manager *Manager) Start() {
 				if room, ok := manager.Rooms[client.RoomID]; ok {
 					room.Clients[client.ID] = client
 					room.LastActive = time.Now()
-					log.Printf("User %d connected to room %s (total: %d users)", client.ID, client.RoomID, len(room.Clients))
+					utils.LogInfo("用户连接到房间", logrus.Fields{"user_id": client.ID, "room_id": client.RoomID, "total_users": len(room.Clients)})
 				}
 			} else {
-				log.Printf("User %d connected for private chat", client.ID)
+				utils.LogInfo("用户连接私聊", logrus.Fields{"user_id": client.ID})
 			}
 			manager.mu.Unlock()
 
@@ -208,7 +210,7 @@ func (manager *Manager) Start() {
 					if _, exists := room.Clients[client.ID]; exists {
 						delete(room.Clients, client.ID)
 						room.LastActive = time.Now()
-						log.Printf("User %d disconnected from room %s (remaining: %d users)", client.ID, client.RoomID, len(room.Clients))
+						utils.LogInfo("用户从房间断开", logrus.Fields{"user_id": client.ID, "room_id": client.RoomID, "remaining_users": len(room.Clients)})
 					}
 				}
 			}
@@ -224,9 +226,9 @@ func (manager *Manager) Start() {
 				if targetClient, ok := manager.GlobalClients[message.ToID]; ok {
 					select {
 					case targetClient.Send <- data:
-						log.Printf("📨 Private message from %d to %d delivered", message.FromID, message.ToID)
+						utils.LogInfo("私聊消息已发送", logrus.Fields{"from": message.FromID, "to": message.ToID})
 					default:
-						log.Printf("❌ Failed to send private message from %d to %d (treat as offline)", message.FromID, message.ToID)
+						utils.LogWarn("私聊消息发送失败", logrus.Fields{"from": message.FromID, "to": message.ToID})
 
 						// 发送失败也按“离线”处理：补发邮件通知
 						go func(toID, fromID uint, content, fromName string) {
@@ -248,7 +250,7 @@ func (manager *Manager) Start() {
 						}(message.ToID, message.FromID, message.Content, message.UserName)
 					}
 				} else {
-					log.Printf("⚠️ Target user %d not online for private message", message.ToID)
+					utils.LogWarn("目标用户不在线", logrus.Fields{"user_id": message.ToID})
 
 					// 目标用户不在线，发送邮件通知
 					go func() {
@@ -273,9 +275,9 @@ func (manager *Manager) Start() {
 				if senderClient, ok := manager.GlobalClients[message.FromID]; ok {
 					select {
 					case senderClient.Send <- data:
-						log.Printf("✅ Private message echoed back to sender %d", message.FromID)
+						utils.LogInfo("私聊消息已回显给发送者", logrus.Fields{"user_id": message.FromID})
 					default:
-						log.Printf("⚠️ Failed to echo private message to sender %d", message.FromID)
+						utils.LogWarn("私聊消息回显失败", logrus.Fields{"user_id": message.FromID})
 					}
 				}
 			} else if message.RoomID != "" {
@@ -288,12 +290,12 @@ func (manager *Manager) Start() {
 						case client.Send <- data:
 							successCount++
 						default:
-							log.Printf("⚠️ Failed to send to client %d in room %s", clientID, message.RoomID)
+							utils.LogWarn("房间消息发送失败", logrus.Fields{"client_id": clientID, "room_id": message.RoomID})
 							close(client.Send)
 							delete(room.Clients, client.ID)
 						}
 					}
-					log.Printf("📢 Room message broadcast: from=%d room=%s sent_to=%d/%d users", message.FromID, message.RoomID, successCount, len(room.Clients))
+					utils.LogInfo("房间消息广播", logrus.Fields{"from": message.FromID, "room_id": message.RoomID, "sent_to": successCount, "total": len(room.Clients)})
 				}
 			}
 			manager.mu.RUnlock()

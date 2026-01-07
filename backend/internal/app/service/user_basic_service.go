@@ -3,7 +3,6 @@ package service
 import (
 	"crypto/subtle"
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -68,9 +67,9 @@ func JWTAuth() gin.HandlerFunc {
 			parts := strings.SplitN(authHeader, " ", 2)
 			if len(parts) == 2 && parts[0] == "Bearer" {
 				token = parts[1]
-				log.Printf("[JWT] 从 Authorization 头获取 token")
+				utils.LogInfo("从Authorization头获取token", nil)
 			} else {
-				log.Printf("[JWT] Authorization 格式错误: %s", authHeader)
+				utils.LogWarn("Authorization格式错误", logrus.Fields{"header": authHeader})
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"code": 401,
 					"msg":  "请求头中 Authorization 格式有误",
@@ -82,7 +81,7 @@ func JWTAuth() gin.HandlerFunc {
 			// 从 URL 参数获取（用于 WebSocket 连接）
 			token = c.Query("token")
 			if token == "" {
-				log.Printf("[JWT] 未找到 token - Authorization 头为空,URL 参数也为空")
+				utils.LogWarn("未找到token", logrus.Fields{"reason": "Authorization头和URL参数均为空"})
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"code": 401,
 					"msg":  "请求头中 Authorization 为空且 URL 中无 token 参数",
@@ -90,13 +89,13 @@ func JWTAuth() gin.HandlerFunc {
 				c.Abort()
 				return
 			}
-			log.Printf("[JWT] 从 URL 参数获取 token: %s...", token[:min(10, len(token))])
+			utils.LogInfo("从URL参数获取token", logrus.Fields{"token_prefix": token[:min(10, len(token))]})
 		}
 
 		// 解析 token
 		claims, err := utils.ParseToken(token)
 		if err != nil {
-			log.Printf("[JWT] Token 解析失败: %v", err)
+			utils.LogError("Token解析失败", logrus.Fields{"error": err.Error()})
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"code": 401,
 				"msg":  "无效的 Token",
@@ -105,7 +104,7 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
-		log.Printf("[JWT] Token 验证成功 - 用户ID: %d, 用户名: %s", claims.UserID, claims.Username)
+		utils.LogInfo("Token验证成功", logrus.Fields{"user_id": claims.UserID, "username": claims.Username})
 
 		// 将用户信息存入上下文
 		c.Set("user_id", claims.UserID)
@@ -464,32 +463,30 @@ func UpdateUserName() gin.HandlerFunc {
 		}
 		id, _ := utils.GetCurrentUserID(c)
 		if err := c.ShouldBindJSON(&req); err != nil {
-			log.Printf("UpdateUserName: 请求绑定失败: %v", err)
+			utils.LogError("更新用户名请求绑定失败", logrus.Fields{"user_id": id, "error": err.Error()})
 			c.JSON(400, gin.H{"error": "请求体格式错误, 请以 {newName: string} 提交"})
 			return
 		}
-		log.Printf("UpdateUserName: user_id=%d 请求新用户名=%q", id, req.NewName)
 		user, _ := repository.GetUserBasicByID(id) // 🔧 性能优化
 		if req.NewName == user.Name {
-			log.Printf("UpdateUserName: 新用户名与原用户名相同 (user_id=%d)", id)
+			utils.LogWarn("新用户名与原用户名相同", logrus.Fields{"user_id": id})
 			c.JSON(400, gin.H{"error": "新用户名与原用户名相同,请重新再试..."})
 			return
 		}
 		if strings.TrimSpace(req.NewName) == "" {
-			log.Printf("UpdateUserName: 新用户名为空 (user_id=%d)", id)
+			utils.LogWarn("新用户名为空", logrus.Fields{"user_id": id})
 			c.JSON(400, gin.H{"error": "用户名不能为空,请重新再试..."})
 			return
 		}
 		// 检查新用户名是否已被其他用户使用
 		name_exist, _ := repository.GetUserByName(req.NewName)
 		if name_exist.ID != 0 && name_exist.ID != id {
-			log.Printf("UpdateUserName: 新用户名已被占用 (user_id=%d new_name=%s taken_by=%d)", id, req.NewName, name_exist.ID)
+			utils.LogWarn("新用户名已被占用", logrus.Fields{"user_id": id, "new_name": req.NewName, "taken_by": name_exist.ID})
 			c.JSON(400, gin.H{"error": "该用户名已被使用,请更换用户名..."})
 			return
 		}
 		if err := repository.UpdateUserName(id, req.NewName); err != nil {
 			utils.LogError("数据库更新用户名失败", logrus.Fields{"user_id": id, "new_name": req.NewName, "error": err.Error()})
-			log.Printf("UpdateUserName: repository.UpdateUserName 返回错误: %v", err)
 			c.JSON(500, gin.H{"message": "用户名更新失败，请稍后重试"})
 			return
 		}
@@ -508,7 +505,7 @@ func UpdateStatus() gin.HandlerFunc {
 		id, _ := utils.GetCurrentUserID(c)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "更新状态失败,请重新再试..."})
-			log.Print("Binding error")
+			utils.LogError("绑定请求参数失败", logrus.Fields{"error": err.Error()})
 			return
 		}
 		err := repository.UpdateUserStatus(id, req.Status)
@@ -799,7 +796,7 @@ func UpdateUserFlagRemind() gin.HandlerFunc {
 }
 
 // 头像切换
-func SwithHead() gin.HandlerFunc {
+func SwitchHead() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
 			Number int `json:"number"`
@@ -807,21 +804,21 @@ func SwithHead() gin.HandlerFunc {
 		id, _ := utils.GetCurrentUserID(c)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "头像切换失败,请重新再试..."})
-			log.Print("Binding error")
+			utils.LogError("绑定请求参数失败", logrus.Fields{"error": err.Error()})
 			return
 		}
 
 		// 验证头像编号必须在1-32之间（支持全部头像）
 		if req.Number < 1 || req.Number > 32 {
 			c.JSON(400, gin.H{"error": "头像编号必须在1-32之间"})
-			log.Printf("Invalid avatar number: %d", req.Number)
+			utils.LogWarn("头像编号无效", logrus.Fields{"number": req.Number})
 			return
 		}
 
-		log.Printf("切换头像 - 用户ID: %d, 头像编号: %d", id, req.Number)
+		utils.LogInfo("切换头像", logrus.Fields{"user_id": id, "avatar_number": req.Number})
 		err := repository.UpdateUserHeadShow(id, req.Number)
 		if err != nil {
-			log.Printf("更新头像失败: %v", err)
+			utils.LogError("更新头像失败", logrus.Fields{"user_id": id, "error": err.Error()})
 			c.JSON(500, gin.H{"error": "更新头像失败"})
 			return
 		}

@@ -1,9 +1,6 @@
 ﻿package service
 
 import (
-	"bytes"
-	"io"
-	"log"
 	"net/http"
 	"time"
 
@@ -26,7 +23,7 @@ func GetUserFlags() gin.HandlerFunc {
 		flags, err := repository.GetFlagsByUserID(id)
 		if err != nil {
 			c.JSON(401, gin.H{"error": "获取flag失败,请重新再试..."})
-			log.Print("Get flags error")
+			utils.LogError("获取flag失败", logrus.Fields{"user_id": id, "error": err.Error()})
 			return
 		}
 		utils.LogInfo("获取用户flag成功", logrus.Fields{"user_id": id, "flag_count": len(flags)})
@@ -54,19 +51,19 @@ func PostUserFlags() gin.HandlerFunc {
 		}
 		if err := c.ShouldBindJSON(&flag); err != nil {
 			c.JSON(500, gin.H{"err": "添加flag失败,请重新再试..."})
-			log.Printf("Binding error: %v", err)
+			utils.LogWarn("添加Flag参数绑定失败", logrus.Fields{"error": err.Error()})
 			return
 		}
 
 		// 验证label范围(1-5)，设置默认值
 		if flag.Label < 1 || flag.Label > 5 {
-			log.Printf("⚠️ Invalid label: %d, defaulting to 1", flag.Label)
+			utils.LogWarn("Flag label 不在范围内，已使用默认值", logrus.Fields{"label": flag.Label})
 			flag.Label = 1 // 默认学习类
 		}
 
 		// 验证priority范围(1-4)，设置默认值
 		if flag.Priority < 1 || flag.Priority > 4 {
-			log.Printf("⚠️ Invalid priority: %d, defaulting to 3", flag.Priority)
+			utils.LogWarn("Flag priority 不在范围内，已使用默认值", logrus.Fields{"priority": flag.Priority})
 			flag.Priority = 3 // 默认一般
 		}
 
@@ -86,7 +83,7 @@ func PostUserFlags() gin.HandlerFunc {
 		if flag.StartTime != "" {
 			parsedStart, parseErr := time.Parse(time.RFC3339, flag.StartTime)
 			if parseErr != nil {
-				log.Printf("⚠️ 解析起始日期失败: %v, 使用 NULL（每天）", parseErr)
+				utils.LogWarn("解析起始日期失败，使用 NULL（每天）", logrus.Fields{"startTime": flag.StartTime, "error": parseErr.Error()})
 				startTime = nil // NULL，表示每天
 			} else {
 				t := time.Date(parsedStart.Year(), parsedStart.Month(), parsedStart.Day(), 0, 0, 0, 0, parsedStart.Location())
@@ -98,7 +95,7 @@ func PostUserFlags() gin.HandlerFunc {
 		if flag.EndTime != "" {
 			parsedEnd, parseErr := time.Parse(time.RFC3339, flag.EndTime)
 			if parseErr != nil {
-				log.Printf("⚠️ 解析结束日期失败: %v, 使用 NULL（每天）", parseErr)
+				utils.LogWarn("解析结束日期失败，使用 NULL（每天）", logrus.Fields{"endTime": flag.EndTime, "error": parseErr.Error()})
 				endTime = nil // NULL，表示每天
 			} else {
 				t := time.Date(parsedEnd.Year(), parsedEnd.Month(), parsedEnd.Day(), 23, 59, 59, 0, parsedEnd.Location())
@@ -150,26 +147,18 @@ func PostUserFlags() gin.HandlerFunc {
 // 打卡用户flag
 func DoneUserFlags() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 先读取原始body用于调试
-		bodyBytes, _ := c.GetRawData()
-		log.Printf("DoneUserFlags received body: %s", string(bodyBytes))
-		// 重新设置body供后续读取
-		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-
 		var req struct {
 			ID uint `json:"id"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": "参数错误,请重新再试..."})
-			log.Printf("DoneUserFlags Binding error: %v", err)
+			utils.LogWarn("打卡参数绑定失败", logrus.Fields{"error": err.Error()})
 			return
 		}
 
-		log.Printf("DoneUserFlags parsed ID: %d", req.ID)
-
 		if req.ID == 0 {
 			c.JSON(400, gin.H{"error": "无效的flag ID"})
-			log.Printf("DoneUserFlags: Invalid ID (0)")
+			utils.LogWarn("打卡失败：无效的flag ID", logrus.Fields{"flag_id": req.ID})
 			return
 		}
 
@@ -261,7 +250,7 @@ func DeleteUserFlags() gin.HandlerFunc {
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "删除flag失败,请重新再试..."})
-			log.Print("Binding error")
+			utils.LogWarn("删除Flag参数绑定失败", logrus.Fields{"error": err.Error()})
 			return
 		}
 		err := repository.DeleteFlagFromDB(req.ID)
@@ -286,7 +275,7 @@ func FinshDoneFlag() gin.HandlerFunc {
 		id, _ := utils.GetCurrentUserID(c)
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "更新flag失败,请重新再试..."})
-			log.Print("Binding error")
+			utils.LogWarn("完成Flag(旧接口)参数绑定失败", logrus.Fields{"error": err.Error(), "level": level})
 			return
 		}
 		user, _ := repository.GetUserByID(id)
@@ -313,9 +302,9 @@ func FinshDoneFlag() gin.HandlerFunc {
 		if pointsToAdd > 0 {
 			err := repository.CountAddDB(id, pointsToAdd)
 			if err != nil {
-				log.Printf("[error] 积分更新失败: %v", err)
+				utils.LogError("完成Flag(旧接口)积分更新失败", logrus.Fields{"user_id": id, "flag_id": req.ID, "error": err.Error()})
 			} else {
-				log.Printf("[info] 用户完成Flag，积分已增加 - 用户ID: %d, Flag ID: %d, 积分: %d", id, req.ID, pointsToAdd)
+				utils.LogInfo("完成Flag(旧接口)积分已增加", logrus.Fields{"user_id": id, "flag_id": req.ID, "points": pointsToAdd})
 			}
 		}
 
@@ -393,7 +382,7 @@ func UpdateFlagHide() gin.HandlerFunc {
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(500, gin.H{"err": "更新flag失败,请重新再试..."})
-			log.Print("Binding error")
+			utils.LogWarn("更新Flag公开状态参数绑定失败", logrus.Fields{"error": err.Error()})
 			return
 		}
 		// 该接口已废弃：分享状态由post_id控制，不再需要单独的可见性字段

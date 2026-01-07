@@ -82,6 +82,7 @@ func GetUserAchievement() gin.HandlerFunc {
 			Name        string `json:"name"`
 			Description string `json:"description"`
 			IsUnlocked  bool   `json:"isUnlocked"`
+			HadDone     bool   `json:"hadDone"` // 前端业务逻辑依赖此字段判断功能是否实现
 		}
 
 		// 去重：使用map确保成就名称唯一
@@ -101,6 +102,7 @@ func GetUserAchievement() gin.HandlerFunc {
 				Name:        a.Name,
 				Description: a.Description,
 				IsUnlocked:  a.HadDone,
+				HadDone:     a.HadDone, // 前端需要此字段判断是否显示"功能开发中"
 			})
 		}
 

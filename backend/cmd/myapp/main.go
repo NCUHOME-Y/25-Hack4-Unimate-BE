@@ -74,16 +74,19 @@ func main() {
 		origin := c.Request.Header.Get("Origin")
 		// 允许的域名白名单
 		allowedOrigins := map[string]bool{
-			"http://localhost:5173":      true, // 本地开发
-			"http://139.199.157.76":      true, // 生产服务器
-			"http://139.199.157.76:5173": true, // 生产前端
+			"http://localhost:5173":       true, // 本地开发
+			"http://localhost:4173":       true, // Vite preview
+			"http://139.199.157.76":       true, // 生产服务器
+			"http://139.199.157.76:5173":  true, // 生产前端
+			"https://139.199.157.76":      true, // 生产服务器（HTTPS）
+			"https://139.199.157.76:5173": true, // 生产前端（HTTPS）
 			// 可根据需要添加更多域名
 		}
 
 		if allowedOrigins[origin] {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		} else {
+		} else if origin != "" {
 			// 如果来源不在白名单，不设置CORS头（浏览器会阻止）
 			utils.LogWarn("未授权的CORS请求", map[string]interface{}{"origin": origin})
 		}

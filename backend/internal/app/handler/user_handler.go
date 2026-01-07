@@ -22,10 +22,12 @@ func BasicUser(r *gin.Engine) {
 	e.PUT("/api/updatePassword", service.UpdateUserPassword())
 	// 统一加上 /api 前缀，方便前端与 Nginx 代理规则一致
 	e.PUT("/api/updateUsername", service.UpdateUserName())
+	// 兼容历史大小写：保留 /api/UpdateStatus，同时提供 /api/updateStatus
 	e.PUT("/api/UpdateStatus", service.UpdateStatus())
+	e.PUT("/api/updateStatus", service.UpdateStatus())
 	e.GET("/api/getUser", service.GetUser())
 	e.GET("/api/getTodayPoints", service.GetTodayPoints())
-	e.POST("/api/swithhead", service.SwithHead())
+	e.POST("/api/switchhead", service.SwitchHead())
 	e.PUT("/api/updateDaka", service.DoDaKa())
 	e.PUT("/api/updateRemindTime", service.UpdateUserRemindTime())
 	e.PUT("/api/updateRemindStatus", service.UpdateUserRemind())
