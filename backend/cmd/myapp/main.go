@@ -76,10 +76,10 @@ func main() {
 		allowedOrigins := map[string]bool{
 			"http://localhost:5173":       true, // 本地开发
 			"http://localhost:4173":       true, // Vite preview
-			"http://139.199.157.76":       true, // 生产服务器
-			"http://139.199.157.76:5173":  true, // 生产前端
-			"https://139.199.157.76":      true, // 生产服务器（HTTPS）
-			"https://139.199.157.76:5173": true, // 生产前端（HTTPS）
+			"http://111.229.73.227":       true, // 生产服务器
+			"http://111.229.73.227:5173":  true, // 生产前端
+			"https://111.229.73.227":      true, // 生产服务器（HTTPS）
+			"https://111.229.73.227:5173": true, // 生产前端（HTTPS）
 			// 可根据需要添加更多域名
 		}
 

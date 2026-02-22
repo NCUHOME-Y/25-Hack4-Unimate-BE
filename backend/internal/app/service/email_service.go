@@ -276,7 +276,7 @@ func SendEmailCode() gin.HandlerFunc {
 
 // ==================== 邮件模板函数 ====================
 
-const platformURL = "http://139.199.157.76"
+const platformURL = "http://111.229.73.227"
 
 // SendStudyReminderEmail 发送学习提醒邮件
 func SendStudyReminderEmail(email, userName string, hour, min int) error {

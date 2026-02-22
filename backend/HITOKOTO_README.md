@@ -51,7 +51,7 @@ sudo docker logs --tail 100 unimate-backend
 如果想立即测试功能，可以调用测试接口：
 
 ```bash
-curl -X POST http://139.199.157.76:8080/api/triggerHitokoto
+curl -X POST http://111.229.73.227:8080/api/triggerHitokoto
 ```
 
 成功响应：

@@ -18,16 +18,17 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	// 🔒 安全加固：WebSocket 来源检查
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
+		logrus.Infof("WebSocket Origin: %s", origin) // 加日志方便调试
+
 		allowedOrigins := map[string]bool{
 			"http://localhost:4173":       true,
 			"http://localhost:5173":       true,
-			"http://139.199.157.76":       true,
-			"http://139.199.157.76:5173":  true,
-			"https://139.199.157.76":      true,
-			"https://139.199.157.76:5173": true,
+			"http://111.229.73.227":       true, // 去掉空格
+			"http://111.229.73.227:5173":  true, // 去掉空格
+			"https://111.229.73.227":      true, // 去掉空格
+			"https://111.229.73.227:5173": true, // 去掉空格
 		}
 		return allowedOrigins[origin]
 	},
