@@ -1069,13 +1069,14 @@ func DeleteExpiredEmailCodes() error {
 	return result.Error
 }
 
-// 🔒 安全加固：检查邮箱验证码发送频率限制（5分钟1次 + 每天最多5次）
+// 🔒 安全加固：检查邮箱验证码发送频率限制（1分钟内只能发送一次 + 每天最多5次）
 func CheckEmailCodeRateLimit(email string) (bool, time.Time, error) {
 	var emailCode model.EmailCode
 
 	// 检查5分钟内是否发送过
-	fiveMinutesAgo := time.Now().Add(-5 * time.Minute)
-	err := DB.Where("email = ? AND created_at > ?", email, fiveMinutesAgo).Order("created_at desc").First(&emailCode).Error
+	// 检查1分钟内是否发送过
+	oneMinuteAgo := time.Now().Add(-1 * time.Minute)
+	err := DB.Where("email = ? AND created_at > ?", email, oneMinuteAgo).Order("created_at desc").First(&emailCode).Error
 	if err != gorm.ErrRecordNotFound {
 		if err == nil {
 			// 找到了最近5分钟的记录，不能发送

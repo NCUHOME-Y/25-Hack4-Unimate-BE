@@ -1,11 +1,10 @@
 services:
-  # Go 后端应用服务（连接宿主机的 MySQL）
   backend:
     image: llffkk/unimate:latest
     container_name: unimate-backend
     restart: always
-    network_mode: host  # 使用宿主机网络，可访问本地 MySQL（127.0.0.1:3306）
+    network_mode: host
     env_file:
-      - .env  # 自动读取 .env 文件中的所有环境变量
+      - .env
     volumes:
-      - ./logs:/app/logs  # 日志持久化
+      - ./logs:/app/logs

@@ -25,10 +25,13 @@ var upgrader = websocket.Upgrader{
 		allowedOrigins := map[string]bool{
 			"http://localhost:4173":       true,
 			"http://localhost:5173":       true,
-			"http://111.229.73.227":       true, // 去掉空格
-			"http://111.229.73.227:5173":  true, // 去掉空格
+			"https://zhixu.online":        true,
+			"https://www.zhixu.online":    true,
 			"https://111.229.73.227":      true, // 去掉空格
 			"https://111.229.73.227:5173": true, // 去掉空格
+			// 临时允许通过 IP 以便在未备案或调试场景下访问（HTTP）
+			"http://111.229.73.227":      true,
+			"http://111.229.73.227:5173": true,
 		}
 		return allowedOrigins[origin]
 	},

@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/NCUHOME-Y/25-Hack4-Unimate-BE/internal/app/repository"
@@ -234,7 +235,7 @@ func SendEmailCode() gin.HandlerFunc {
 			return
 		}
 
-		// 🔒 安全加固：检查发送频率限制（5分钟内只能发送一次 + 每天最多5次）
+		// 🔒 安全加固：检查发送频率限制（1分钟内只能发送一次 + 每天最多5次）
 		canSend, lastSentTime, err := repository.CheckEmailCodeRateLimit(req.Email)
 		if err != nil {
 			if err.Error() == "今日验证码发送次数已达上限" {
@@ -250,8 +251,8 @@ func SendEmailCode() gin.HandlerFunc {
 			return
 		}
 		if !canSend {
-			// 计算还需要等待多少秒
-			waitSeconds := 300 - int(time.Since(lastSentTime).Seconds()) // 5分钟 = 300秒
+			// 计算还需要等待多少秒（1分钟 = 60秒）
+			waitSeconds := 60 - int(time.Since(lastSentTime).Seconds())
 			if waitSeconds < 0 {
 				waitSeconds = 0
 			}
@@ -276,7 +277,15 @@ func SendEmailCode() gin.HandlerFunc {
 
 // ==================== 邮件模板函数 ====================
 
-const platformURL = "http://111.229.73.227"
+var platformURL = getPlatformURL()
+
+func getPlatformURL() string {
+	url := os.Getenv("PLATFORM_URL")
+	if url == "" {
+		panic("PLATFORM_URL 环境变量未设置")
+	}
+	return url
+}
 
 // SendStudyReminderEmail 发送学习提醒邮件
 func SendStudyReminderEmail(email, userName string, hour, min int) error {

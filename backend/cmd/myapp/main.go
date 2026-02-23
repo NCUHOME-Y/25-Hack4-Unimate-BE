@@ -76,10 +76,13 @@ func main() {
 		allowedOrigins := map[string]bool{
 			"http://localhost:5173":       true, // 本地开发
 			"http://localhost:4173":       true, // Vite preview
-			"http://111.229.73.227":       true, // 生产服务器
-			"http://111.229.73.227:5173":  true, // 生产前端
+			"https://zhixu.online":        true, // 生产服务器
+			"https://www.zhixu.online":    true, // 生产前端
 			"https://111.229.73.227":      true, // 生产服务器（HTTPS）
 			"https://111.229.73.227:5173": true, // 生产前端（HTTPS）
+			// 临时允许通过 IP 以便在未备案或调试场景下访问（HTTP）
+			"http://111.229.73.227":      true,
+			"http://111.229.73.227:5173": true,
 			// 可根据需要添加更多域名
 		}
 
