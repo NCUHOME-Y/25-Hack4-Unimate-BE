@@ -32,6 +32,7 @@ var upgrader = websocket.Upgrader{
 			// 临时允许通过 IP 以便在未备案或调试场景下访问（HTTP）
 			"http://111.229.73.227":      true,
 			"http://111.229.73.227:5173": true,
+			"https://unimate-fe.happymushroom-0115c5b7.eastasia.azurecontainerapps.io": true,
 		}
 		return allowedOrigins[origin]
 	},

@@ -84,6 +84,7 @@ func main() {
 			"http://111.229.73.227":      true,
 			"http://111.229.73.227:5173": true,
 			// 可根据需要添加更多域名
+			"https://unimate-fe.happymushroom-0115c5b7.eastasia.azurecontainerapps.io": true,
 		}
 
 		if allowedOrigins[origin] {
