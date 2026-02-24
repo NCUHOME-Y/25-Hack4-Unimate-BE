@@ -1030,7 +1030,10 @@ func GetCurrentMonthDakaCount(user_id uint) (int64, error) {
 
 // 每日更新打卡状态
 func UpdateDakaHadDone(userid uint) error {
-	result := DB.Model(&model.Daka_number{}).Where("user_id = ?", userid).Update("had_done", false)
+	// 仅重置今天之前的 had_done 状态，保留当天的打卡标记
+	today := time.Now()
+	startOfToday := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
+	result := DB.Model(&model.Daka_number{}).Where("user_id = ? AND daka_date < ?", userid, startOfToday).Update("had_done", false)
 	return result.Error
 }
 
