@@ -90,7 +90,7 @@ cp .env.example .env
 必须项
 DB_DSN="user:pass@tcp(127.0.0.1:3306)/unimate?charset=utf8mb4&parseTime=True&loc=Local"
 JWT_SECRET="32位随机字符串"
-APIKEY="SiliconFlow 令牌"   # AI 计划生成用
+APIKEY="OpenRouter 令牌"   # AI 计划生成用（模型：qwen/qwen3.6-plus:free）
 
 
 5. 运行
@@ -153,7 +153,7 @@ go run main.go
 |      | GET  | /api/getLearnTime | 最近 30 条 |
 | 排行 | GET  | /api/ranking | Top20 |
 | 成就 | GET  | /api/getUserAchievement | 已解锁成就 |
-| AI   | POST | /api/ai/generate-plan | 生成学习计划（SiliconFlow） |
+| AI   | POST | /api/ai/generate-plan | 生成学习计划（OpenRouter: qwen/qwen3.6-plus:free） |
 | WebSocket | GET | /ws/chat?token=<JWT> | 群聊 |
 
 完整文档 & 示例请求 → docs/api.md

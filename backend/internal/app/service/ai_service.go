@@ -50,7 +50,7 @@ func initPlanner() {
 		}
 		planner = &TaiFuLearningPlanner{
 			APIKey:  apiKey,
-			BaseURL: "https://api.siliconflow.cn/v1/chat/completions",
+			BaseURL: "https://openrouter.ai/api/v1/chat/completions",
 		}
 	}
 }
@@ -305,7 +305,7 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 // callOpenAI 发起 AI 请求并返回原始响应字符串
 func (p *TaiFuLearningPlanner) callOpenAI(systemPrompt, userPrompt string) (string, error) {
 	payload := map[string]interface{}{
-		"model": "Qwen/Qwen2.5-7B-Instruct",
+		"model": "qwen/qwen3.6-plus:free",
 		"messages": []map[string]string{
 			{"role": "system", "content": systemPrompt},
 			{"role": "user", "content": userPrompt},

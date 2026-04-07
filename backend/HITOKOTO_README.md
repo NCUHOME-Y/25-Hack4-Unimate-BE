@@ -27,7 +27,7 @@ sudo docker run -d \
   -e PORT=8080 \
   -e GIN_MODE=release \
   -e DB_DSN='root:UnimateMysql@2025@tcp(127.0.0.1:3306)/unimate?charset=utf8mb4&parseTime=True&loc=Local' \
-  -e APIKEY='sk-mjvyhztfgnlnzxtfvdjzvmhzakzygvqczwmmxdvpvbfqmfjl' \
+   -e APIKEY='你的OpenRouter密钥' \
   llffkk/unimate:latest
 
 # 检查容器状态
