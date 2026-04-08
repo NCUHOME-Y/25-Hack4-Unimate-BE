@@ -139,6 +139,20 @@ func GenerateLearningPlan(c *gin.Context) {
 			"error": err.Error(),
 			"goal":  req.Flag,
 		}).Error("AI计划生成失败")
+		if strings.Contains(err.Error(), "智谱API限流或额度不足") {
+			c.JSON(http.StatusTooManyRequests, LearningPlanResponse{
+				Success: false,
+				Error:   "智谱API限流或额度不足，请稍后重试或更换APIKEY",
+			})
+			return
+		}
+		if strings.Contains(err.Error(), "AI服务繁忙") {
+			c.JSON(http.StatusServiceUnavailable, LearningPlanResponse{
+				Success: false,
+				Error:   "AI服务繁忙，请稍后重试",
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, LearningPlanResponse{
 			Success: false,
 			Error:   fmt.Sprintf("生成计划失败: %v", err),
@@ -306,6 +320,7 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 func (p *TaiFuLearningPlanner) callOpenAI(systemPrompt, userPrompt string) (string, error) {
 	models := []string{
 		"glm-4.7-flash",
+		"glm-4-flash-250414",
 	}
 
 	var lastErr error
@@ -316,12 +331,12 @@ func (p *TaiFuLearningPlanner) callOpenAI(systemPrompt, userPrompt string) (stri
 		}
 		lastErr = err
 
-		// 免费模型在高峰期经常触发 429，尝试切换备用路由模型。
-		if strings.Contains(err.Error(), "状态码429") {
+		// 上游限流或超时时，尝试切换备用模型。
+		if strings.Contains(err.Error(), "状态码429") || strings.Contains(err.Error(), "context deadline exceeded") {
 			logrus.WithFields(logrus.Fields{
 				"model": modelName,
 				"error": err.Error(),
-			}).Warn("主模型限流，尝试切换备用模型")
+			}).Warn("主模型不可用，尝试切换备用模型")
 			continue
 		}
 
@@ -330,6 +345,12 @@ func (p *TaiFuLearningPlanner) callOpenAI(systemPrompt, userPrompt string) (stri
 	}
 
 	if lastErr != nil {
+		if strings.Contains(lastErr.Error(), "code\":\"1302\"") {
+			return "", fmt.Errorf("智谱API限流或额度不足，请稍后重试或更换APIKEY")
+		}
+		if strings.Contains(lastErr.Error(), "状态码429") || strings.Contains(lastErr.Error(), "context deadline exceeded") {
+			return "", fmt.Errorf("AI服务繁忙，请稍后重试")
+		}
 		return "", lastErr
 	}
 	return "", fmt.Errorf("AI请求失败")
@@ -355,24 +376,63 @@ func (p *TaiFuLearningPlanner) callOpenAIWithModel(modelName, systemPrompt, user
 	if p.APIKey != "" {
 		req.Header.Set("Authorization", "Bearer "+p.APIKey)
 	}
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 8 * time.Second}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
+	var lastErr error
+	for attempt := 1; attempt <= 2; attempt++ {
+		req, err := http.NewRequest("POST", p.BaseURL, bytes.NewReader(b))
+		if err != nil {
+			return "", err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json")
+		if p.APIKey != "" {
+			req.Header.Set("Authorization", "Bearer "+p.APIKey)
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			if strings.Contains(err.Error(), "context deadline exceeded") && attempt < 2 {
+				time.Sleep(time.Duration(attempt) * 700 * time.Millisecond)
+				continue
+			}
+			return "", err
+		}
+
+		bodyBytes, readErr := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if readErr != nil {
+			lastErr = readErr
+			return "", readErr
+		}
+
+		if resp.StatusCode == 200 {
+			return string(bodyBytes), nil
+		}
+
+		if resp.StatusCode == 429 {
+			// 限流场景不在同一模型内重试，交由上层切换备用模型。
+			return "", fmt.Errorf("AI API错误(状态码%d): %s", resp.StatusCode, string(bodyBytes))
+		}
+
+		apiErr := fmt.Errorf("AI API错误(状态码%d): %s", resp.StatusCode, string(bodyBytes))
+		lastErr = apiErr
+
+		// 5xx通常是上游拥塞，短暂退避后重试。
+		if resp.StatusCode >= 500 && attempt < 2 {
+			time.Sleep(time.Duration(attempt) * 700 * time.Millisecond)
+			continue
+		}
+
+		return "", apiErr
 	}
-	defer resp.Body.Close()
 
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
+	if lastErr != nil {
+		return "", lastErr
 	}
 
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("AI API错误(状态码%d): %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	return string(bodyBytes), nil
+	return "", fmt.Errorf("AI请求失败")
 }
 
 // parseAIResponse 尝试从 AI 响应中解析 JSON 格式的 flag/plan/difficulty
