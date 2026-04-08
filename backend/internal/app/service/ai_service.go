@@ -50,7 +50,7 @@ func initPlanner() {
 		}
 		planner = &TaiFuLearningPlanner{
 			APIKey:  apiKey,
-			BaseURL: "https://openrouter.ai/api/v1/chat/completions",
+			BaseURL: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
 		}
 	}
 }
@@ -304,8 +304,40 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 
 // callOpenAI 发起 AI 请求并返回原始响应字符串
 func (p *TaiFuLearningPlanner) callOpenAI(systemPrompt, userPrompt string) (string, error) {
+	models := []string{
+		"glm-4.7-flash",
+	}
+
+	var lastErr error
+	for _, modelName := range models {
+		response, err := p.callOpenAIWithModel(modelName, systemPrompt, userPrompt)
+		if err == nil {
+			return response, nil
+		}
+		lastErr = err
+
+		// 免费模型在高峰期经常触发 429，尝试切换备用路由模型。
+		if strings.Contains(err.Error(), "状态码429") {
+			logrus.WithFields(logrus.Fields{
+				"model": modelName,
+				"error": err.Error(),
+			}).Warn("主模型限流，尝试切换备用模型")
+			continue
+		}
+
+		// 非限流错误直接返回，避免掩盖配置类问题（如 key 无效）。
+		return "", err
+	}
+
+	if lastErr != nil {
+		return "", lastErr
+	}
+	return "", fmt.Errorf("AI请求失败")
+}
+
+func (p *TaiFuLearningPlanner) callOpenAIWithModel(modelName, systemPrompt, userPrompt string) (string, error) {
 	payload := map[string]interface{}{
-		"model": "qwen/qwen3.6-plus:free",
+		"model": modelName,
 		"messages": []map[string]string{
 			{"role": "system", "content": systemPrompt},
 			{"role": "user", "content": userPrompt},
@@ -363,6 +395,12 @@ func (p *TaiFuLearningPlanner) parseAIResponse(response string) (string, string,
 		if err2 := json.Unmarshal([]byte(content), &out); err2 == nil {
 			return out.Flag, out.Plan, out.Difficulty, nil
 		}
+
+		if jsonText := extractJSONObject(content); jsonText != "" {
+			if err3 := json.Unmarshal([]byte(jsonText), &out); err3 == nil {
+				return out.Flag, out.Plan, out.Difficulty, nil
+			}
+		}
 	}
 
 	// 直接尝试将响应解析为目标结构
@@ -377,7 +415,38 @@ func (p *TaiFuLearningPlanner) parseAIResponse(response string) (string, string,
 		}
 	}
 
+	if jsonText := extractJSONObject(response); jsonText != "" {
+		if err := json.Unmarshal([]byte(jsonText), &out); err == nil && out.Plan != "" {
+			return out.Flag, out.Plan, out.Difficulty, nil
+		}
+	}
+
 	return "", "", 0, fmt.Errorf("无法解析AI响应")
+}
+
+func extractJSONObject(s string) string {
+	start := -1
+	depth := 0
+
+	for i, r := range s {
+		if r == '{' {
+			if depth == 0 {
+				start = i
+			}
+			depth++
+			continue
+		}
+		if r == '}' {
+			if depth > 0 {
+				depth--
+				if depth == 0 && start >= 0 {
+					return s[start : i+1]
+				}
+			}
+		}
+	}
+
+	return ""
 }
 
 // ==================== AI 历史记录相关接口 ====================
