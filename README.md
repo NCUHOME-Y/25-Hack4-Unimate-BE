@@ -90,7 +90,35 @@ cp .env.example .env
 必须项
 DB_DSN="user:pass@tcp(127.0.0.1:3306)/unimate?charset=utf8mb4&parseTime=True&loc=Local"
 JWT_SECRET="32位随机字符串"
-APIKEY="智谱 API 密钥"   # AI 计划生成用（模型：glm-4.7-flash）
+APIKEY="阿里云百炼 API Key"   # AI 计划生成用（模型：qwen3.5-flash）
+DASHSCOPE_REGION="cn"        # 可选：cn / intl / auto，默认国内优先
+ # DASHSCOPE_BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"  # 可选：显式指定端点
+
+通用 AI 配置（仅改环境变量即可切平台/模型，无需重建镜像）
+AI_PROVIDER="dashscope"      # dashscope | openrouter | zhipu | openai
+AI_API_KEY=""                # 可选，优先级高于 APIKEY
+AI_MODELS="qwen3.5-flash,qwen-plus"   # 逗号分隔，按顺序回退
+AI_BASE_URL=""               # 可选，显式指定主端点
+AI_ENDPOINTS=""              # 可选，多个端点逗号分隔（优先级最高）
+AI_TIMEOUT_SECONDS="10"      # 单次请求超时秒数
+AI_RETRY_PER_ENDPOINT="2"    # 每个端点重试次数
+AI_ALLOW_CROSS_REGION_FALLBACK="true" # 是否允许跨区域端点回退
+
+平台示例
+- 百炼（默认）:
+   AI_PROVIDER=dashscope
+   AI_MODELS=qwen3.5-flash,qwen-plus
+   DASHSCOPE_REGION=cn
+
+- OpenRouter:
+   AI_PROVIDER=openrouter
+   AI_API_KEY=<openrouter_key>
+   AI_MODELS=qwen/qwen3-next-80b-a3b-instruct:free,openrouter/auto
+
+- 智谱:
+   AI_PROVIDER=zhipu
+   AI_API_KEY=<zhipu_key>
+   AI_MODELS=glm-4.7-flash,glm-4-flash-250414
 
 
 5. 运行
@@ -153,7 +181,7 @@ go run main.go
 |      | GET  | /api/getLearnTime | 最近 30 条 |
 | 排行 | GET  | /api/ranking | Top20 |
 | 成就 | GET  | /api/getUserAchievement | 已解锁成就 |
-| AI   | POST | /api/ai/generate-plan | 生成学习计划（OpenRouter: qwen/qwen3-next-80b-a3b-instruct:free） |
+| AI   | POST | /api/ai/generate-plan | 生成学习计划（阿里云百炼：qwen3.5-flash，默认国内优先） |
 | WebSocket | GET | /ws/chat?token=<JWT> | 群聊 |
 
 完整文档 & 示例请求 → docs/api.md

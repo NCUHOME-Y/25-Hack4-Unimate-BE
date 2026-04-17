@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,23 +36,125 @@ type LearningPlanResponse struct {
 
 // 太傅AI学习
 type TaiFuLearningPlanner struct {
-	APIKey  string
-	BaseURL string
+	Provider         string
+	APIKey           string
+	BaseURL          string
+	Models           []string
+	Timeout          time.Duration
+	RetryPerEndpoint int
+	Region           string
+	AllowCrossRegion bool
 }
 
 var planner *TaiFuLearningPlanner
 
 // 初始化 planner（延迟初始化，等待 .env 加载）
 func initPlanner() {
-	if planner == nil {
-		apiKey := os.Getenv("APIKEY")
-		if apiKey == "" {
-			logrus.Error("APIKEY 环境变量未设置")
+	planner = loadPlannerFromEnv()
+	if planner.APIKey == "" {
+		logrus.Error("E_AI_CONFIG: 未设置 API key（AI_API_KEY 或 APIKEY）")
+	}
+}
+
+func loadPlannerFromEnv() *TaiFuLearningPlanner {
+	provider := strings.ToLower(strings.TrimSpace(getEnv("AI_PROVIDER", "dashscope")))
+	apiKey := strings.TrimSpace(getEnv("AI_API_KEY", strings.TrimSpace(os.Getenv("APIKEY"))))
+	region := strings.ToLower(strings.TrimSpace(getEnv("DASHSCOPE_REGION", "cn")))
+
+	defaultBaseURL := defaultBaseURLByProvider(provider, region)
+	baseURL := strings.TrimSpace(getEnv("AI_BASE_URL", strings.TrimSpace(os.Getenv("DASHSCOPE_BASE_URL"))))
+	if baseURL == "" {
+		baseURL = defaultBaseURL
+	}
+
+	models := parseCSV(getEnv("AI_MODELS", strings.Join(defaultModelsByProvider(provider), ",")))
+	if len(models) == 0 {
+		models = defaultModelsByProvider(provider)
+	}
+
+	timeoutSec := parsePositiveInt(getEnv("AI_TIMEOUT_SECONDS", "10"), 10)
+	retryPerEndpoint := parsePositiveInt(getEnv("AI_RETRY_PER_ENDPOINT", "2"), 2)
+	allowCrossRegion := parseBool(getEnv("AI_ALLOW_CROSS_REGION_FALLBACK", "true"), true)
+
+	return &TaiFuLearningPlanner{
+		Provider:         provider,
+		APIKey:           apiKey,
+		BaseURL:          baseURL,
+		Models:           models,
+		Timeout:          time.Duration(timeoutSec) * time.Second,
+		RetryPerEndpoint: retryPerEndpoint,
+		Region:           region,
+		AllowCrossRegion: allowCrossRegion,
+	}
+}
+
+func getEnv(key, fallback string) string {
+	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func parseCSV(v string) []string {
+	parts := strings.Split(v, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
 		}
-		planner = &TaiFuLearningPlanner{
-			APIKey:  apiKey,
-			BaseURL: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+	}
+	return out
+}
+
+func parsePositiveInt(v string, fallback int) int {
+	parsed, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil || parsed <= 0 {
+		return fallback
+	}
+	return parsed
+}
+
+func parseBool(v string, fallback bool) bool {
+	v = strings.ToLower(strings.TrimSpace(v))
+	if v == "" {
+		return fallback
+	}
+	if v == "1" || v == "true" || v == "yes" || v == "on" {
+		return true
+	}
+	if v == "0" || v == "false" || v == "no" || v == "off" {
+		return false
+	}
+	return fallback
+}
+
+func defaultModelsByProvider(provider string) []string {
+	switch provider {
+	case "openrouter":
+		return []string{"qwen/qwen3-next-80b-a3b-instruct:free", "openrouter/auto"}
+	case "zhipu", "bigmodel", "glm":
+		return []string{"glm-4.7-flash", "glm-4-flash-250414"}
+	case "openai":
+		return []string{"gpt-4o-mini"}
+	default:
+		return []string{"qwen3.5-flash", "qwen-plus"}
+	}
+}
+
+func defaultBaseURLByProvider(provider, region string) string {
+	switch provider {
+	case "openrouter":
+		return "https://openrouter.ai/api/v1/chat/completions"
+	case "zhipu", "bigmodel", "glm":
+		return "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+	case "openai":
+		return "https://api.openai.com/v1/chat/completions"
+	default:
+		if region == "intl" || region == "international" {
+			return "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions"
 		}
+		return "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
 	}
 }
 
@@ -139,25 +242,45 @@ func GenerateLearningPlan(c *gin.Context) {
 			"error": err.Error(),
 			"goal":  req.Flag,
 		}).Error("AI计划生成失败")
-		if strings.Contains(err.Error(), "智谱API限流或额度不足") {
+		errMsg := err.Error()
+		switch {
+		case strings.Contains(errMsg, "E_AI_CONFIG"):
+			c.JSON(http.StatusInternalServerError, LearningPlanResponse{
+				Success: false,
+				Error:   errMsg,
+			})
+			return
+		case strings.Contains(errMsg, "E_AI_REGION_MISMATCH"):
+			c.JSON(http.StatusBadGateway, LearningPlanResponse{
+				Success: false,
+				Error:   errMsg,
+			})
+			return
+		case strings.Contains(errMsg, "E_AI_AUTH"):
+			c.JSON(http.StatusBadGateway, LearningPlanResponse{
+				Success: false,
+				Error:   errMsg,
+			})
+			return
+		case strings.Contains(errMsg, "E_AI_RATE_LIMIT"):
 			c.JSON(http.StatusTooManyRequests, LearningPlanResponse{
 				Success: false,
-				Error:   "智谱API限流或额度不足，请稍后重试或更换APIKEY",
+				Error:   errMsg,
 			})
 			return
-		}
-		if strings.Contains(err.Error(), "AI服务繁忙") {
+		case strings.Contains(errMsg, "E_AI_TIMEOUT"), strings.Contains(errMsg, "E_AI_UPSTREAM_5XX"):
 			c.JSON(http.StatusServiceUnavailable, LearningPlanResponse{
 				Success: false,
-				Error:   "AI服务繁忙，请稍后重试",
+				Error:   errMsg,
+			})
+			return
+		default:
+			c.JSON(http.StatusBadGateway, LearningPlanResponse{
+				Success: false,
+				Error:   errMsg,
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, LearningPlanResponse{
-			Success: false,
-			Error:   fmt.Sprintf("生成计划失败: %v", err),
-		})
-		return
 	}
 
 	// 埋点：生成计划（不添加Flag，让前端决定）
@@ -318,9 +441,15 @@ func (p *TaiFuLearningPlanner) GenerateLearningPlan(req LearningPlanRequest) (st
 
 // callOpenAI 发起 AI 请求并返回原始响应字符串
 func (p *TaiFuLearningPlanner) callOpenAI(systemPrompt, userPrompt string) (string, error) {
-	models := []string{
-		"glm-4.7-flash",
-		"glm-4-flash-250414",
+	if p == nil {
+		return "", fmt.Errorf("E_AI_CONFIG: planner is nil")
+	}
+	if strings.TrimSpace(p.APIKey) == "" {
+		return "", fmt.Errorf("E_AI_CONFIG: 未设置 API key，请配置 AI_API_KEY 或 APIKEY")
+	}
+	models := p.Models
+	if len(models) == 0 {
+		models = defaultModelsByProvider(p.Provider)
 	}
 
 	var lastErr error
@@ -331,11 +460,16 @@ func (p *TaiFuLearningPlanner) callOpenAI(systemPrompt, userPrompt string) (stri
 		}
 		lastErr = err
 
+		if strings.Contains(err.Error(), "E_AI_AUTH") || strings.Contains(err.Error(), "E_AI_REGION_MISMATCH") {
+			return "", err
+		}
+
 		// 上游限流或超时时，尝试切换备用模型。
-		if strings.Contains(err.Error(), "状态码429") || strings.Contains(err.Error(), "context deadline exceeded") {
+		if strings.Contains(err.Error(), "E_AI_RATE_LIMIT") || strings.Contains(err.Error(), "E_AI_TIMEOUT") || strings.Contains(err.Error(), "E_AI_UPSTREAM_5XX") {
 			logrus.WithFields(logrus.Fields{
-				"model": modelName,
-				"error": err.Error(),
+				"provider": p.Provider,
+				"model":    modelName,
+				"error":    err.Error(),
 			}).Warn("主模型不可用，尝试切换备用模型")
 			continue
 		}
@@ -345,15 +479,9 @@ func (p *TaiFuLearningPlanner) callOpenAI(systemPrompt, userPrompt string) (stri
 	}
 
 	if lastErr != nil {
-		if strings.Contains(lastErr.Error(), "code\":\"1302\"") {
-			return "", fmt.Errorf("智谱API限流或额度不足，请稍后重试或更换APIKEY")
-		}
-		if strings.Contains(lastErr.Error(), "状态码429") || strings.Contains(lastErr.Error(), "context deadline exceeded") {
-			return "", fmt.Errorf("AI服务繁忙，请稍后重试")
-		}
 		return "", lastErr
 	}
-	return "", fmt.Errorf("AI请求失败")
+	return "", fmt.Errorf("E_AI_UNKNOWN: AI请求失败，未拿到任何可用响应")
 }
 
 func (p *TaiFuLearningPlanner) callOpenAIWithModel(modelName, systemPrompt, userPrompt string) (string, error) {
@@ -366,73 +494,224 @@ func (p *TaiFuLearningPlanner) callOpenAIWithModel(modelName, systemPrompt, user
 	}
 	b, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("E_AI_CONFIG: 请求序列化失败: %v", err)
 	}
-	req, err := http.NewRequest("POST", p.BaseURL, bytes.NewReader(b))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if p.APIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+p.APIKey)
-	}
-	client := &http.Client{Timeout: 8 * time.Second}
+	client := &http.Client{Timeout: p.Timeout}
+	endpoints := p.resolveEndpoints()
 
 	var lastErr error
-	for attempt := 1; attempt <= 2; attempt++ {
-		req, err := http.NewRequest("POST", p.BaseURL, bytes.NewReader(b))
-		if err != nil {
-			return "", err
-		}
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Accept", "application/json")
-		if p.APIKey != "" {
-			req.Header.Set("Authorization", "Bearer "+p.APIKey)
-		}
+	hasTimeoutErr := false
+	hasInvalidKeyErr := false
+	hasRateLimitErr := false
+	for _, endpoint := range endpoints {
+		for attempt := 1; attempt <= p.RetryPerEndpoint; attempt++ {
+			req, err := http.NewRequest("POST", endpoint, bytes.NewReader(b))
+			if err != nil {
+				return "", fmt.Errorf("E_AI_CONFIG: 创建请求失败: %v", err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Accept", "application/json")
+			if p.Provider == "openrouter" {
+				req.Header.Set("HTTP-Referer", getEnv("OPENROUTER_HTTP_REFERER", "https://zhixu.online"))
+				req.Header.Set("X-Title", getEnv("OPENROUTER_APP_NAME", "UniMate"))
+			}
+			if p.APIKey != "" {
+				req.Header.Set("Authorization", "Bearer "+p.APIKey)
+			}
 
-		resp, err := client.Do(req)
-		if err != nil {
-			lastErr = err
-			if strings.Contains(err.Error(), "context deadline exceeded") && attempt < 2 {
+			resp, err := client.Do(req)
+			if err != nil {
+				lastErr = fmt.Errorf("E_AI_TIMEOUT: provider=%s model=%s endpoint=%s attempt=%d timeout=%s error=%v", p.Provider, modelName, endpoint, attempt, p.Timeout.String(), err)
+				if strings.Contains(err.Error(), "context deadline exceeded") && attempt < p.RetryPerEndpoint {
+					time.Sleep(time.Duration(attempt) * 700 * time.Millisecond)
+					continue
+				}
+				if strings.Contains(err.Error(), "context deadline exceeded") {
+					hasTimeoutErr = true
+					logrus.WithFields(logrus.Fields{
+						"provider": p.Provider,
+						"model":    modelName,
+						"endpoint": endpoint,
+						"error":    err.Error(),
+					}).Warn("模型接口超时，尝试下一个端点")
+					break
+				}
+				return "", lastErr
+			}
+
+			bodyBytes, readErr := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if readErr != nil {
+				lastErr = fmt.Errorf("E_AI_UPSTREAM_READ: provider=%s model=%s endpoint=%s status=%d error=%v", p.Provider, modelName, endpoint, resp.StatusCode, readErr)
+				return "", lastErr
+			}
+
+			if resp.StatusCode == 200 {
+				return string(bodyBytes), nil
+			}
+
+			if resp.StatusCode == 401 && (strings.Contains(string(bodyBytes), "invalid_api_key") || strings.Contains(string(bodyBytes), "Incorrect API key provided")) {
+				hasInvalidKeyErr = true
+				lastErr = fmt.Errorf("E_AI_AUTH: provider=%s model=%s endpoint=%s status=%d body=%s", p.Provider, modelName, endpoint, resp.StatusCode, compactForLog(string(bodyBytes), 500))
+				logrus.WithFields(logrus.Fields{
+					"provider": p.Provider,
+					"model":    modelName,
+					"endpoint": endpoint,
+					"status":   resp.StatusCode,
+				}).Warn("端点鉴权失败，尝试下一个端点")
+				break
+			}
+
+			if resp.StatusCode == 429 {
+				hasRateLimitErr = true
+				return "", fmt.Errorf("E_AI_RATE_LIMIT: provider=%s model=%s endpoint=%s status=%d body=%s", p.Provider, modelName, endpoint, resp.StatusCode, compactForLog(string(bodyBytes), 500))
+			}
+
+			code, message, requestID := parseUpstreamError(bodyBytes)
+			apiErr := fmt.Errorf("E_AI_UPSTREAM_%d: provider=%s model=%s endpoint=%s status=%d upstream_code=%s request_id=%s message=%s body=%s", resp.StatusCode, p.Provider, modelName, endpoint, resp.StatusCode, code, requestID, message, compactForLog(string(bodyBytes), 500))
+			lastErr = apiErr
+
+			// 5xx通常是上游拥塞，短暂退避后重试。
+			if resp.StatusCode >= 500 && attempt < p.RetryPerEndpoint {
 				time.Sleep(time.Duration(attempt) * 700 * time.Millisecond)
 				continue
 			}
-			return "", err
+
+			return "", apiErr
 		}
+	}
 
-		bodyBytes, readErr := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if readErr != nil {
-			lastErr = readErr
-			return "", readErr
+	if hasInvalidKeyErr {
+		if hasTimeoutErr {
+			return "", fmt.Errorf("E_AI_REGION_MISMATCH: provider=%s model=%s detail=主端点超时且备用端点鉴权失败，建议检查 DASHSCOPE_REGION 或 AI_BASE_URL 与 key 来源一致", p.Provider, modelName)
 		}
+		return "", fmt.Errorf("E_AI_AUTH: provider=%s model=%s detail=API key 无效或未开通对应模型权限", p.Provider, modelName)
+	}
 
-		if resp.StatusCode == 200 {
-			return string(bodyBytes), nil
-		}
-
-		if resp.StatusCode == 429 {
-			// 限流场景不在同一模型内重试，交由上层切换备用模型。
-			return "", fmt.Errorf("AI API错误(状态码%d): %s", resp.StatusCode, string(bodyBytes))
-		}
-
-		apiErr := fmt.Errorf("AI API错误(状态码%d): %s", resp.StatusCode, string(bodyBytes))
-		lastErr = apiErr
-
-		// 5xx通常是上游拥塞，短暂退避后重试。
-		if resp.StatusCode >= 500 && attempt < 2 {
-			time.Sleep(time.Duration(attempt) * 700 * time.Millisecond)
-			continue
-		}
-
-		return "", apiErr
+	if hasRateLimitErr {
+		return "", fmt.Errorf("E_AI_RATE_LIMIT: provider=%s model=%s detail=触发上游限流，请降低频率或升级配额", p.Provider, modelName)
 	}
 
 	if lastErr != nil {
 		return "", lastErr
 	}
 
-	return "", fmt.Errorf("AI请求失败")
+	return "", fmt.Errorf("E_AI_UNKNOWN: provider=%s model=%s detail=所有端点尝试后仍失败", p.Provider, modelName)
+}
+
+func (p *TaiFuLearningPlanner) resolveEndpoints() []string {
+	cnEndpoint := "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+	intlEndpoint := "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions"
+
+	var endpoints []string
+	add := func(values ...string) {
+		for _, value := range values {
+			value = strings.TrimSpace(value)
+			if value == "" {
+				continue
+			}
+			exists := false
+			for _, existing := range endpoints {
+				if existing == value {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				endpoints = append(endpoints, value)
+			}
+		}
+	}
+
+	if customList := parseCSV(os.Getenv("AI_ENDPOINTS")); len(customList) > 0 {
+		add(customList...)
+		return endpoints
+	}
+
+	if p != nil && p.Provider != "dashscope" {
+		add(p.BaseURL)
+		return endpoints
+	}
+
+	region := strings.ToLower(strings.TrimSpace(os.Getenv("DASHSCOPE_REGION")))
+	customBaseURL := strings.TrimSpace(os.Getenv("DASHSCOPE_BASE_URL"))
+	if customBaseURL != "" {
+		add(customBaseURL)
+	}
+
+	if p != nil && strings.TrimSpace(p.BaseURL) != "" {
+		add(p.BaseURL)
+	}
+
+	switch region {
+	case "intl", "international":
+		add(intlEndpoint)
+		if p == nil || p.AllowCrossRegion {
+			add(cnEndpoint)
+		}
+	case "cn", "china", "domestic":
+		add(cnEndpoint)
+		if p == nil || p.AllowCrossRegion {
+			add(intlEndpoint)
+		}
+	default:
+		add(cnEndpoint)
+		if p == nil || p.AllowCrossRegion {
+			add(intlEndpoint)
+		}
+	}
+
+	return endpoints
+}
+
+func parseUpstreamError(body []byte) (string, string, string) {
+	var payload map[string]interface{}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return "", "", ""
+	}
+
+	code := ""
+	message := ""
+	requestID := ""
+
+	if v, ok := payload["request_id"].(string); ok {
+		requestID = v
+	}
+	if v, ok := payload["requestId"].(string); ok && requestID == "" {
+		requestID = v
+	}
+
+	if e, ok := payload["error"].(map[string]interface{}); ok {
+		if v, ok := e["code"].(string); ok {
+			code = v
+		}
+		if v, ok := e["message"].(string); ok {
+			message = v
+		}
+	}
+
+	if code == "" {
+		if v, ok := payload["code"].(string); ok {
+			code = v
+		}
+	}
+	if message == "" {
+		if v, ok := payload["message"].(string); ok {
+			message = v
+		}
+	}
+
+	return code, message, requestID
+}
+
+func compactForLog(input string, maxLen int) string {
+	input = strings.ReplaceAll(input, "\n", " ")
+	input = strings.ReplaceAll(input, "\r", " ")
+	input = strings.TrimSpace(input)
+	if maxLen <= 0 || len(input) <= maxLen {
+		return input
+	}
+	return input[:maxLen] + "...(truncated)"
 }
 
 // parseAIResponse 尝试从 AI 响应中解析 JSON 格式的 flag/plan/difficulty
