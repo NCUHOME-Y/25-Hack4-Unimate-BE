@@ -345,22 +345,9 @@ func InitDaliyFlag(flags []model.Flag) {
 
 // 初始化打卡记录
 func InitDakaNumberRecord(daka []model.Daka_number, id uint) {
-	// 统一重置历史打卡记录的 had_done 状态（保留当天记录），避免在循环中重复执行
-	if err := repository.UpdateDakaHadDone(id); err != nil {
-		utils.LogError("初始化每日打卡状态失败", logrus.Fields{"user_id": id, "error": err.Error()})
-		return
-	}
-	user, _ := repository.GetUserByID(id)
-	daka1, _ := repository.GetRecentDakaNumber(id)
-	if daka1.HadDone {
-		daka1.MonthDaka = daka1.MonthDaka + 1
-		user.Daka = user.Daka + 1
-	}
-	err := repository.SaveUserToDB(user)
-	if err != nil {
-		utils.LogError("保存用户数据失败", logrus.Fields{"user_id": id})
-		return
-	}
+	// 兼容旧调度入口：当前打卡统计在用户实际打卡时已即时落库，
+	_ = daka
+	_ = id
 }
 
 // 每月建立打卡记录
